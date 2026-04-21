@@ -1,0 +1,4199 @@
+{
+  "banks": [
+    {
+      "id": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "name": "AKTIV BANK"
+    },
+    {
+      "id": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "name": "TAWHID BANK"
+    },
+    {
+      "id": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "name": "IBT"
+    }
+  ],
+  "companies": [
+    {
+      "id": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "name": "RUSHDI BARODARON",
+      "returnedAmount": 0,
+      "sortOrder": 2
+    },
+    {
+      "id": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "name": "HASAN ISKANDAR",
+      "returnedAmount": 0,
+      "sortOrder": 1
+    },
+    {
+      "id": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "name": "RUSHDI DUSTON",
+      "returnedAmount": 0,
+      "sortOrder": 0
+    },
+    {
+      "id": "627ee9fc-61a1-4e6c-8cef-e53a5dafe3bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "name": "RUSHTI DUSTON",
+      "returnedAmount": 0,
+      "sortOrder": 3
+    },
+    {
+      "id": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "name": "RUSHDI HISOR",
+      "returnedAmount": 0,
+      "sortOrder": 4
+    },
+    {
+      "id": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "name": "KORVONSAROI CHIN",
+      "returnedAmount": 0,
+      "sortOrder": 0
+    },
+    {
+      "id": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "name": "RUSHDI HISOR",
+      "returnedAmount": 0,
+      "sortOrder": 0
+    }
+  ],
+  "transfers": [
+    {
+      "id": "3d94b5c9-bf5d-4bf2-8964-55bcb7d79e3d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50400,
+      "note": "65014615900220100325",
+      "timestamp": "2026-04-01T18:00:19.785Z",
+      "date": "2026-04-01",
+      "currency": "USD"
+    },
+    {
+      "id": "fe8920b5-b7d8-4fb7-b320-82e9a51fcc34",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50200,
+      "note": "19651101040007849",
+      "timestamp": "2026-04-01T18:00:46.722Z",
+      "date": "2026-04-01",
+      "currency": "USD"
+    },
+    {
+      "id": "e8017650-6cde-450d-8768-7c6d8c70dda8",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 56160,
+      "note": "17778200574412210001",
+      "timestamp": "2026-04-01T18:01:34.490Z",
+      "date": "2026-04-01",
+      "currency": "USD"
+    },
+    {
+      "id": "2c8f7c01-890d-49d2-bdc0-20bf429f535e",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 102060,
+      "note": "",
+      "timestamp": "2026-04-01T18:02:33.434Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "00668c6d-ea88-4ba8-b53e-0dc2811bb492",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:02:39.506Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "f1f4e44c-4989-4013-82d8-7f165d203049",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 176500,
+      "note": "",
+      "timestamp": "2026-04-01T18:02:46.562Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "71350736-7105-49c8-bed1-db50320e6fbf",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 133500,
+      "note": "",
+      "timestamp": "2026-04-01T18:02:50.414Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "9c4cdbf3-d86b-4dd0-8d77-c629c090209b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 75000,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:04.723Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "901a91cf-7c8f-4154-93a1-f6c9bc519e37",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50800,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:08.242Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "51b413fd-adb2-464d-be4c-bb4d30d3fa49",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 52663,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:11.737Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "ee2ac6ff-58f4-4528-afcd-e6676fca2ac1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 173760,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:18.401Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "1526d0ce-be92-420a-b540-7cfb0c6263a8",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 474390,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:25.749Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "82048d79-99db-4756-a470-6c1049b12b71",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:31.467Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "f0926590-8e97-4fc1-9c0b-56c358cf98e9",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 30000,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:36.075Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "c2d997e7-8d9c-4653-b41b-27da28f62ff9",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 31250,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:40.034Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "c95eff13-2543-4a56-8882-f259a812182c",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:44.890Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "90fcbcc2-3c5a-45e7-a7ed-bec0bf168073",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 28530,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:49.186Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "5508e406-7d3e-42cc-ae48-5aafbf9013b0",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 22812,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:52.834Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "c1f3a0df-1dff-41a0-9979-7aee1ee055a1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-01T18:03:58.522Z",
+      "date": "2026-03-31",
+      "currency": "USD"
+    },
+    {
+      "id": "7d78e751-07fc-45d4-81bd-dc55cfd005d2",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 300000,
+      "note": "",
+      "timestamp": "2026-04-01T18:08:54.224Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "1bd7fd5b-e688-4a00-b1c8-efc5c97e4764",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 160061,
+      "note": "",
+      "timestamp": "2026-04-01T18:08:57.858Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "7fcebe52-5e56-45fb-bb2a-bb8085d32c06",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:02.074Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "016d8cf1-ef6b-4273-b23b-474be53b86b6",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:07.018Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "0a174e0b-4378-4776-b32a-cf80a3aa243e",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:09.964Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "ab1258be-4059-44f9-ab2e-234d240ea209",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 20000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:28.097Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "c035fca6-c63a-45ab-8dbb-71b68f918084",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 145000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:31.875Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "ccfcd5aa-6254-4b17-b380-3680c3727d73",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 84656,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:36.266Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "25d00afa-8c18-4863-a65c-e4be97519d55",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 61270,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:44.891Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "b81bbf25-2cef-4434-87a9-14553464e93e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 136000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:49.354Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "9630036d-ddf8-42af-976c-4f5c4b31d3ea",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:54.178Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "3f2674a3-4869-4456-b94b-6afe01a97c2f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-01T18:09:59.491Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "fa5081c2-dbc6-4d9d-9a94-5a7cd9281546",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 95000,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:03.299Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "990c0c20-4497-43e2-bbf5-5c2929adc0e4",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 106695,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:10.115Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "35da9ee2-252e-447b-95fb-b9b010ed2e4f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 224070,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:15.149Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "750e2ff2-c1b4-40a2-b91f-51181f86970e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 61500,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:19.630Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "eb0b76bd-29eb-4085-ae26-a8986498783f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 136000,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:23.651Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "8b37a4cb-7c93-4e95-80ce-b7ec69630176",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:30.084Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "5c3f8887-04ac-4d74-aceb-0f13c33b7a25",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:10:32.707Z",
+      "date": "2026-03-30",
+      "currency": "USD"
+    },
+    {
+      "id": "32c7adab-a447-4e4d-b7cb-f24f3089f690",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:11:38.219Z",
+      "date": "2026-03-19",
+      "currency": "USD"
+    },
+    {
+      "id": "054ba8b6-095e-4c88-973f-eba33bb0862e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:11:41.108Z",
+      "date": "2026-03-19",
+      "currency": "USD"
+    },
+    {
+      "id": "1c9b6cc5-71d9-49da-9a07-dc6c05aa4f3c",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-01T18:11:44.786Z",
+      "date": "2026-03-19",
+      "currency": "USD"
+    },
+    {
+      "id": "532146fe-8768-43fa-a0a0-46c5d96a7d50",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 400000,
+      "note": "",
+      "timestamp": "2026-04-01T18:11:48.547Z",
+      "date": "2026-03-19",
+      "currency": "USD"
+    },
+    {
+      "id": "7b7c22b0-6e7b-4416-9ea2-a79a2a8c583e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 53085,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:07.891Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "5b00c0d6-7434-4285-a40e-060c107afb5b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 91243,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:13.218Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "e4908ccf-d095-4704-b82e-74ba2967d05b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 255816,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:18.588Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "7afce8b9-ac72-4071-b02b-439c36464210",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 143880,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:23.123Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "9858de45-3a06-474f-a990-cb3a0badba68",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 180000,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:29.395Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "34d6fd3d-d77a-4b02-a29c-436f9aab19e1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 62500,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:32.595Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "81998dc6-9442-43ea-b07f-0d1f84e30fab",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 15000,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:39.011Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "c350929a-9e49-4887-95ca-932e497ff9a1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 36729,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:45.994Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "3f4e3e65-d0c7-4809-91c2-10db0032ba75",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 16500,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:50.018Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "74a4953a-30f0-4e21-a8e4-6c1d6a38807f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 14640,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:53.597Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "1f1619e5-96be-44a4-8f16-3bafdc59106d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-01T18:12:57.955Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "c0189e68-e933-4488-a2f8-15e89efca3fc",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-01T18:13:00.386Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "dced31d7-9a50-4ba3-97cf-66004e358104",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-01T18:13:03.747Z",
+      "date": "2026-03-18",
+      "currency": "USD"
+    },
+    {
+      "id": "50e624bc-f02d-4c61-b452-62ae426d281e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 87680,
+      "note": "63115261804",
+      "timestamp": "2026-04-02T06:32:12.624Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "380f5722-f97a-4d08-bf7c-4757805169c7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "1202083109814011394",
+      "timestamp": "2026-04-02T06:32:30.232Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "6e690e12-f909-4cae-9893-a60e3400cdf3",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "3011257",
+      "timestamp": "2026-04-02T06:32:38.309Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "8b639dbb-f0cd-4340-bc42-60adb04c2ddf",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "656605601331",
+      "timestamp": "2026-04-02T06:32:45.415Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "8e606d3b-b6eb-46d1-916c-5326be28e49f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 123000,
+      "note": "NRA000000501511938532",
+      "timestamp": "2026-04-02T06:32:51.120Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "490b8467-8f52-447c-b937-c20234d9c17b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "201000192907081",
+      "timestamp": "2026-04-02T06:33:02.558Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "0be38b18-5b29-40c4-8f0e-362b5701ae7e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50100,
+      "note": "20206840651101686001",
+      "timestamp": "2026-04-02T06:36:23.054Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "9fe16696-e27a-4f92-b642-556249245cf7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 29555,
+      "note": "002-620920-055",
+      "timestamp": "2026-04-02T06:36:50.884Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "85742e4b-2f11-47a2-bfca-5490f6b0b3e4",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "AE830110090010200034987",
+      "timestamp": "2026-04-02T06:38:04.193Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "7b77b429-2e03-4d7a-84dd-a4dcd08ede6b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 96800,
+      "note": "001943066",
+      "timestamp": "2026-04-02T06:38:57.507Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "90787024-85e5-466f-82b9-74b6be0e3997",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "106480000822",
+      "timestamp": "2026-04-02T06:46:09.305Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "b156adf6-0372-4748-b636-733e8d35dc53",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 70000,
+      "note": "008380600000835",
+      "timestamp": "2026-04-02T06:46:39.064Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "235176ee-985a-4193-b539-fd78e9948404",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 103579,
+      "note": "0401260000001568",
+      "timestamp": "2026-04-02T06:46:59.425Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "064951d1-e2f2-4d30-a6ea-c6ec2a398f1b",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 105268.64,
+      "note": "6700014993",
+      "timestamp": "2026-04-02T06:47:11.317Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "62858877-086a-4c9b-a25d-6a86808e966d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "50200108770723",
+      "timestamp": "2026-04-02T06:48:59.079Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "2a9bf57c-e08c-4c2e-a5bb-e2a9a0cd09d0",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 59445,
+      "note": "201000078725302",
+      "timestamp": "2026-04-02T06:51:48.000Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "67848f14-89c0-4850-8d4b-1a49fcf50635",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "33070210201000000640",
+      "timestamp": "2026-04-02T06:58:46.895Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "e835af8d-3d0c-4197-bf48-7c8df2f13714",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 300000,
+      "note": "AE830110090010200034987",
+      "timestamp": "2026-04-02T06:59:20.753Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "24b9471a-45eb-451e-a53e-3b86c52efa3d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 117810,
+      "note": "0623943883",
+      "timestamp": "2026-04-02T07:32:34.868Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "4f48f658-6fcb-4671-aaab-0135725a032e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 93150,
+      "note": "05419514040000072",
+      "timestamp": "2026-04-02T08:49:34.862Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "7baa36de-b542-43d1-942e-fe7eb954272b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 271100,
+      "note": "1910000011420100011577",
+      "timestamp": "2026-04-02T08:49:41.757Z",
+      "date": "2026-04-02",
+      "currency": "USD"
+    },
+    {
+      "id": "cc116e34-4111-4fb0-98d1-b9d7350638b6",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 16150,
+      "note": "",
+      "timestamp": "2026-04-02T11:13:21.472Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "50dd4641-4f1b-4dc3-ab7c-93b043ca0d7e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 24650,
+      "note": "",
+      "timestamp": "2026-04-02T11:13:26.584Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "077d9880-6228-4d3b-ae07-a729b6f95982",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 40000,
+      "note": "",
+      "timestamp": "2026-04-02T11:13:31.497Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "1b7709c8-5a5c-4e6e-8d86-5724cb842d7f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 40423,
+      "note": "",
+      "timestamp": "2026-04-02T11:13:35.417Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "2009b29e-10f4-44a8-9ab9-5510e499d418",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 44887,
+      "note": "",
+      "timestamp": "2026-04-02T11:13:42.025Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "c9ad3a71-2d53-4a0b-bff0-c6d361ca0b99",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 72500,
+      "note": "",
+      "timestamp": "2026-04-02T11:13:45.057Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "f52f5712-e9ef-4f85-aefb-c617c99125f6",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 75384,
+      "note": "",
+      "timestamp": "2026-04-02T11:19:18.628Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "d78e7e10-1420-4d6b-9a5c-f3fc5622065d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 77600,
+      "note": "",
+      "timestamp": "2026-04-02T11:19:23.777Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "713ed71a-c72a-495a-bb0e-9005a7154f66",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:19:33.048Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "ba91509e-7c70-4ad9-80e7-a96cf1fc6601",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 101250,
+      "note": "",
+      "timestamp": "2026-04-02T11:19:40.513Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "ec1befaa-f2d4-4130-a2c8-a7eab2569d42",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 120000,
+      "note": "",
+      "timestamp": "2026-04-02T11:19:47.010Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "3339f2e1-9b96-4849-8418-07538cc786aa",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 126365,
+      "note": "",
+      "timestamp": "2026-04-02T11:20:00.914Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "8b49311d-fb9e-4b47-b6cb-6a8108a3153c",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-02T11:20:06.962Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "b04f0178-ec00-404b-a6d4-ad9368bfde89",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 201680,
+      "note": "",
+      "timestamp": "2026-04-02T11:20:14.769Z",
+      "date": "2026-03-02",
+      "currency": "USD"
+    },
+    {
+      "id": "a7cc58ff-8edc-4467-9fce-1f3f6826071f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 29400,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:08.384Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "66f01a1d-c899-44f5-9bb0-d5bd39889e5e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 30000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:11.767Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "2e302b4e-7721-45f7-a07c-4fbb3ca0e388",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 40000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:14.048Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "1d70d7c8-a586-4cba-9ac9-a5cec79d9710",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 40000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:18.084Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "35303222-e4c5-4dae-8317-6bb7b4af7990",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:22.041Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "8b2cba80-743e-4058-9eb9-fa4f53424b48",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:26.002Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "c6581390-b56f-44db-8255-e1c66d937d52",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:28.944Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "2c40867e-55a9-4923-a72d-2b979558d95b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:34.972Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "31441972-d7bd-473b-a56a-0e3abf1151f7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 147840,
+      "note": "",
+      "timestamp": "2026-04-02T11:21:40.259Z",
+      "date": "2026-03-03",
+      "currency": "USD"
+    },
+    {
+      "id": "7d4416e9-6b2a-4f3e-9be6-24102a3a66f0",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 123235,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:08.024Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "e7883ae8-2761-4cd1-9207-103d958777a3",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 275000,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:12.201Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "b587d8d9-ab4a-42cb-b069-147679224364",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 500000,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:15.936Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "26f45124-652f-4447-afa8-f31a42c2716c",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 24700,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:23.970Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "2cdaeb5b-9c65-4002-a913-22d030dc9555",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 63240,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:29.123Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "eb60adf7-ceb0-4bd8-96a2-87d4bbf0c3cd",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 99900,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:33.111Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "688efd0b-c2f1-486e-a033-f86dd079dc0a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:36.530Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "3d7f222a-1c76-4bde-ba76-1212bb4f138d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 110560,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:43.528Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "4fa96cda-6cc6-4734-bf56-112af506a9ef",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 110700,
+      "note": "",
+      "timestamp": "2026-04-02T11:22:49.529Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "fe89c638-b92e-457f-9e44-174d69131c4f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 130000,
+      "note": "",
+      "timestamp": "2026-04-02T11:26:26.646Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "7649810e-7aad-46a0-b010-a831563b55fd",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150040,
+      "note": "",
+      "timestamp": "2026-04-02T11:26:31.352Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "3ecc8169-8e6f-438b-ba9f-cafc754f3f26",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 152800,
+      "note": "",
+      "timestamp": "2026-04-02T11:26:37.099Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "36db8f00-2e7d-43de-befd-40978aaa2d48",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 125000,
+      "note": "",
+      "timestamp": "2026-04-02T11:26:41.345Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "ce66bdd5-cf0f-4598-8ee5-f61ad252fb04",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 246400,
+      "note": "",
+      "timestamp": "2026-04-02T11:26:46.120Z",
+      "date": "2026-03-04",
+      "currency": "USD"
+    },
+    {
+      "id": "2a5561ed-5226-48ae-a8ec-8dc3a41e6666",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 31700,
+      "note": "",
+      "timestamp": "2026-04-02T11:27:38.448Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "6eeb8eeb-04eb-471d-a41d-2d74d7b925d3",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 49900,
+      "note": "",
+      "timestamp": "2026-04-02T11:32:17.655Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "7e3601a0-0502-45cb-bbf9-0a85dcfb702a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 52500,
+      "note": "",
+      "timestamp": "2026-04-02T11:32:20.887Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "332b0faa-297b-4169-967b-6a41499f5f15",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 73500,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:02.201Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "dade0060-e9ac-400e-ba6d-fc1f540ae676",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 83910,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:07.649Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "21a4e4d8-e49d-4e7f-8333-a9d1299d0fa7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 84375,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:14.791Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "915fcb78-f169-4983-9bf4-fcde10d4635d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 84900,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:21.466Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "1619a051-7a56-4458-8ad8-acbbec23cd9e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 96726,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:24.816Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "85967674-c9ae-4ecd-97ce-8c587ee4b453",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 147692,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:30.806Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "e2e67b97-128a-44ae-9932-59d3c4899c71",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 99000,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:34.955Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "ff330c18-0b5f-4c3a-9e93-2d8846c387cf",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:41.248Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "cdcd2ace-b21b-4709-b803-a80224d906e3",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:43.336Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "3b8ef25d-292f-4179-ba08-3f97311e6af6",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100800,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:47.474Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "49d712b8-3e37-4f67-8015-f5061cef3797",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 174451,
+      "note": "",
+      "timestamp": "2026-04-02T11:33:55.344Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "fb5b399c-9f8e-4e16-96ca-2e8bd0e596f7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 181650,
+      "note": "",
+      "timestamp": "2026-04-02T11:34:02.007Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "762dff7a-5361-4e5e-ac89-0b7f4d5e0097",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-02T11:34:14.337Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "dda30a02-c9b0-4ad1-bb72-c8cf3c7110ee",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-02T11:34:18.440Z",
+      "date": "2026-03-05",
+      "currency": "USD"
+    },
+    {
+      "id": "d8d0b5b5-8f92-4f7b-82fb-5d0d2e27bb53",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 107960,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:03.039Z",
+      "date": "2026-03-06",
+      "currency": "USD"
+    },
+    {
+      "id": "34e91a24-eaad-48c8-9553-dbf51edac690",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 120000,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:07.288Z",
+      "date": "2026-03-06",
+      "currency": "USD"
+    },
+    {
+      "id": "c6815ac6-3026-4e4d-8c99-600c10fa9d79",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 143026,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:13.760Z",
+      "date": "2026-03-06",
+      "currency": "USD"
+    },
+    {
+      "id": "d097ecbb-8ace-414d-a380-830e8f9cfcaf",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 205000,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:18.816Z",
+      "date": "2026-03-06",
+      "currency": "USD"
+    },
+    {
+      "id": "ddfb9194-9b64-43eb-9525-2ce98be4f96b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 292160,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:24.175Z",
+      "date": "2026-03-06",
+      "currency": "USD"
+    },
+    {
+      "id": "3ba1edbf-730f-473e-aacf-af538dfed2e0",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:43.136Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "0d6379bc-d071-4679-8665-cca76006e230",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 63000,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:46.687Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "252f4f9d-4a8e-43e0-99f9-6aa143de07db",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 80400,
+      "note": "",
+      "timestamp": "2026-04-02T11:35:50.255Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "7603dabd-e7fe-4039-864d-904197b11f71",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 115020,
+      "note": "",
+      "timestamp": "2026-04-02T11:36:32.107Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "eee039d5-dcf4-481f-af0e-92a161c00ea4",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-02T11:36:36.088Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "03e823ff-2983-440b-9cd6-b7fd38155754",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-02T11:36:40.900Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "5fb4f3aa-6f71-4cc7-8455-00c451df0824",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 7080,
+      "note": "",
+      "timestamp": "2026-04-02T11:36:43.640Z",
+      "date": "2026-03-10",
+      "currency": "USD"
+    },
+    {
+      "id": "edf0caf6-5697-4d79-8816-ce7a8026c4d9",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 17760,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:17.640Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "2fdce9a4-44c4-42b9-bc27-15e08ce1b12e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 20000,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:21.152Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "c92cf290-9506-4be3-962a-c8a57463c158",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 43000,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:26.456Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "c13afbb0-b45f-4443-8b9b-4f260a249a6a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 48000,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:30.302Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "d5b70c29-8c13-4a2e-bcbb-038cb8c5c281",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:42.416Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "6dcd2a5d-d220-4f2e-80c7-c398416eebf7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:47.128Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "c2bfb532-6fd4-487f-bf75-53ef7c2224d3",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:54.625Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "50315c54-5a7c-4c79-a666-52cc42326357",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 62304,
+      "note": "",
+      "timestamp": "2026-04-02T11:38:57.656Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "181e3012-ec29-4a7f-9e67-a4b4c5cd0207",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 69304,
+      "note": "",
+      "timestamp": "2026-04-02T11:39:03.944Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "7cbf73b4-7cd8-4bba-bfa7-938c2b26ac68",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 70000,
+      "note": "",
+      "timestamp": "2026-04-02T11:39:09.428Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "8072ce17-96a7-4b2f-b655-f3b7d03ab74d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 76435,
+      "note": "",
+      "timestamp": "2026-04-02T11:39:14.411Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "1dbad639-e20a-4375-938f-dcf4e886a636",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:39:51.695Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "92f98776-66f7-4082-bdb2-8155e5bb949f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:39:55.144Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "b347ba95-1d07-41db-9a63-cf164b121ee9",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 113781,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:00.150Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "a52f8aa2-3e3d-4655-aa09-291699233916",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 125000,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:04.512Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "92c92b1d-fe06-4955-a59f-fb9d43ba8f32",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 138500,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:10.575Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "28824e1d-3ec0-480d-b540-6ca252336b99",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:15.063Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "669ca111-7d49-4e40-b815-ff907d422c8a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:19.110Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "049404c3-c007-4b31-a8b2-2d6b09995219",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 206485,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:23.705Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "55917800-eb8a-4bfb-99e9-18a28c1b1c6d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 220000,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:38.376Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "7ff58338-5d6a-40fe-a5ec-5c7370e2582c",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 360000,
+      "note": "",
+      "timestamp": "2026-04-02T11:40:42.776Z",
+      "date": "2026-03-11",
+      "currency": "USD"
+    },
+    {
+      "id": "d0b851b9-560a-4095-bbed-80113aba1fd2",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 237600,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:19.745Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "19e2a408-bfa1-4255-ad57-c3c7929fdc1a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 213150,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:24.416Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "de62bae9-10ab-4ad0-b5cf-67fbc21b6569",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 65000,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:28.928Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "cc490a5d-53e5-42c5-86b4-e4c6a6c97cad",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:32.976Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "004396f7-6814-4430-bc3f-4ca4f149746a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:37.448Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "9c98fd42-1215-4f93-9c63-9fe71517a9a5",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 32437,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:43.793Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "bee85982-ddc0-4c97-a759-84aaee52f20e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 51967,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:50.680Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "6eed3538-1839-49d7-bcc8-8e12014247d0",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:41:57.728Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "922bd920-5cec-44d3-9f61-95d47725f7e0",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-02T11:42:01.080Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "204ee3bc-d080-43b9-a8d3-e94088c7c9d3",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 7085,
+      "note": "",
+      "timestamp": "2026-04-02T11:42:06.977Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "9d46d2d1-82e5-4897-a5ca-9570aba3d4e1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 120000,
+      "note": "",
+      "timestamp": "2026-04-02T11:42:10.456Z",
+      "date": "2026-03-12",
+      "currency": "USD"
+    },
+    {
+      "id": "ac4cf93a-4a62-48d8-815f-9bfbcd4fab61",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 80000,
+      "note": "",
+      "timestamp": "2026-04-02T11:43:38.525Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "17ae8ee8-c2a1-4b5d-a950-7d8ac39feb12",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 67520,
+      "note": "",
+      "timestamp": "2026-04-02T11:43:47.395Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "083f5990-b02a-42e8-8f11-486389e99cb6",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 109100,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:09.865Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "28f77fa1-569e-4b68-ad12-0d0337ecafaf",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:13.455Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "b0b2a572-bfd4-47d7-bf42-c5a509be168b",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 47500,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:16.983Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "4dceafd0-9fd1-430a-b1f1-fb50f84e4d8d",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 49910,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:22.808Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "3ffa3115-eb79-4376-9ccb-bd74fec1ffe1",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 110000,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:26.679Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "b6d6d950-cc0f-429d-8daa-df0bd617486c",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:34.881Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "f15309e6-16b4-416a-b9d7-50704a71a195",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 236800,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:43.487Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "d435a700-0ec6-4edd-9916-3ef162e2507b",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 56750,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:50.256Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "5516175e-1273-432e-b4cc-c53498a35373",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 212100,
+      "note": "",
+      "timestamp": "2026-04-02T11:44:54.519Z",
+      "date": "2026-03-13",
+      "currency": "USD"
+    },
+    {
+      "id": "cd83d29e-265c-473a-a6ad-d12962466f0a",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 250000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:13.753Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "952164f5-8b56-4641-b5df-5ca58163e555",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 55000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:18.312Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "615b8b72-f073-4706-92fa-aa87e4e0f3c2",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 124000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:21.330Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "3c2106a1-c606-4b30-9c9f-b95ef78b7702",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 36900,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:24.963Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "542cd5e0-fad9-4d42-b56f-b3768e2cb296",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 134082,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:30.552Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "e352fff0-8ffc-442f-8abc-acf7e01806c6",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 20000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:37.472Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "befeb4f9-bc6c-4787-8ad2-d0c291118e75",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 65000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:41.495Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "d04bd900-2e41-4d03-a2c7-e7976aa05000",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 113000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:45.975Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "90a0a190-4751-49bf-80b7-28f7804f9c72",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:50.193Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "3ece9d15-17cc-4dcf-a9e0-98b7f5ec087d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 300000,
+      "note": "",
+      "timestamp": "2026-04-02T11:45:58.648Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "73ecf443-a4a1-4bec-99de-d8baa221074f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 204000,
+      "note": "",
+      "timestamp": "2026-04-02T11:46:16.415Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "4d400485-7a5f-4b2a-b99d-a3d50d4ea2ad",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-02T11:46:19.416Z",
+      "date": "2026-03-16",
+      "currency": "USD"
+    },
+    {
+      "id": "baf0d54d-3e61-4c05-b53c-94cf7d325292",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 499000,
+      "note": "",
+      "timestamp": "2026-04-02T11:49:37.535Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "5a0c1299-39f7-4dfd-a42b-78a9cb38c448",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 498000,
+      "note": "",
+      "timestamp": "2026-04-02T11:49:41.250Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "e1ef0671-e999-4c78-bf56-9ccc60591425",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 497000,
+      "note": "",
+      "timestamp": "2026-04-02T11:49:43.600Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "723fe822-cd14-4962-bc4e-64a7282570a2",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 506000,
+      "note": "",
+      "timestamp": "2026-04-02T11:49:45.689Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "6ca0061b-cd27-4ae3-9305-db37aa241d47",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 77632,
+      "note": "",
+      "timestamp": "2026-04-02T11:49:52.409Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "84dc4700-7101-4a59-85bc-0bbe880cdc63",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 42336,
+      "note": "",
+      "timestamp": "2026-04-02T11:49:57.073Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "bdc75455-bb1f-4681-a24f-94834befb035",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 140220,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:03.136Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "6af45545-38da-4380-ab5f-bbc8ea635072",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:13.792Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "da956e9f-69b2-41a7-8699-cd06ab9fdd6b",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 65000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:17.679Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "7974efdd-6d24-493b-a44a-30beece8e45a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 47100,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:23.000Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "dbfe80b4-ae7b-4674-859e-533e4599aef5",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 250000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:27.663Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "0fdb3e20-475b-4357-9023-860b7146d56a",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 300000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:31.520Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "80450013-6ac1-4ea3-a654-3cc697526cfe",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 95200,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:41.874Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "5ac073fb-d326-4755-a9f7-6f20dabe6391",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:46.192Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "7de9f45c-bfe9-4631-bd27-594edbc8e96d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 350000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:53.720Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "539583ee-779f-4005-9eb2-4c8d2356e5c1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 215000,
+      "note": "",
+      "timestamp": "2026-04-02T11:50:58.400Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "a3b2d6bc-33b1-419d-bc3b-8fd6f1e1a8e7",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 120000,
+      "note": "",
+      "timestamp": "2026-04-02T11:51:02.600Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "a351fd6c-01d1-4869-a567-23f779f58306",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-02T11:51:07.112Z",
+      "date": "2026-03-17",
+      "currency": "USD"
+    },
+    {
+      "id": "8587aa9a-5609-4906-b07b-6407772514c1",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 110000,
+      "note": "",
+      "timestamp": "2026-04-03T06:05:53.724Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "bebdcd01-d160-4ee7-8a6e-88b804d3dede",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 102315,
+      "note": "",
+      "timestamp": "2026-04-03T06:07:10.639Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "4bcc638b-da5f-4b9f-b555-5da63c46716f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 86770,
+      "note": "",
+      "timestamp": "2026-04-03T06:09:20.814Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "27fc33a5-073a-4f2a-ab9c-4ab7d28196e9",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-03T06:11:06.460Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "d9165c80-f0c6-4926-be3e-b798c1ebcd48",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 48400,
+      "note": "",
+      "timestamp": "2026-04-03T06:12:23.284Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "0a781378-eaa7-474d-b851-3a719cc0ab15",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-03T06:12:30.556Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "94dbef41-82f0-476a-bfdf-2097bf0bfcb4",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 96800,
+      "note": "",
+      "timestamp": "2026-04-03T06:13:54.656Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "11823943-2913-4b3d-ba05-f0bc7ba95500",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-03T06:15:15.115Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "2587b6d8-a0fe-451e-a597-98a0ad1b2643",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 171599,
+      "note": "",
+      "timestamp": "2026-04-03T06:16:36.455Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "f684e69a-d5fb-40fb-83f7-ddb6037d8ccb",
+      "companyId": "627ee9fc-61a1-4e6c-8cef-e53a5dafe3bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 250000,
+      "note": "3002015119200223625",
+      "timestamp": "2026-04-03T06:20:51.645Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "49671e84-d923-429e-9c74-ddc9b904e0df",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 70000,
+      "note": "",
+      "timestamp": "2026-04-03T06:22:26.893Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "4cf9d709-8767-4436-a8f7-b8cddb0c1fa2",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "3410020211420100003256",
+      "timestamp": "2026-04-03T07:08:57.131Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "f0a596b1-65ed-427f-af8c-0ef9962c9883",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 141814,
+      "note": "",
+      "timestamp": "2026-04-03T07:24:12.786Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "c556658a-5543-4570-bd78-83559351c228",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-03T09:12:29.705Z",
+      "date": "2026-04-03",
+      "currency": "USD"
+    },
+    {
+      "id": "d1ade4d7-1980-45cb-84c1-439688857f6f",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 483700,
+      "note": "",
+      "timestamp": "2026-04-06T05:57:23.096Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "63ebcfcb-8a16-49d5-9dc0-9cb7aba65dc5",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 17800,
+      "note": "",
+      "timestamp": "2026-04-06T05:57:33.780Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "317a615e-c176-484d-a714-f62e6bba8fbd",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-06T06:44:45.135Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "1ad988f2-63ac-4f9f-b75a-36d807b8b3f6",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-06T06:44:48.214Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "9ea25bbb-4c09-4d06-aa25-a3a24cd8f920",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-06T07:21:14.047Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "e3481cdb-22f2-4a9e-b740-696b0bd40b25",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-06T07:21:17.608Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "70d0a9cb-0481-4962-9051-6423bb998e6e",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60300,
+      "note": "",
+      "timestamp": "2026-04-06T07:21:20.524Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "988353bc-ddc8-4010-9bbd-e46d15f88be2",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-06T08:06:23.960Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "a57b19bc-01b0-4dd9-9a42-380253b8054d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-06T08:06:26.448Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "85defee1-905d-40e2-af3e-bf44555e3f52",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 153804.76,
+      "note": "",
+      "timestamp": "2026-04-06T08:20:45.467Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "4f169adb-c8c4-45c3-968a-01481c3523ed",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-06T08:40:30.827Z",
+      "date": "2026-04-06",
+      "currency": "USD"
+    },
+    {
+      "id": "e21a855d-02fc-47d2-8873-8e247163c163",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-07T06:54:46.066Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "5f44baf5-f7a9-40f9-96b6-0b6223d9f416",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 66321.68,
+      "note": "",
+      "timestamp": "2026-04-07T06:54:55.297Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "e2440378-3a2e-4a16-a0c0-b263adc3f348",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 52937,
+      "note": "",
+      "timestamp": "2026-04-07T06:55:04.385Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "01a68549-446a-4bca-a0be-f7a39b42ba24",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 282085,
+      "note": "",
+      "timestamp": "2026-04-07T06:55:11.186Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "c5d1fbff-9a4c-49fd-bede-be5623516c69",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-07T06:55:15.420Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "a72b14f8-9edf-42cd-8c51-ada47baa4356",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 66000,
+      "note": "",
+      "timestamp": "2026-04-07T06:55:18.946Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "c712aa33-3c3c-4c79-977f-df2c0771389f",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 90000,
+      "note": "",
+      "timestamp": "2026-04-07T07:27:31.682Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "34833869-cba1-47d3-b3d9-50345346985e",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-07T07:49:29.678Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "3ab86d2e-54c7-44ad-87ba-20f1a8c3c11f",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 30000,
+      "note": "",
+      "timestamp": "2026-04-07T07:49:35.833Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "952d3f57-b3a9-4928-9336-6361004e59e9",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 34000,
+      "note": "",
+      "timestamp": "2026-04-07T07:49:41.049Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "a3ec8e0f-2ad4-4d24-ac38-c6d1dd4c4cb6",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 18000,
+      "note": "",
+      "timestamp": "2026-04-07T07:49:49.345Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "d91c10b0-58dc-433b-bfe5-766f685c1feb",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-07T09:16:33.802Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "9a0abfcd-64b4-4292-8b3e-710b629d17dc",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 104780,
+      "note": "",
+      "timestamp": "2026-04-07T09:16:41.970Z",
+      "date": "2026-04-07",
+      "currency": "USD"
+    },
+    {
+      "id": "f24c937b-a4a7-4bc9-9a4c-9d9f876268b3",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 52937,
+      "note": "",
+      "timestamp": "2026-04-08T06:37:23.359Z",
+      "date": "2026-04-08",
+      "currency": "USD"
+    },
+    {
+      "id": "c728dcd6-6764-4c58-8ef9-219b29f60773",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 135425,
+      "note": "",
+      "timestamp": "2026-04-08T06:37:38.795Z",
+      "date": "2026-04-08",
+      "currency": "USD"
+    },
+    {
+      "id": "a967b76d-b435-4f69-bf08-b2ae5f90da75",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 55000,
+      "note": "",
+      "timestamp": "2026-04-08T06:41:40.666Z",
+      "date": "2026-04-08",
+      "currency": "USD"
+    },
+    {
+      "id": "6a5d2dc9-da8d-43c7-9245-cdaf1bf99fe1",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-08T07:22:40.434Z",
+      "date": "2026-04-08",
+      "currency": "USD"
+    },
+    {
+      "id": "a8f285bc-cc7c-4d8b-a079-10ae2f4f8ad1",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-09T06:04:31.324Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "b35f6d20-cf1b-4dc5-a5e1-75a5c4858daf",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-09T06:04:37.145Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "43e70bbe-bffd-4bdc-acde-f32112b9c0bf",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 105030,
+      "note": "",
+      "timestamp": "2026-04-09T06:05:23.675Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "a6b05f04-4136-47d8-a237-848551776610",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-09T06:05:39.633Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "54a57c16-8918-425a-aba0-ddfc695f2f87",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 172528.16,
+      "note": "",
+      "timestamp": "2026-04-09T06:05:57.083Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "783696c0-ccc7-46f3-97cb-39b6fe527746",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 66675,
+      "note": "",
+      "timestamp": "2026-04-09T06:06:07.305Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "4cc4ab20-a320-43f0-969e-2d6dab5f1059",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 80000,
+      "note": "",
+      "timestamp": "2026-04-09T06:06:17.922Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "e18e06ca-079d-497d-be0a-d0eca96af655",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-09T06:34:12.907Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "76cbf153-2155-4a6d-bcf2-b7c64971ee23",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-09T06:34:14.867Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "082b3e7f-b761-47c5-b5b7-b8c65ebd3b59",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-09T07:50:33.228Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "93117193-399c-4323-a33d-f0e3b2392ef5",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-09T07:50:36.715Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "bcd2573e-e914-4375-9a74-1a3f9cbf36ec",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 80000,
+      "note": "",
+      "timestamp": "2026-04-09T08:46:32.370Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "e6ba8e60-bb44-4fb7-a1ab-ebf356e5ee21",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 135080,
+      "note": "",
+      "timestamp": "2026-04-09T09:19:38.546Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "a5f1c965-0ec0-4623-b115-bd015eb58f4e",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 107000,
+      "note": "",
+      "timestamp": "2026-04-09T10:11:17.553Z",
+      "date": "2026-04-09",
+      "currency": "USD"
+    },
+    {
+      "id": "07d5a09b-fdea-42f5-bb89-fca17e975f86",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 10000,
+      "note": "0068",
+      "timestamp": "2026-04-10T10:53:13.438Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "e66dbdd3-4416-41bc-a8d8-2d02afaf15b6",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 80000,
+      "note": "5317",
+      "timestamp": "2026-04-10T11:01:21.844Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "2a061fbf-8494-4887-9b84-00ef0cb79dce",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 100000,
+      "note": "1369",
+      "timestamp": "2026-04-10T11:05:39.975Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "d2d5d949-7943-4477-a928-f00524aa49a3",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 50000,
+      "note": "9554",
+      "timestamp": "2026-04-10T11:05:47.077Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "2f69b69d-bd3d-4f4b-941e-f45e364df1fb",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 400000,
+      "note": "7326",
+      "timestamp": "2026-04-10T11:05:51.826Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "158a5669-a92c-4cd8-8279-dd925272d231",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 25000,
+      "note": "5300",
+      "timestamp": "2026-04-10T11:05:55.971Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "de14f5df-e1ee-4add-a18c-d1b2eccb06f6",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 135079,
+      "note": "0665",
+      "timestamp": "2026-04-10T11:06:05.917Z",
+      "date": "2026-04-10",
+      "currency": "USD"
+    },
+    {
+      "id": "18e68f08-81a6-4eb4-bf4d-a921cca1b2fd",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-13T06:33:14.357Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "8b26d079-bab7-4e6b-9d31-e5c22e1f3c87",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 95000,
+      "note": "",
+      "timestamp": "2026-04-13T06:33:21.489Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "551505af-66a7-4138-b584-23e279b0637a",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-13T06:36:19.060Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "cba1b212-4117-4823-975c-ea439ed54989",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-13T06:36:24.626Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "a3e1e831-7f4b-486b-9e5c-d4b6014bf7af",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 107425,
+      "note": "",
+      "timestamp": "2026-04-13T06:36:33.395Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "e3395962-7c7e-47a2-b906-f05dec2d6b4f",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 65540,
+      "note": "",
+      "timestamp": "2026-04-13T06:43:04.683Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "fad41d31-21ec-4edf-b653-b8f8775aa2b7",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-13T06:43:07.242Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "febc237c-753d-4ce0-83b8-01d67f62423e",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 110000,
+      "note": "",
+      "timestamp": "2026-04-13T06:43:14.137Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "be93ad1a-a853-460a-84bf-1ae79b1b3823",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 300000,
+      "note": "",
+      "timestamp": "2026-04-13T07:08:12.635Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "89420547-195e-4713-8de6-e30b8571275a",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 283680,
+      "note": "",
+      "timestamp": "2026-04-13T08:14:31.635Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "0655a369-459f-4720-9c07-eb6dff67a61a",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 110000,
+      "note": "",
+      "timestamp": "2026-04-13T08:38:32.603Z",
+      "date": "2026-04-13",
+      "currency": "USD"
+    },
+    {
+      "id": "36f48aec-20ef-4020-bb8d-c5014e884ef2",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 52500,
+      "note": "",
+      "timestamp": "2026-04-14T08:12:28.241Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "78bc136a-e70b-482b-8c92-516f722a2c55",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 108271,
+      "note": "",
+      "timestamp": "2026-04-14T08:12:33.530Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "ac17a8e2-7fa7-4bca-b70d-1781aace5c8a",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 250000,
+      "note": "",
+      "timestamp": "2026-04-14T08:12:36.900Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "538bd5a9-3177-4ded-84bd-bba1f6833e0e",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-14T08:12:39.992Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "0b89f005-b50d-4c59-a341-776da9006399",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 76850,
+      "note": "",
+      "timestamp": "2026-04-14T08:12:46.275Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "9bfd91b4-a2a2-48d2-9e77-353de0f29c5b",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 62430,
+      "note": "",
+      "timestamp": "2026-04-14T08:12:49.211Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "f7563899-fc06-4048-b4dc-387da66d39b0",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 50100,
+      "note": "",
+      "timestamp": "2026-04-14T08:13:01.187Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "137e8d93-c651-4f65-a876-b042daa76455",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 58972,
+      "note": "",
+      "timestamp": "2026-04-14T08:13:04.648Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "11e44bbe-222f-4bfb-8733-a824a8a9060f",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 51500,
+      "note": "",
+      "timestamp": "2026-04-14T08:13:09.212Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "efa09802-509f-413d-8f9e-173a3cde8a73",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-14T08:13:12.890Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "003f8464-3066-4527-8d95-435fdb0d1a60",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-14T08:13:21.745Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "c0710fcd-5e08-45ca-9910-3052dfba2fcc",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-14T08:13:24.264Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "f985ddd6-068e-4dac-88f2-5277c5ba658d",
+      "companyId": "ea02670c-33c3-471b-b289-6bc18b0b9fd3",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-14T08:38:40.328Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "fd392eaa-00c9-452a-9945-d2bb70e4748b",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 36550,
+      "note": "",
+      "timestamp": "2026-04-14T08:57:19.402Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "e05460ad-b2c2-42aa-b9d1-abf734926608",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 80710,
+      "note": "",
+      "timestamp": "2026-04-14T09:02:55.706Z",
+      "date": "2026-04-14",
+      "currency": "USD"
+    },
+    {
+      "id": "b430c965-4144-4ba6-bbd2-bd2c0f6b6a9f",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 53000,
+      "note": "201000383232298",
+      "timestamp": "2026-04-15T07:51:21.552Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "ff3f8420-04e8-4598-abfc-00aa8f48247b",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 101500,
+      "note": "550897192300020",
+      "timestamp": "2026-04-15T07:51:25.175Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "caf59bd2-f06f-4241-b591-623593dc1e1d",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 52410,
+      "note": "63003912544",
+      "timestamp": "2026-04-15T07:51:27.879Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "adca0ed5-1532-4288-9070-10f7965202e9",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 362925,
+      "note": "",
+      "timestamp": "2026-04-15T07:51:37.303Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "22d91f6e-ce8c-40f4-a582-45dffc0dbb73",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 63000,
+      "note": "NRA000000501511938532",
+      "timestamp": "2026-04-15T07:51:45.647Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "0dd52a29-14cc-4647-9e8a-bb4cd3218c1a",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 69000,
+      "note": "24119314040000047",
+      "timestamp": "2026-04-15T08:50:16.944Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "00a98ab6-0f16-47a5-8b1a-ee187af5a109",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 10000,
+      "note": "2060249006222814140068",
+      "timestamp": "2026-04-15T08:50:19.317Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "5a3200f7-a2b1-431f-a1ac-98281c2f3015",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 80000,
+      "note": "",
+      "timestamp": "2026-04-15T08:50:21.191Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "5cb56835-2fb2-49e7-b5a3-033eb3cd92c3",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 40000,
+      "note": "",
+      "timestamp": "2026-04-15T08:50:23.271Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "5987400c-7d07-4cae-8864-f5d0cfef904d",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 111400,
+      "note": "",
+      "timestamp": "2026-04-15T08:50:30.116Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "919c1730-f57b-4b54-a71f-31abf0cee3b4",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 80000,
+      "note": "201000107534930",
+      "timestamp": "2026-04-15T08:50:43.238Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "aa700e1c-73f0-4413-aa5d-4f0e589330b5",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 80000,
+      "note": "",
+      "timestamp": "2026-04-15T08:52:20.822Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "da4b3faf-036e-4454-9405-deb1ddfd239a",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 300000,
+      "note": "",
+      "timestamp": "2026-04-15T09:02:47.734Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "10e5250e-0b46-4c19-8e96-bf20d28b20c6",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 7000,
+      "note": "",
+      "timestamp": "2026-04-15T09:18:30.303Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "0b1fcd84-bbd1-4a0e-a2e5-728c69a2b704",
+      "companyId": "31b016c9-1813-4a3d-bc5d-6ecb44623e86",
+      "bankId": "71a4e018-ab96-49dc-bd90-ebcd3a8baeb1",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-15T09:53:25.559Z",
+      "date": "2026-04-15",
+      "currency": "USD"
+    },
+    {
+      "id": "9c7ae78b-c38c-4850-975a-6df57c645e78",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50021,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:37.775Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "713fc06c-7e6c-4f2a-839b-4a324b5c75b3",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50670,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:39.829Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "bc371e20-9f44-4b4a-ab2e-61254ad089c5",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:41.917Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "73662e15-6ee6-49a7-8435-043cdc374e26",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 17600,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:45.788Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "0a3485a5-6117-4b85-80f9-e7ec4af81bf9",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 42000,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:48.884Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "e14d20e0-258b-44b4-85a4-51c9b4e77947",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:52.413Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "ca4e72d8-41e7-425f-bbff-494239bd4b2b",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 75000,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:54.276Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "883a1fea-1487-4adf-acc4-044e1b3f989b",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 200000,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:56.486Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "55bee5fe-b8a5-4f13-b5ca-cf61137d6c67",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 57055,
+      "note": "",
+      "timestamp": "2026-04-16T10:56:59.540Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "8fbcad96-1c12-4e70-a787-0b257ffe8be2",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-16T10:57:02.244Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "9ee5e417-0b9c-4ce2-b88d-dc2c19568a92",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-16T10:57:03.716Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "fbf88111-d16c-473a-9408-8e607220cb41",
+      "companyId": "29fc6d0c-33f9-41d3-abed-dc949fdf79db",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 75000,
+      "note": "",
+      "timestamp": "2026-04-16T10:57:06.869Z",
+      "date": "2026-04-16",
+      "currency": "USD"
+    },
+    {
+      "id": "cb7d7bbe-d007-4b39-ab73-c118193802e1",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-17T08:21:51.751Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "e0c5b171-26b0-411c-bd64-ad34e4dcbf2b",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 19200,
+      "note": "",
+      "timestamp": "2026-04-17T08:21:54.161Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "73b33527-9a0b-4326-870a-0933c142cccc",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-17T08:21:58.750Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "4cf2ac4b-9ffd-4090-9b51-3f0cda95b605",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 64000,
+      "note": "",
+      "timestamp": "2026-04-17T08:22:00.761Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "9bdf0f15-6ca2-4222-abc1-a0a3bf2d5fca",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 160000,
+      "note": "",
+      "timestamp": "2026-04-17T09:15:29.801Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "afb45994-6535-4f13-baf1-3fe30cde3294",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 66532,
+      "note": "",
+      "timestamp": "2026-04-17T09:15:33.568Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "d6a9dab0-aae8-4274-b04d-5eae9fe4a6ed",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-17T09:15:35.928Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "11d48506-e10e-425c-b7a9-6c454c4196d4",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 52800,
+      "note": "",
+      "timestamp": "2026-04-17T09:15:39.214Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "3a9058c0-5435-47dc-b680-421d3b2c2cc2",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 150000,
+      "note": "",
+      "timestamp": "2026-04-17T09:15:42.535Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "393801ea-9bbd-4dd1-bfa3-ee70f1b29f3a",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-17T09:43:18.904Z",
+      "date": "2026-04-17",
+      "currency": "USD"
+    },
+    {
+      "id": "8aca42f4-2d2b-4191-96c4-851023cc795c",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1985000,
+      "note": "NRA22002000026789",
+      "timestamp": "2026-04-20T07:16:29.194Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "e73f3fa3-aa18-4ae8-b059-ee86ddcb1ee8",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-20T07:26:57.505Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "e65f6b25-35d3-4ed5-b44c-17b20ec2d4f5",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 120000,
+      "note": "",
+      "timestamp": "2026-04-20T07:26:59.705Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "9098f366-e363-44d7-98b8-f6aff750560d",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 103450,
+      "note": "",
+      "timestamp": "2026-04-20T07:27:04.505Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "bc9ecbea-c02e-4d57-8c80-cd8589984847",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 72960,
+      "note": "",
+      "timestamp": "2026-04-20T07:27:08.129Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "3f421447-5b2b-4bf0-bfde-0710eafb2606",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-20T07:27:09.881Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "c3a38884-cf4e-43d8-882e-694182abb112",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-20T07:27:11.625Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "3b2cdacc-5624-4249-ba1a-6ed18bd78a40",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-20T07:27:23.113Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "0a502d2e-c15c-4f03-a40a-efe1272ea9a7",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 976634,
+      "note": "13050166690800003362",
+      "timestamp": "2026-04-20T07:28:04.561Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "6e36fd66-0ee7-4d11-ab37-83ed5ddf0e79",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-20T08:06:53.763Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "bc6b8aa7-f676-44c5-af40-27170b2da676",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-20T08:06:55.634Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "951adcee-f18f-4d40-8239-b945b1b6620c",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 36800,
+      "note": "",
+      "timestamp": "2026-04-20T08:06:58.500Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "aac1b388-b50a-4a43-b658-8f2a4ed7b238",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 265000,
+      "note": "",
+      "timestamp": "2026-04-20T08:07:07.202Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "e5d730af-2532-448d-8bf7-927581e10130",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 35860.35,
+      "note": "",
+      "timestamp": "2026-04-20T08:07:13.394Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "01224bed-0351-41fa-a254-51e325117a2b",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 715500,
+      "note": "15881101040028417",
+      "timestamp": "2026-04-20T08:41:27.434Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "23e1ad80-07c0-44d8-b868-c7fed5d93fb0",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 560000,
+      "note": "3002013319200190337",
+      "timestamp": "2026-04-20T08:43:02.512Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "34558ed6-152a-4a16-9825-2e5774148e54",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 575000,
+      "note": "20206156700626500001",
+      "timestamp": "2026-04-20T08:43:04.393Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "340d35fb-4f98-4b42-81d2-1fb9d9930cce",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 64400,
+      "note": "",
+      "timestamp": "2026-04-20T09:48:21.419Z",
+      "date": "2026-04-20",
+      "currency": "USD"
+    },
+    {
+      "id": "2db821af-7bd1-4adc-b1b0-567b1e7fb96f",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1502996,
+      "note": "6214808801034968186",
+      "timestamp": "2026-04-20T09:58:16.660Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "7f4ef473-b98b-48d8-a22c-640a31c3de0a",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2736000,
+      "note": "584776584400030",
+      "timestamp": "2026-04-20T09:58:20.649Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "eec20d21-adcf-468d-ad9c-c54261a1716a",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1500000,
+      "note": "909000120190011773",
+      "timestamp": "2026-04-20T09:58:26.113Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "ef700992-f084-43f9-a797-e8a1f3548e4b",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1081389,
+      "note": "3002011319200045591",
+      "timestamp": "2026-04-20T09:58:30.785Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "95eceeee-df0b-4c57-a3e2-bb3d79266fb1",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1700000,
+      "note": "3006031219200711029",
+      "timestamp": "2026-04-20T09:58:41.496Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "528c4540-c609-4ff3-8b17-762de462d7f5",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1715000,
+      "note": "909020120190001895",
+      "timestamp": "2026-04-20T09:58:44.265Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "16ebfb6e-b6f0-4d99-bd9a-d49bdfc1d03f",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2742840,
+      "note": "584776584400030",
+      "timestamp": "2026-04-20T09:58:50.993Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "0e22e7f2-57f2-4106-8b55-7c381b8c37ae",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2745660,
+      "note": "107713446026",
+      "timestamp": "2026-04-20T09:58:56.906Z",
+      "date": "2026-04-20",
+      "currency": "CNY"
+    },
+    {
+      "id": "39b9c989-9630-4712-aa21-db509de8286a",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 181418,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:37.629Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "0306c0be-1266-46a6-924b-76e79f9b2c7f",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 148000,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:40.050Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "9dfb6cfd-62d9-45ad-9d11-ed556c5a8ae5",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:44.042Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "110a00b3-754a-4cbc-b367-467c89cb9a77",
+      "companyId": "1a3e7613-3887-4a52-8976-ad7efbc554bf",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 41500,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:46.187Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "b6980e30-4480-4a2e-8ecb-381745362691",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 234470,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:54.499Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "229f71de-cdb7-4e66-bad5-2f259bc12e90",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 100000,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:58.082Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "42561e6b-23d3-4ee9-9f40-dcf8afe89720",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-21T07:20:59.642Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "d6cf9cf4-4ddf-4448-af1a-8f15475d7b34",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 60000,
+      "note": "",
+      "timestamp": "2026-04-21T07:21:01.548Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "e664e8e6-0716-4af6-8512-a2bf908f22c3",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 18266,
+      "note": "",
+      "timestamp": "2026-04-21T07:21:05.931Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "a21f310a-a19a-42cf-bd0e-ee8b2bb58ae3",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 37370,
+      "note": "",
+      "timestamp": "2026-04-21T07:21:10.868Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "27dcf274-34de-4b76-93a5-c06ebecc914e",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 116500,
+      "note": "",
+      "timestamp": "2026-04-21T07:21:16.882Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "1e856016-4f59-4d0e-9d5a-df6ff51b3943",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1292760,
+      "note": "",
+      "timestamp": "2026-04-21T07:23:29.531Z",
+      "date": "2026-04-21",
+      "currency": "CNY"
+    },
+    {
+      "id": "02124259-2aa8-4e74-83f3-e8134e0f7914",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 3413160,
+      "note": "",
+      "timestamp": "2026-04-21T07:23:34.349Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "a649345e-5713-46d5-8215-a2941ff8bcff",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 956200,
+      "note": "",
+      "timestamp": "2026-04-21T07:23:36.807Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "5f534646-d16e-4d5c-b6ec-dd0fe9ebc152",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 950000,
+      "note": "",
+      "timestamp": "2026-04-21T07:23:39.169Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "2d9b0426-8f84-4027-8a3a-c3914ad6ecee",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 400000,
+      "note": "",
+      "timestamp": "2026-04-21T07:23:41.074Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "ecf68e50-ebfd-4931-92b3-fd3cf1127b91",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1900000,
+      "note": "",
+      "timestamp": "2026-04-21T07:23:43.976Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "9b647d6d-a3b0-43b9-9998-1da286942a92",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 190000,
+      "note": "",
+      "timestamp": "2026-04-21T07:24:42.802Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "de0dce1a-24dd-40ad-8c0d-4517e85966dc",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 800000,
+      "note": "",
+      "timestamp": "2026-04-21T07:32:38.275Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "41d67c02-f559-45a7-b97e-b636a60472b0",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 30000,
+      "note": "",
+      "timestamp": "2026-04-21T07:42:16.719Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "ac05069b-8b31-433e-b710-ad7011182dae",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 20000,
+      "note": "",
+      "timestamp": "2026-04-21T07:42:19.209Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "dcf366b6-38cc-4e95-b41d-957835fec0d8",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 50000,
+      "note": "",
+      "timestamp": "2026-04-21T07:42:21.520Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "80064a1b-7698-45c6-8cc3-01d91cbac3b8",
+      "companyId": "d1282cdf-3bc3-4845-88cd-44662c61200e",
+      "bankId": "f347577f-5cd8-4d9b-86c1-0572036f26ee",
+      "amount": 40320,
+      "note": "",
+      "timestamp": "2026-04-21T07:42:23.349Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "c4f493aa-c10a-437b-8fe4-b3447945c16a",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2941200,
+      "note": "",
+      "timestamp": "2026-04-21T08:02:06.107Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "deac6da0-2ad7-42b6-a8b7-b0b82830d2cb",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1810000,
+      "note": "",
+      "timestamp": "2026-04-21T08:02:09.010Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "561a8538-3e8b-4b41-843e-7ba4fc9a705d",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1610000,
+      "note": "",
+      "timestamp": "2026-04-21T08:02:11.433Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "c3c64e3b-e67d-407c-a160-2a679bb6d39f",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2100000,
+      "note": "",
+      "timestamp": "2026-04-21T08:53:02.240Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "6fa75752-3f3a-4418-900f-80284f804e7e",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2321900,
+      "note": "",
+      "timestamp": "2026-04-21T08:54:26.634Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "bccc7940-7ee8-45d2-8e2c-52ced88915f0",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1434600,
+      "note": "",
+      "timestamp": "2026-04-21T08:54:30.832Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "41e98d29-8068-4558-9760-8f15004ed387",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 480500,
+      "note": "",
+      "timestamp": "2026-04-21T08:54:33.967Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "6265a1b0-0baf-46b7-bc40-cac9f763bb0d",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 654000,
+      "note": "",
+      "timestamp": "2026-04-21T08:54:39.295Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "14870ad6-70b8-47a5-8843-b16053fa921f",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 476550,
+      "note": "",
+      "timestamp": "2026-04-21T08:54:43.416Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "4a6a5522-7e21-4d44-a8ce-c422b6735ed3",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2390500,
+      "note": "",
+      "timestamp": "2026-04-21T09:16:56.153Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "d89ec6e3-a137-4d8b-a9fa-93965bef1630",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1368000,
+      "note": "",
+      "timestamp": "2026-04-21T09:17:00.431Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "d6c976f3-e9a9-4ff9-87b6-154b01d0e802",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 904500,
+      "note": "",
+      "timestamp": "2026-04-21T09:53:32.002Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "f54388db-762f-4532-b784-ddd00ba43e54",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 734768,
+      "note": "",
+      "timestamp": "2026-04-21T09:53:35.944Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "af4873ba-6d85-491a-817a-5e6c18f4c209",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 1000000,
+      "note": "",
+      "timestamp": "2026-04-21T09:53:39.352Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "a9d74c15-81f6-46b8-8286-934e5c50a887",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 848500,
+      "note": "",
+      "timestamp": "2026-04-21T09:53:42.607Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "30d677a8-3f2a-4b42-98ed-3028e6fed701",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 689000,
+      "note": "",
+      "timestamp": "2026-04-21T09:53:47.200Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "888f9d9b-6102-4f23-ab32-2d9592e9d13c",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2900000,
+      "note": "",
+      "timestamp": "2026-04-21T10:27:20.014Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "b1c624c0-5ef7-43a6-a4d4-8513ed2fb1a7",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2800000,
+      "note": "",
+      "timestamp": "2026-04-21T10:27:27.203Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "5cc0d7b1-ce2c-4162-baff-1d22d6878610",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2700000,
+      "note": "",
+      "timestamp": "2026-04-21T10:27:29.894Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    },
+    {
+      "id": "edd8663d-224a-4f98-b61e-e61e2f61541f",
+      "companyId": "28886ef3-5dfb-4021-beff-77661aae8ff7",
+      "bankId": "5a5d7462-02e0-49db-8f6a-165c0bd01fad",
+      "amount": 2623862,
+      "note": "",
+      "timestamp": "2026-04-21T10:27:35.776Z",
+      "date": "2026-04-21",
+      "currency": "USD"
+    }
+  ],
+  "returns": {
+    "2026-03-31": {
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 204000
+    },
+    "2026-03-30": {
+      "1a3e7613-3887-4a52-8976-ad7efbc554bf": 1041
+    },
+    "2026-04-02": {
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 9314
+    },
+    "2026-03-02": {
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 39960
+    },
+    "2026-03-10": {
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 131854
+    },
+    "2026-03-18": {
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 1305
+    },
+    "2026-04-08": {
+      "29fc6d0c-33f9-41d3-abed-dc949fdf79db": 52937,
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 7680
+    },
+    "2026-04-14": {
+      "ea02670c-33c3-471b-b289-6bc18b0b9fd3": 96756
+    },
+    "2026-04-15": {
+      "31b016c9-1813-4a3d-bc5d-6ecb44623e86": 10000
+    }
+  }
+}
