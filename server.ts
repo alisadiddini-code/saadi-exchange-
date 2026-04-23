@@ -5,7 +5,7 @@ import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { AppData, ClientMessage, Company, ServerMessage, Transfer } from "./src/types";
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 const STORAGE_DIR = path.resolve(process.cwd(), "storage");
 const DATA_FILE = path.join(STORAGE_DIR, "data.json");
@@ -317,12 +317,16 @@ function handleMessage(msg: ClientMessage) {
 async function startServer() {
   const app = express();
 
-  app.get("/health", (_req, res) => {
-    res.json({ ok: true });
+  app.get("/", (_req, res) => {
+    res.json({
+      ok: true,
+      message: "Saadi Exchange API is running",
+      health: "/health"
+    });
   });
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.get("/health", (_req, res) => {
+    res.json({ ok: true });
   });
 
   const wss = new WebSocketServer({ server });
