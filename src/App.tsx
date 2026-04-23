@@ -284,7 +284,7 @@ export default function App() {
     ? "ws://localhost:3000"
     : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
 
-  const socket = new WebSocket(wsBase);
+const socket = new WebSocket(wsBase);
 
   socket.onopen = () => {
     console.log('WebSocket connected');
