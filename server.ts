@@ -5,7 +5,7 @@ import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { AppData, ClientMessage, Company, ServerMessage, Transfer } from "./src/types";
 
-const PORT = 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const STORAGE_DIR = path.resolve(process.cwd(), "storage");
 const DATA_FILE = path.join(STORAGE_DIR, "data.json");
