@@ -268,13 +268,13 @@ export default function App() {
   }, [selectedBankId]);
 
   useEffect(() => {
-  console.log('Connecting WebSocket to:', wsBase);
-
   const wsBase =
-  import.meta.env.VITE_WS_URL ||
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "ws://localhost:3000"
-    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
+    import.meta.env.VITE_WS_URL ||
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "ws://localhost:3000"
+      : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
+
+  console.log('Connecting WebSocket to:', wsBase);
 
   const socket = new WebSocket(wsBase);
   socketRef.current = socket;
