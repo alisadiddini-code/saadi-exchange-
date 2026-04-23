@@ -268,15 +268,7 @@ export default function App() {
   }, [selectedBankId]);
 
   useEffect(() => {
-  const isLocal =
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1';
-
-  const wsUrl = isLocal
-    ? 'ws://localhost:3000'
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
-
-  console.log('Connecting WebSocket to:', wsUrl);
+  console.log('Connecting WebSocket to:', wsBase);
 
   const wsBase =
   import.meta.env.VITE_WS_URL ||
@@ -284,7 +276,8 @@ export default function App() {
     ? "ws://localhost:3000"
     : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
 
-const socket = new WebSocket(wsBase);
+  const socket = new WebSocket(wsBase);
+  socketRef.current = socket;
 
   socket.onopen = () => {
     console.log('WebSocket connected');
