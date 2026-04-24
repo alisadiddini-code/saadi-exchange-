@@ -329,6 +329,12 @@ async function startServer() {
     res.json({ ok: true });
   });
 
+  // ✅ این خط خیلی مهمه
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+
+  // ✅ حالا این درست میشه
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws) => {
@@ -360,7 +366,6 @@ async function startServer() {
     });
   });
 }
-
 startServer().catch((error) => {
   console.error("Failed to start server:", error);
 });
