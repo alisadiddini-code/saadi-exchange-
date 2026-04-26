@@ -37,6 +37,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AppData, Bank, ClientMessage, Company, Currency, ServerMessage, Transfer } from './types';
 import { cn } from './lib/utils';
+import { supabase } from './supabaseClient';
 
 type ViewMode = 'tracker' | 'analytics';
 type DateFilterMode = 'day' | 'week' | 'month' | 'all';
@@ -267,53 +268,211 @@ export default function App() {
     }
   }, [selectedBankId]);
 
-  useEffect(() => {
-  const wsBase =
-    import.meta.env.VITE_WS_URL ||
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      ? "ws://localhost:3000"
-      : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
+//   useEffect(() => {
+//   const wsBase =
+//     import.meta.env.VITE_WS_URL ||
+//     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+//       ? "ws://localhost:3000"
+//       : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`);
 
-  console.log('Connecting WebSocket to:', wsBase);
+//   console.log('Connecting WebSocket to:', wsBase);
 
-  const socket = new WebSocket(wsBase);
-  socketRef.current = socket;
+//   const socket = new WebSocket(wsBase);
+//   socketRef.current = socket;
 
-  socket.onopen = () => {
-    console.log('WebSocket connected');
-    setWsConnected(true);
-  };
+//   socket.onopen = () => {
+//     console.log('WebSocket connected');
+//     setWsConnected(true);
+//   };
 
-  socket.onclose = () => {
-    console.log('WebSocket disconnected');
-    setWsConnected(false);
-  };
+//   socket.onclose = () => {
+//     console.log('WebSocket disconnected');
+//     setWsConnected(false);
+//   };
 
-  socket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-    setWsConnected(false);
-  };
+//   socket.onerror = (error) => {
+//     console.error('WebSocket error:', error);
+//     setWsConnected(false);
+//   };
 
-  socket.onmessage = (event) => {
-    try {
-      const msg: ServerMessage = JSON.parse(event.data);
-      if (msg.type === 'INIT' || msg.type === 'UPDATE') {
-        setData(msg.data);
-      }
-    } catch (err) {
-      console.error('Failed to parse WebSocket message:', err);
-    }
-  };
+//   socket.onmessage = (event) => {
+//     try {
+//       const msg: ServerMessage = JSON.parse(event.data);
+//       if (msg.type === 'INIT' || msg.type === 'UPDATE') {
+//         setData(msg.data);
+//       }
+//     } catch (err) {
+//       console.error('Failed to parse WebSocket message:', err);
+//     }
+//   };
 
-  return () => {
-    socket.close();
-  };
+//   return () => {
+//     socket.close();
+//   };
+// }, []);
+
+const loadAllFromSupabase = async () => {
+  const { data: banksData, error: banksError } = await supabase
+    .from('banks')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (banksError) {
+    console.error('Supabase banks error:', banksError);
+    return;
+  }
+
+  const { data: companiesData, error: companiesError } = await supabase
+    .from('companies')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (companiesError) {
+    console.error('Supabase companies error:', companiesError);
+    return;
+  }
+
+  const { data: transfersData, error: transfersError } = await supabase
+    .from('transfers')
+    .select('*')
+    .order('timestamp', { ascending: true });
+
+  if (transfersError) {
+    console.error('Supabase transfers error:', transfersError);
+    return;
+  }
+
+  const { data: returnsData, error: returnsError } = await supabase
+    .from('returns')
+    .select('*');
+
+  if (returnsError) {
+    console.error('Supabase returns error:', returnsError);
+    return;
+  }
+
+  const mappedBanks: Bank[] = (banksData || []).map((bank) => ({
+    id: bank.id,
+    name: bank.name,
+  }));
+
+  const mappedCompanies: Company[] = (companiesData || []).map((company) => ({
+    id: company.id,
+    name: company.name,
+    bankId: company.bank_id,
+    sortOrder: company.sort_order || 0,
+  }));
+
+  const mappedTransfers: Transfer[] = (transfersData || []).map((transfer) => ({
+    id: transfer.id,
+    amount: Number(transfer.amount || 0),
+    note: transfer.note || '',
+    currency: transfer.currency || 'USD',
+    date: transfer.date,
+    timestamp: transfer.timestamp,
+    bankId: transfer.bank_id,
+    companyId: transfer.company_id,
+  }));
+
+  const mappedReturns: AppData['returns'] = {};
+  (returnsData || []).forEach((item) => {
+    if (!mappedReturns[item.return_date]) mappedReturns[item.return_date] = {};
+    mappedReturns[item.return_date][item.company_id] = Number(item.amount || 0);
+  });
+
+  setData({
+    banks: mappedBanks,
+    companies: mappedCompanies,
+    transfers: mappedTransfers,
+    returns: mappedReturns,
+  });
+
+  if (mappedBanks.length > 0 && !selectedBankId) {
+    setSelectedBankId(mappedBanks[0].id);
+  }
+
+  setWsConnected(true);
+};
+
+useEffect(() => {
+  loadAllFromSupabase();
 }, []);
 
-  const sendMessage = (msg: ClientMessage) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(msg));
+
+  const sendMessage = async (msg: ClientMessage) => {
+    console.log('Supabase action:', msg);
+
+    if (msg.type === 'ADD_BANK') {
+      const { error } = await supabase.from('banks').insert({ name: msg.name });
+      if (error) return alert('خطا در افزودن بانک');
     }
+
+    if (msg.type === 'ADD_COMPANY') {
+      const { error } = await supabase.from('companies').insert({
+        name: msg.name,
+        bank_id: msg.bankId,
+        sort_order: data.companies.filter((c) => c.bankId === msg.bankId).length,
+      });
+      if (error) return alert('خطا در افزودن شرکت');
+    }
+
+    if (msg.type === 'ADD_TRANSFER') {
+      const now = new Date().toISOString();
+
+      const { error } = await supabase.from('transfers').insert({
+        amount: msg.amount,
+        note: msg.note || '',
+        currency: msg.currency || 'USD',
+        date: msg.date,
+        timestamp: now,
+        bank_id: msg.bankId,
+        company_id: msg.companyId,
+      });
+      if (error) return alert('خطا در افزودن انتقال');
+    }
+
+    if (msg.type === 'UPDATE_TRANSFER') {
+      const { error } = await supabase
+        .from('transfers')
+        .update({
+          amount: msg.amount,
+          note: msg.note || '',
+          currency: msg.currency || 'USD',
+        })
+        .eq('id', msg.id);
+
+      if (error) return alert('خطا در ویرایش انتقال');
+    }
+
+    if (msg.type === 'DELETE_TRANSFER') {
+      const { error } = await supabase.from('transfers').delete().eq('id', msg.id);
+      if (error) return alert('خطا در حذف انتقال');
+    }
+
+    if (msg.type === 'UPDATE_RETURN') {
+      const { error } = await supabase.from('returns').upsert(
+        {
+          company_id: msg.companyId,
+          return_date: msg.date,
+          amount: msg.amount,
+        },
+        { onConflict: 'company_id,return_date' }
+      );
+
+      if (error) return alert('خطا در ثبت برگشت');
+    }
+
+    if (msg.type === 'DELETE_COMPANY') {
+      const { error } = await supabase.from('companies').delete().eq('id', msg.id);
+      if (error) return alert('خطا در حذف شرکت');
+    }
+
+    if (msg.type === 'DELETE_BANK') {
+      const { error } = await supabase.from('banks').delete().eq('id', msg.id);
+      if (error) return alert('خطا در حذف بانک');
+    }
+
+    await loadAllFromSupabase();
   };
 
   const selectedBank = useMemo(() => {
