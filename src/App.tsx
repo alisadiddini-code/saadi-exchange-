@@ -315,7 +315,7 @@ const loadAllFromSupabase = async () => {
   const { data: banksData, error: banksError } = await supabase
     .from('banks')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
 
   if (banksError) {
     console.error('Supabase banks error:', banksError);
@@ -325,7 +325,7 @@ const loadAllFromSupabase = async () => {
   const { data: companiesData, error: companiesError } = await supabase
     .from('companies')
     .select('*')
-    .order('sort_order', { ascending: true });
+    .order('created_at', { ascending: true })
 
   if (companiesError) {
     console.error('Supabase companies error:', companiesError);
@@ -335,7 +335,7 @@ const loadAllFromSupabase = async () => {
   const { data: transfersData, error: transfersError } = await supabase
     .from('transfers')
     .select('*')
-    .order('timestamp', { ascending: true });
+    .order('created_at', { ascending: true })
 
   if (transfersError) {
     console.error('Supabase transfers error:', transfersError);
@@ -402,11 +402,13 @@ useEffect(() => {
   const sendMessage = async (msg: ClientMessage) => {
     console.log('Supabase action:', msg);
 
+    
+
     if (msg.type === 'ADD_BANK') {
       const { error } = await supabase.from('banks').insert({ name: msg.name });
       if (error) return alert('خطا در افزودن بانک');
     }
-
+    
     if (msg.type === 'ADD_COMPANY') {
       const { error } = await supabase.from('companies').insert({
         name: msg.name,
