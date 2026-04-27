@@ -368,7 +368,7 @@ const loadAllFromSupabase = async () => {
     amount: Number(t.amount || 0),
     currency: t.currency || "USD",
     note: t.note || "",
-    date: t.date,
+    date: t.date || t.transfer_date,
     timestamp: t.timestamp || t.created_at,
     bankId: t.bank_id,
     companyId: t.company_id,
@@ -424,6 +424,7 @@ useEffect(() => {
         note: msg.note || "",
         currency: msg.currency || "USD",
         date: selectedDate,
+        transfer_date: selectedDate,
         timestamp: new Date().toISOString(),
         bank_id: msg.bankId,
         company_id: msg.companyId,
@@ -435,7 +436,7 @@ useEffect(() => {
         return;
       }
 
-      await loadSupabaseData();
+      await loadAllFromSupabase();
     }
 
     if (msg.type === 'UPDATE_TRANSFER') {
