@@ -458,22 +458,30 @@ useEffect(() => {
     }
 
     if (msg.type === 'UPDATE_RETURN') {
-      const { error } = await supabase.from('returns').upsert(
-        {
-          company_id: msg.companyId,
-          date: msg.date,
-          amount: msg.amount,
-        },
-        {
-          onConflict: 'company_id,date',
-        }
-      );
+      const { data, error } = await supabase
+        .from('returns')
+        .upsert(
+          {
+            company_id: msg.companyId,
+            date: msg.date,
+            amount: Number(msg.amount) || 0,
+          },
+          {
+            onConflict: 'company_id,date',
+          }
+        )
+        .select();
+
+      console.log('RETURN SAVED:', data, error);
 
       if (error) {
         console.error('UPDATE_RETURN ERROR:', error);
         alert('خطا در ثبت برگشت: ' + error.message);
         return;
       }
+
+      await loadSupabaseData();
+      return;
     }
 
     if (msg.type === 'DELETE_COMPANY') {
