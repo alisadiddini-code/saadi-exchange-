@@ -480,7 +480,18 @@ useEffect(() => {
         return;
       }
 
-      window.location.reload();
+      setData((prev: any) => ({
+        ...prev,
+        companies: prev.companies.map((company: any) =>
+          company.id === msg.companyId
+            ? {
+                ...company,
+                returnedAmount: Number(msg.amount) || 0,
+              }
+            : company
+        ),
+      }));
+
       return;
     }
 
