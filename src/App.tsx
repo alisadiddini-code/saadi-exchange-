@@ -363,15 +363,15 @@ const loadAllFromSupabase = async () => {
     sortOrder: company.sort_order || 0,
   }));
 
-  const mappedTransfers: Transfer[] = (transfersData || []).map((transfer) => ({
-    id: transfer.id,
-    amount: Number(transfer.amount || 0),
-    note: transfer.note || '',
-    currency: transfer.currency || 'USD',
-    date: transfer.date,
-    timestamp: transfer.timestamp,
-    bankId: transfer.bank_id,
-    companyId: transfer.company_id,
+  const mappedTransfers = transfersData.map((t: any) => ({
+    id: t.id,
+    amount: Number(t.amount || 0),
+    currency: t.currency || "USD",
+    note: t.note || "",
+    date: t.date,
+    timestamp: t.timestamp || t.created_at,
+    bankId: t.bank_id,
+    companyId: t.company_id,
   }));
 
   const mappedReturns: AppData['returns'] = {};
@@ -418,19 +418,24 @@ useEffect(() => {
       if (error) return alert('خطا در افزودن شرکت');
     }
 
-    if (msg.type === 'ADD_TRANSFER') {
-      const now = new Date().toISOString();
-
-      const { error } = await supabase.from('transfers').insert({
-        amount: msg.amount,
-        note: msg.note || '',
-        currency: msg.currency || 'USD',
-        date: msg.date,
-        timestamp: now,
+    if (msg.type === "ADD_TRANSFER") {
+      const { error } = await supabase.from("transfers").insert({
+        amount: Number(msg.amount),
+        note: msg.note || "",
+        currency: msg.currency || "USD",
+        date: selectedDate,
+        timestamp: new Date().toISOString(),
         bank_id: msg.bankId,
         company_id: msg.companyId,
       });
-      if (error) return alert('خطا در افزودن انتقال');
+
+      if (error) {
+        console.error("ADD_TRANSFER ERROR:", error);
+        alert("خطا در افزودن انتقال: " + error.message);
+        return;
+      }
+
+      await loadSupabaseData();
     }
 
     if (msg.type === 'UPDATE_TRANSFER') {
