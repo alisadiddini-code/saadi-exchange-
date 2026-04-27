@@ -368,7 +368,7 @@ const loadAllFromSupabase = async () => {
     amount: Number(t.amount || 0),
     currency: t.currency || "USD",
     note: t.note || "",
-    date: t.date || t.transfer_date,
+    date: t.transfer_date || t.date,
     timestamp: t.timestamp || t.created_at,
     bankId: t.bank_id,
     companyId: t.company_id,
