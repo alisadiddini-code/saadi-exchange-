@@ -464,7 +464,7 @@ useEffect(() => {
           {
             company_id: msg.companyId,
             date: msg.date,
-            amount: Number(msg.amount) || 0,
+            amount: Number(msg.value ?? msg.amount ?? msg.returnAmount ?? 0),
           },
           {
             onConflict: 'company_id,date',
@@ -473,6 +473,7 @@ useEffect(() => {
         .select();
 
       console.log('RETURN SAVED:', data, error);
+      await loadSupabaseData();
 
       if (error) {
         console.error('UPDATE_RETURN ERROR:', error);
