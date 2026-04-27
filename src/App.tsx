@@ -458,16 +458,17 @@ useEffect(() => {
     }
 
     if (msg.type === 'UPDATE_RETURN') {
-      const { error } = await supabase.from('returns').upsert(
-        {
-          company_id: msg.companyId,
-          return_date: msg.date,
-          amount: msg.amount,
-        },
-        { onConflict: 'company_id,return_date' }
-      );
+      const { error } = await supabase.from('returns').insert({
+        company_id: msg.companyId,
+        return_date: msg.date,
+        amount: msg.amount,
+      });
 
-      if (error) return alert('خطا در ثبت برگشت');
+      if (error) {
+        console.error('UPDATE_RETURN ERROR:', error);
+        alert('خطا در ثبت برگشت: ' + error.message);
+        return;
+      }
     }
 
     if (msg.type === 'DELETE_COMPANY') {
@@ -1507,7 +1508,7 @@ function CompanyCard({
                   : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
               )}
               value={returnedAmount || ''}
-              onChange={(e) => {
+              onBlur={(e) => {
                 if (!canEditReturn) return;
                 onUpdateReturn(parseFloat(e.target.value) || 0);
               }}
