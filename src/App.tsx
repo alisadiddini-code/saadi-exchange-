@@ -458,11 +458,16 @@ useEffect(() => {
     }
 
     if (msg.type === 'UPDATE_RETURN') {
-      const { error } = await supabase.from('returns').insert({
-        company_id: msg.companyId,
-        date: msg.date,
-        amount: msg.amount,
-      });
+      const { error } = await supabase.from('returns').upsert(
+        {
+          company_id: msg.companyId,
+          date: msg.date,
+          amount: msg.amount,
+        },
+        {
+          onConflict: 'company_id,date',
+        }
+      );
 
       if (error) {
         console.error('UPDATE_RETURN ERROR:', error);
