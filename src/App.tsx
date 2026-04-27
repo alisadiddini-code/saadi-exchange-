@@ -480,7 +480,7 @@ useEffect(() => {
         return;
       }
 
-      await loadSupabaseData();
+      window.location.reload();
       return;
     }
 
