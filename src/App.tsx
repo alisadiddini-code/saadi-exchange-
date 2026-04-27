@@ -460,7 +460,7 @@ useEffect(() => {
     if (msg.type === 'UPDATE_RETURN') {
       const { error } = await supabase.from('returns').insert({
         company_id: msg.companyId,
-        return_date: msg.date,
+        date: msg.date,
         amount: msg.amount,
       });
 
