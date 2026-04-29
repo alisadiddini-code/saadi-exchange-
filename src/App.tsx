@@ -376,8 +376,9 @@ const loadAllFromSupabase = async () => {
 
   const mappedReturns: AppData['returns'] = {};
   (returnsData || []).forEach((item) => {
-    if (!mappedReturns[item.return_date]) mappedReturns[item.return_date] = {};
-    mappedReturns[item.return_date][item.company_id] = Number(item.amount || 0);
+    const d = item.date;
+    if (!mappedReturns[d]) mappedReturns[d] = {};
+    mappedReturns[d][item.company_id] = Number(item.amount || 0);
   });
 
   setData({
@@ -473,7 +474,7 @@ useEffect(() => {
         .select();
 
       console.log('RETURN SAVED:', data, error);
-      await loadSupabaseData();
+      await loadAllFromSupabase();
 
       if (error) {
         console.error('UPDATE_RETURN ERROR:', error);
