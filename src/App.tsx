@@ -1215,6 +1215,11 @@ function CompanyCard({
   const [editNote, setEditNote] = useState('');
   const [editCurrency, setEditCurrency] = useState<Currency>('USD');
   const amountInputRef = useRef<HTMLInputElement | null>(null);
+  const [returnInput, setReturnInput] = useState('');
+
+  useEffect(() => {
+    setReturnInput(returnedAmount ? String(returnedAmount) : '');
+  }, [returnedAmount]);
 
   const totals = summarizeByCurrency(transfers);
   const netUsd = totals.USD - returnedAmount;
@@ -1525,10 +1530,16 @@ function CompanyCard({
                   ? 'bg-white border-gray-200 focus:ring-1 focus:ring-red-400'
                   : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
               )}
-              value={returnedAmount || ''}
-              onBlur={(e) => {
+              value={returnInput}
+              onChange={(e) => setReturnInput(e.target.value)}
+              onBlur={() => {
                 if (!canEditReturn) return;
-                onUpdateReturn(parseFloat(e.target.value) || 0);
+                onUpdateReturn(parseFloat(returnInput) || 0);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
               }}
               placeholder="0.00"
               step="0.01"
