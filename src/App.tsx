@@ -459,13 +459,15 @@ useEffect(() => {
     }
 
     if (msg.type === 'UPDATE_RETURN') {
-      const { data, error } = await supabase
+      const returnAmount = Number(msg.amount || 0);
+
+      const { data: savedData, error } = await supabase
         .from('returns')
         .upsert(
           {
             company_id: msg.companyId,
             date: msg.date,
-            amount: Number(msg.value ?? msg.amount ?? msg.returnAmount ?? 0),
+            amount: returnAmount,
           },
           {
             onConflict: 'company_id,date',
@@ -473,8 +475,7 @@ useEffect(() => {
         )
         .select();
 
-      console.log('RETURN SAVED:', data, error);
-      await loadAllFromSupabase();
+      console.log('RETURN SAVED:', savedData, error);
 
       if (error) {
         console.error('UPDATE_RETURN ERROR:', error);
@@ -482,17 +483,8 @@ useEffect(() => {
         return;
       }
 
-      setData((prev: any) => ({
-        ...prev,
-        companies: prev.companies.map((company: any) =>
-          company.id === msg.companyId
-            ? {
-                ...company,
-                returnedAmount: Number(msg.amount) || 0,
-              }
-            : company
-        ),
-      }));
+      // reload fresh data from supabase
+      await loadAllFromSupabase();
 
       return;
     }
