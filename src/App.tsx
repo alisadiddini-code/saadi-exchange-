@@ -442,6 +442,23 @@ const sendMessage = async (msg: ClientMessage) => {
       return;
     }
 
+    setData((prev) => ({
+      ...prev,
+      transfers: [
+        ...prev.transfers,
+        {
+          id: savedTransfer?.[0]?.id,
+          companyId: msg.companyId,
+          bankId: msg.bankId,
+          amount: Number(msg.amount) || 0,
+          note: msg.note || 'EMPTY',
+          currency: msg.currency || 'USD',
+          date: msg.date,
+          timestamp: savedTransfer?.[0]?.created_at || new Date().toISOString(),
+        },
+      ],
+    }));
+
     await loadAllFromSupabase();
     return;
   }
