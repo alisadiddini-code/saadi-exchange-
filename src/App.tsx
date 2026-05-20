@@ -435,16 +435,16 @@ const sendMessage = async (msg: ClientMessage) => {
       })
       .select();
 
-    console.log('TRANSFER SAVED:', savedTransfer, error);
-
     if (error) {
-      alert('خطا дар иловаи гузариш: ' + error.message);
+      console.error('ADD_TRANSFER ERROR:', error);
+      alert('Хато дар иловаи интиқол: ' + error.message);
       return;
     }
 
-    await loadAllFromSupabase();
+    console.log('TRANSFER SAVED:', data, error);
+
+    await loadSupabaseData();
     return;
-  }
 
   if (msg.type === 'UPDATE_TRANSFER') {
     const { error } = await supabase
