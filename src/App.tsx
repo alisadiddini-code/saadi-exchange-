@@ -419,23 +419,31 @@ useEffect(() => {
       if (error) return alert('خطا در افزودن شرکت');
     }
 
-    if (msg.type === "ADD_TRANSFER") {
-      const { error } = await supabase.from("transfers").insert({
-        amount: Number(msg.amount),
-        note: msg.note || "",
-        currency: msg.currency || "USD",
-        date: selectedDate,
-        transfer_date: selectedDate,
-        timestamp: new Date().toISOString(),
-        bank_id: msg.bankId,
-        company_id: msg.companyId,
-      });
+    if (msg.type === 'ADD_TRANSFER') {
+      const { data, error } = await supabase
+        .from('transfers')
+        .insert({
+          company_id: msg.companyId,
+          bank_id: msg.bankId,
+          amount: Number(msg.amount) || 0,
+          note: msg.note || 'EMPTY',
+          currency: msg.currency || 'USD',
+          transfer_date: msg.date,
+          date: msg.date,
+        })
+        .select();
+
+      console.log('TRANSFER SAVED:', data, error);
 
       if (error) {
-        console.error("ADD_TRANSFER ERROR:", error);
-        alert("خطا در افزودن انتقال: " + error.message);
+        console.error('ADD_TRANSFER ERROR:', error);
+        alert('خطا در افزودن انتقال: ' + error.message);
         return;
       }
+
+      await loadSupabaseData();
+      return;
+    }
 
       await loadAllFromSupabase();
     }
