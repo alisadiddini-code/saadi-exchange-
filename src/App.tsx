@@ -438,7 +438,7 @@ const sendMessage = async (msg: ClientMessage) => {
     console.log('TRANSFER SAVED:', savedTransfer, error);
 
     if (error) {
-      alert('خطа дар иловаи гузариш: ' + error.message);
+      alert('خطا дар иловаи гузариш: ' + error.message);
       return;
     }
 
@@ -506,19 +506,6 @@ const sendMessage = async (msg: ClientMessage) => {
     return;
   }
 };
-
-    if (msg.type === 'DELETE_COMPANY') {
-      const { error } = await supabase.from('companies').delete().eq('id', msg.id);
-      if (error) return alert('خطا در حذف شرکت');
-    }
-
-    if (msg.type === 'DELETE_BANK') {
-      const { error } = await supabase.from('banks').delete().eq('id', msg.id);
-      if (error) return alert('خطا در حذف بانک');
-    }
-
-    await loadAllFromSupabase();
-  };
 
   const selectedBank = useMemo(() => {
     if (!data.banks || data.banks.length === 0) return null;
