@@ -433,16 +433,36 @@ const sendMessage = async (msg: ClientMessage) => {
         transfer_date: msg.date,
         date: msg.date,
       })
-      .select();
+      .select()
+      .single();
 
-    console.log('TRANSFER SAVED:', savedTransfer, error);
-
-    if (savedTransfer && savedTransfer[0]) {
-      setData((prev) => ({
-        ...prev,
-        transfers: [...prev.transfers, savedTransfer[0]],
-      }));
+    if (error) {
+      console.error('ADD_TRANSFER ERROR:', error);
+      alert('Хато дар иловаи интиқол: ' + error.message);
+      return;
     }
+
+    console.log('TRANSFER SAVED:', savedTransfer);
+
+    setData((prev) => ({
+      ...prev,
+      transfers: [
+        ...prev.transfers,
+        {
+          id: savedTransfer.id,
+          companyId: savedTransfer.company_id,
+          bankId: savedTransfer.bank_id,
+          amount: Number(savedTransfer.amount) || 0,
+          note: savedTransfer.note || '',
+          currency: savedTransfer.currency || 'USD',
+          date: savedTransfer.transfer_date || savedTransfer.date || msg.date,
+          time: new Date(savedTransfer.created_at || Date.now()).toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        },
+      ],
+    }));
 
     return;
   }
