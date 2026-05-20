@@ -400,102 +400,112 @@ useEffect(() => {
 }, []);
 
 
-  const sendMessage = async (msg: ClientMessage) => {
-    console.log('Supabase action:', msg);
+const sendMessage = async (msg: ClientMessage) => {
+  console.log('Supabase action:', msg);
 
-    
+  if (msg.type === 'ADD_BANK') {
+    const { error } = await supabase.from('banks').insert({ name: msg.name });
+    if (error) return alert('خطا در افزودن بانک: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
 
-    if (msg.type === 'ADD_BANK') {
-      const { error } = await supabase.from('banks').insert({ name: msg.name });
-      if (error) return alert('خطا در افزودن بانک');
-    }
-    
-    if (msg.type === 'ADD_COMPANY') {
-      const { error } = await supabase.from('companies').insert({
-        name: msg.name,
+  if (msg.type === 'ADD_COMPANY') {
+    const { error } = await supabase.from('companies').insert({
+      name: msg.name,
+      bank_id: msg.bankId,
+      sort_order: data.companies.filter((c) => c.bankId === msg.bankId).length,
+    });
+    if (error) return alert('خطا در افزودن شرکت: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
+
+  if (msg.type === 'ADD_TRANSFER') {
+    const { data: savedTransfer, error } = await supabase
+      .from('transfers')
+      .insert({
+        company_id: msg.companyId,
         bank_id: msg.bankId,
-        sort_order: data.companies.filter((c) => c.bankId === msg.bankId).length,
-      });
-      if (error) return alert('خطا در افزودن شرکت');
+        amount: Number(msg.amount) || 0,
+        note: msg.note || 'EMPTY',
+        currency: msg.currency || 'USD',
+        transfer_date: msg.date,
+        date: msg.date,
+      })
+      .select();
+
+    console.log('TRANSFER SAVED:', savedTransfer, error);
+
+    if (error) {
+      alert('خطа дар иловаи гузариш: ' + error.message);
+      return;
     }
 
-    if (msg.type === 'ADD_TRANSFER') {
-      const { data, error } = await supabase
-        .from('transfers')
-        .insert({
+    await loadAllFromSupabase();
+    return;
+  }
+
+  if (msg.type === 'UPDATE_TRANSFER') {
+    const { error } = await supabase
+      .from('transfers')
+      .update({
+        amount: Number(msg.amount) || 0,
+        note: msg.note || 'EMPTY',
+        currency: msg.currency || 'USD',
+      })
+      .eq('id', msg.id);
+
+    if (error) return alert('خطا дар вироиши гузариш: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
+
+  if (msg.type === 'DELETE_TRANSFER') {
+    const { error } = await supabase.from('transfers').delete().eq('id', msg.id);
+    if (error) return alert('خطا дар حذف انتقال: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
+
+  if (msg.type === 'UPDATE_RETURN') {
+    const { data: savedData, error } = await supabase
+      .from('returns')
+      .upsert(
+        {
           company_id: msg.companyId,
-          bank_id: msg.bankId,
-          amount: Number(msg.amount) || 0,
-          note: msg.note || 'EMPTY',
-          currency: msg.currency || 'USD',
-          transfer_date: msg.date,
           date: msg.date,
-        })
-        .select();
+          amount: Number(msg.amount) || 0,
+        },
+        { onConflict: 'company_id,date' }
+      )
+      .select();
 
-      console.log('TRANSFER SAVED:', data, error);
+    console.log('RETURN SAVED:', savedData, error);
 
-      if (error) {
-        console.error('ADD_TRANSFER ERROR:', error);
-        alert('خطا در افزودن انتقال: ' + error.message);
-        return;
-      }
-
-      await loadSupabaseData();
+    if (error) {
+      alert('خطا дар ثبت برگашт: ' + error.message);
       return;
     }
 
-      await loadAllFromSupabase();
-    }
+    await loadAllFromSupabase();
+    return;
+  }
 
-    if (msg.type === 'UPDATE_TRANSFER') {
-      const { error } = await supabase
-        .from('transfers')
-        .update({
-          amount: msg.amount,
-          note: msg.note || '',
-          currency: msg.currency || 'USD',
-        })
-        .eq('id', msg.id);
+  if (msg.type === 'DELETE_COMPANY') {
+    const { error } = await supabase.from('companies').delete().eq('id', msg.id);
+    if (error) return alert('خطا дар حذف ширкат: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
 
-      if (error) return alert('خطا در ویرایش انتقال');
-    }
-
-    if (msg.type === 'DELETE_TRANSFER') {
-      const { error } = await supabase.from('transfers').delete().eq('id', msg.id);
-      if (error) return alert('خطا در حذف انتقال');
-    }
-
-    if (msg.type === 'UPDATE_RETURN') {
-      const returnAmount = Number(msg.amount || 0);
-
-      const { data: savedData, error } = await supabase
-        .from('returns')
-        .upsert(
-          {
-            company_id: msg.companyId,
-            date: msg.date,
-            amount: returnAmount,
-          },
-          {
-            onConflict: 'company_id,date',
-          }
-        )
-        .select();
-
-      console.log('RETURN SAVED:', savedData, error);
-
-      if (error) {
-        console.error('UPDATE_RETURN ERROR:', error);
-        alert('خطا در ثبت برگشت: ' + error.message);
-        return;
-      }
-
-      // reload fresh data from supabase
-      await loadAllFromSupabase();
-
-      return;
-    }
+  if (msg.type === 'DELETE_BANK') {
+    const { error } = await supabase.from('banks').delete().eq('id', msg.id);
+    if (error) return alert('خطا дар حذف бонк: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
+};
 
     if (msg.type === 'DELETE_COMPANY') {
       const { error } = await supabase.from('companies').delete().eq('id', msg.id);
