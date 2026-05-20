@@ -437,29 +437,13 @@ const sendMessage = async (msg: ClientMessage) => {
 
     console.log('TRANSFER SAVED:', savedTransfer, error);
 
-    if (error) {
-      alert('خطا дар иловаи гузариш: ' + error.message);
-      return;
+    if (savedTransfer && savedTransfer[0]) {
+      setData((prev) => ({
+        ...prev,
+        transfers: [...prev.transfers, savedTransfer[0]],
+      }));
     }
 
-    setData((prev) => ({
-      ...prev,
-      transfers: [
-        ...prev.transfers,
-        {
-          id: savedTransfer?.[0]?.id,
-          companyId: msg.companyId,
-          bankId: msg.bankId,
-          amount: Number(msg.amount) || 0,
-          note: msg.note || 'EMPTY',
-          currency: msg.currency || 'USD',
-          date: msg.date,
-          timestamp: savedTransfer?.[0]?.created_at || new Date().toISOString(),
-        },
-      ],
-    }));
-
-    await loadAllFromSupabase();
     return;
   }
 
