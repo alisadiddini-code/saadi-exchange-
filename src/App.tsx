@@ -456,6 +456,9 @@ const sendMessage = async (msg: ClientMessage) => {
           note: savedTransfer.note || '',
           currency: savedTransfer.currency || 'USD',
           date: savedTransfer.transfer_date || savedTransfer.date || msg.date,
+          transferDate: savedTransfer.transfer_date || savedTransfer.date || msg.date,
+          createdAt: savedTransfer.created_at || new Date().toISOString(),
+          timestamp: savedTransfer.created_at || new Date().toISOString(),
           time: new Date(savedTransfer.created_at || Date.now()).toLocaleTimeString('en-GB', {
             hour: '2-digit',
             minute: '2-digit',
