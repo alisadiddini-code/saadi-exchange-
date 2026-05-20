@@ -535,7 +535,7 @@ const sendMessage = async (msg: ClientMessage) => {
         if (!activeRange) return true;
         return isDateWithinRange(transfer.date, activeRange.start, activeRange.end);
       })
-      .sort((a, b) => parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime());
+      .sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
   };
 
   const getVisibleCompanyTransfers = (companyId: string, companyName?: string) => {
