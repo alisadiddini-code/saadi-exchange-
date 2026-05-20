@@ -363,15 +363,32 @@ const loadAllFromSupabase = async () => {
     sortOrder: company.sort_order || 0,
   }));
 
-  const mappedTransfers = transfersData.map((t: any) => ({
-    id: t.id,
+  const mappedTransfers: Transfer[] = (transfersData || []).map((t: any) => ({
+    id: String(t.id),
+
+    companyId: String(t.company_id),
+    bankId: String(t.bank_id),
+
     amount: Number(t.amount || 0),
-    currency: t.currency || "USD",
-    note: t.note || "",
-    date: t.transfer_date || t.date,
-    timestamp: t.timestamp || t.created_at,
-    bankId: t.bank_id,
-    companyId: t.company_id,
+
+    currency:
+      t.currency === 'CNY'
+        ? 'CNY'
+        : 'USD',
+
+    note:
+      t.note && t.note !== 'EMPTY'
+        ? String(t.note)
+        : '',
+
+    date:
+      t.transfer_date ||
+      t.date ||
+      format(new Date(), 'yyyy-MM-dd'),
+
+    timestamp:
+      t.created_at ||
+      new Date().toISOString(),
   }));
 
   const mappedReturns: AppData['returns'] = {};
@@ -488,7 +505,19 @@ const sendMessage = async (msg: ClientMessage) => {
   if (msg.type === 'DELETE_TRANSFER') {
     const { error } = await supabase.from('transfers').delete().eq('id', msg.id);
     if (error) return alert('خطا дар حذف انتقال: ' + error.message);
-    await loadAllFromSupabase();
+    setData((prev) => ({
+      ...prev,
+      transfers: prev.transfers.map((t) =>
+        t.id === msg.id
+          ? {
+              ...t,
+              amount: Number(msg.amount) || 0,
+              note: msg.note || '',
+              currency: msg.currency || 'USD',
+            }
+          : t
+      ),
+    }));
     return;
   }
 
