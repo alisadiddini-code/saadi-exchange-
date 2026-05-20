@@ -443,7 +443,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     console.log('TRANSFER SAVED:', data, error);
 
-    await loadSupabaseData();
+    await loadAllFromSupabase();
     return;
 
   if (msg.type === 'UPDATE_TRANSFER') {
