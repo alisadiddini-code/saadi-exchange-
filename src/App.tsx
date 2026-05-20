@@ -435,16 +435,16 @@ const sendMessage = async (msg: ClientMessage) => {
       })
       .select();
 
+    console.log('TRANSFER SAVED:', savedTransfer, error);
+
     if (error) {
-      console.error('ADD_TRANSFER ERROR:', error);
-      alert('Хато дар иловаи интиқол: ' + error.message);
+      alert('خطا дар иловаи гузариш: ' + error.message);
       return;
     }
 
-    console.log('TRANSFER SAVED:', data, error);
-
     await loadAllFromSupabase();
     return;
+  }
 
   if (msg.type === 'UPDATE_TRANSFER') {
     const { error } = await supabase
@@ -535,7 +535,7 @@ const sendMessage = async (msg: ClientMessage) => {
         if (!activeRange) return true;
         return isDateWithinRange(transfer.date, activeRange.start, activeRange.end);
       })
-      .sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
+      .sort((a, b) => parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime());
   };
 
   const getVisibleCompanyTransfers = (companyId: string, companyName?: string) => {
