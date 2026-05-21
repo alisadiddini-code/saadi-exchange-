@@ -461,29 +461,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     console.log('TRANSFER SAVED:', savedTransfer);
 
-    setData((prev) => ({
-      ...prev,
-      transfers: [
-        ...prev.transfers,
-        {
-          id: savedTransfer.id,
-          companyId: savedTransfer.company_id,
-          bankId: savedTransfer.bank_id,
-          amount: Number(savedTransfer.amount) || 0,
-          note: savedTransfer.note || '',
-          currency: savedTransfer.currency || 'USD',
-          date: savedTransfer.transfer_date || savedTransfer.date || msg.date,
-          transferDate: savedTransfer.transfer_date || savedTransfer.date || msg.date,
-          createdAt: savedTransfer.created_at || new Date().toISOString(),
-          timestamp: savedTransfer.created_at || new Date().toISOString(),
-          time: new Date(savedTransfer.created_at || Date.now()).toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        },
-      ],
-    }));
-
+    await loadAllFromSupabase();
     return;
   }
 
