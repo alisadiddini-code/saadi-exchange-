@@ -488,47 +488,67 @@ const sendMessage = async (msg: ClientMessage) => {
   }
 
   if (msg.type === 'UPDATE_TRANSFER') {
-    const { error } = await supabase
+    const { data: updatedTransfer, error } = await supabase
       .from('transfers')
       .update({
         amount: Number(msg.amount) || 0,
         note: msg.note || 'EMPTY',
         currency: msg.currency || 'USD',
       })
-      .eq('id', msg.id);
+      .eq('id', msg.id)
+      .select()
+      .single();
 
-    if (error) return alert('خطا дар вироиши гузариш: ' + error.message);
-    await loadAllFromSupabase();
-    return;
-  }
+    if (error) {
+      console.error('UPDATE_TRANSFER ERROR:', error);
+      alert('خطا дар вироиши гузариш: ' + error.message);
+      return;
+    }
 
-  if (msg.type === 'DELETE_TRANSFER') {
-    const { error } = await supabase.from('transfers').delete().eq('id', msg.id);
-    if (error) return alert('خطا дар حذف انتقال: ' + error.message);
     setData((prev) => ({
       ...prev,
       transfers: prev.transfers.map((t) =>
         t.id === msg.id
           ? {
               ...t,
-              amount: Number(msg.amount) || 0,
-              note: msg.note || '',
-              currency: msg.currency || 'USD',
+              amount: Number(updatedTransfer?.amount ?? msg.amount) || 0,
+              note: updatedTransfer?.note && updatedTransfer.note !== 'EMPTY' ? String(updatedTransfer.note) : '',
+              currency: updatedTransfer?.currency === 'CNY' ? 'CNY' : 'USD',
             }
           : t
       ),
     }));
+
+    return;
+  }
+
+  if (msg.type === 'DELETE_TRANSFER') {
+    const { error } = await supabase.from('transfers').delete().eq('id', msg.id);
+
+    if (error) {
+      console.error('DELETE_TRANSFER ERROR:', error);
+      alert('خطا дар حذف انتقال: ' + error.message);
+      return;
+    }
+
+    setData((prev) => ({
+      ...prev,
+      transfers: prev.transfers.filter((t) => t.id !== msg.id),
+    }));
+
     return;
   }
 
   if (msg.type === 'UPDATE_RETURN') {
+    const returnAmount = Number(msg.amount) || 0;
+
     const { data: savedData, error } = await supabase
       .from('returns')
       .upsert(
         {
           company_id: msg.companyId,
           date: msg.date,
-          amount: Number(msg.amount) || 0,
+          amount: returnAmount,
         },
         { onConflict: 'company_id,date' }
       )
@@ -537,11 +557,22 @@ const sendMessage = async (msg: ClientMessage) => {
     console.log('RETURN SAVED:', savedData, error);
 
     if (error) {
-      alert('خطا дар ثبت برگашт: ' + error.message);
+      console.error('UPDATE_RETURN ERROR:', error);
+      alert('خطа дар ثبت برگашт: ' + error.message);
       return;
     }
 
-    await loadAllFromSupabase();
+    setData((prev) => ({
+      ...prev,
+      returns: {
+        ...prev.returns,
+        [msg.date]: {
+          ...(prev.returns[msg.date] || {}),
+          [msg.companyId]: returnAmount,
+        },
+      },
+    }));
+
     return;
   }
 
