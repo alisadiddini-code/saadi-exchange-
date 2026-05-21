@@ -144,6 +144,56 @@ function summarizeByCurrency(transfers: Transfer[]) {
   );
 }
 
+function normalizeCurrency(value: unknown): Currency {
+  return value === 'CNY' ? 'CNY' : 'USD';
+}
+
+function normalizeDate(value: unknown, fallback: string) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+
+  return fallback;
+}
+
+function normalizeTimestamp(value: unknown) {
+  if (typeof value === 'string' && value.trim()) return value;
+  return new Date().toISOString();
+}
+
+function mapSupabaseTransfer(row: any, fallbackDate: string): Transfer {
+  const date = normalizeDate(row?.transfer_date || row?.date, fallbackDate);
+  const timestamp = normalizeTimestamp(row?.created_at || row?.timestamp);
+
+  return {
+    id: String(row?.id),
+    companyId: String(row?.company_id),
+    bankId: String(row?.bank_id),
+    amount: Number(row?.amount) || 0,
+    currency: normalizeCurrency(row?.currency),
+    note: row?.note && row.note !== 'EMPTY' ? String(row.note) : '',
+    date,
+    timestamp,
+  };
+}
+
+function mergeTransfer(list: Transfer[], transfer: Transfer) {
+  const exists = list.some((item) => item.id === transfer.id);
+  if (exists) {
+    return list.map((item) => (item.id === transfer.id ? transfer : item));
+  }
+
+  return [...list, transfer];
+}
+
+function sortTransfersByTime(transfers: Transfer[]) {
+  return [...transfers].sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime();
+  });
+}
+
 function buildDailySeries(
   transfers: Transfer[],
   returnsMap: AppData['returns'],
@@ -312,34 +362,38 @@ export default function App() {
 // }, []);
 
 const loadAllFromSupabase = async () => {
+  const fallbackDate = selectedDate || format(new Date(), 'yyyy-MM-dd');
+
   const { data: banksData, error: banksError } = await supabase
     .from('banks')
     .select('*')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true });
 
   if (banksError) {
     console.error('Supabase banks error:', banksError);
-    return;
+    return null;
   }
 
   const { data: companiesData, error: companiesError } = await supabase
     .from('companies')
     .select('*')
-    .order('created_at', { ascending: true })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
 
   if (companiesError) {
     console.error('Supabase companies error:', companiesError);
-    return;
+    return null;
   }
 
   const { data: transfersData, error: transfersError } = await supabase
     .from('transfers')
     .select('*')
-    .order('created_at', { ascending: true })
+    .order('transfer_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
   if (transfersError) {
     console.error('Supabase transfers error:', transfersError);
-    return;
+    return null;
   }
 
   const { data: returnsData, error: returnsError } = await supabase
@@ -348,68 +402,55 @@ const loadAllFromSupabase = async () => {
 
   if (returnsError) {
     console.error('Supabase returns error:', returnsError);
-    return;
+    return null;
   }
 
-  const mappedBanks: Bank[] = (banksData || []).map((bank) => ({
-    id: bank.id,
-    name: bank.name,
+  const mappedBanks: Bank[] = (banksData || []).map((bank: any) => ({
+    id: String(bank.id),
+    name: String(bank.name || ''),
   }));
 
-  const mappedCompanies: Company[] = (companiesData || []).map((company) => ({
-    id: company.id,
-    name: company.name,
-    bankId: company.bank_id,
-    sortOrder: company.sort_order || 0,
+  const mappedCompanies: Company[] = (companiesData || []).map((company: any) => ({
+    id: String(company.id),
+    name: String(company.name || ''),
+    bankId: String(company.bank_id),
+    sortOrder: Number(company.sort_order || 0),
   }));
 
-  const mappedTransfers: Transfer[] = (transfersData || []).map((t: any) => ({
-    id: String(t.id),
-
-    companyId: String(t.company_id),
-    bankId: String(t.bank_id),
-
-    amount: Number(t.amount || 0),
-
-    currency:
-      t.currency === 'CNY'
-        ? 'CNY'
-        : 'USD',
-
-    note:
-      t.note && t.note !== 'EMPTY'
-        ? String(t.note)
-        : '',
-
-    date:
-      t.transfer_date ||
-      t.date ||
-      format(new Date(), 'yyyy-MM-dd'),
-
-    timestamp:
-      t.created_at ||
-      new Date().toISOString(),
-  }));
+  const mappedTransfers: Transfer[] = sortTransfersByTime(
+    (transfersData || []).map((transfer: any) => mapSupabaseTransfer(transfer, fallbackDate))
+  );
 
   const mappedReturns: AppData['returns'] = {};
-  (returnsData || []).forEach((item) => {
-    const d = item.date;
+  (returnsData || []).forEach((item: any) => {
+    const d = normalizeDate(item.date, fallbackDate);
+    const companyId = String(item.company_id);
     if (!mappedReturns[d]) mappedReturns[d] = {};
-    mappedReturns[d][item.company_id] = Number(item.amount || 0);
+    mappedReturns[d][companyId] = Number(item.amount || 0);
   });
 
-  setData({
+  const freshData: AppData = {
     banks: mappedBanks,
     companies: mappedCompanies,
     transfers: mappedTransfers,
     returns: mappedReturns,
+  };
+
+  console.log('SUPABASE LOADED:', {
+    banks: mappedBanks.length,
+    companies: mappedCompanies.length,
+    transfers: mappedTransfers.length,
+    returns: returnsData?.length || 0,
   });
+
+  setData(freshData);
 
   if (mappedBanks.length > 0 && !selectedBankId) {
     setSelectedBankId(mappedBanks[0].id);
   }
 
   setWsConnected(true);
+  return freshData;
 };
 
 useEffect(() => {
@@ -439,29 +480,54 @@ const sendMessage = async (msg: ClientMessage) => {
   }
 
   if (msg.type === 'ADD_TRANSFER') {
+    const payload = {
+      company_id: msg.companyId,
+      bank_id: msg.bankId,
+      amount: Number(msg.amount) || 0,
+      note: msg.note || 'EMPTY',
+      currency: msg.currency || 'USD',
+      transfer_date: msg.date,
+      date: msg.date,
+    };
+
     const { data: savedTransfer, error } = await supabase
       .from('transfers')
-      .insert({
-        company_id: msg.companyId,
-        bank_id: msg.bankId,
-        amount: Number(msg.amount) || 0,
-        note: msg.note || 'EMPTY',
-        currency: msg.currency || 'USD',
-        transfer_date: msg.date,
-        date: msg.date,
-      })
-      .select()
+      .insert(payload)
+      .select('*')
       .single();
 
-    if (error) {
+    if (error || !savedTransfer) {
       console.error('ADD_TRANSFER ERROR:', error);
-      alert('Хато дар иловаи интиқол: ' + error.message);
+      alert('Хато дар иловаи интиқол: ' + (error?.message || 'Маълумот сабт нашуд'));
       return;
     }
 
+    const mappedTransfer = mapSupabaseTransfer(savedTransfer, msg.date);
     console.log('TRANSFER SAVED:', savedTransfer);
 
-    await loadAllFromSupabase();
+    // 1) Дарҳол дар экран нишон медиҳем, то оператор корро идома дода тавонад.
+    setData((prev) => ({
+      ...prev,
+      transfers: sortTransfersByTime(mergeTransfer(prev.transfers, mappedTransfer)),
+    }));
+
+    // 2) Пас аз сабти воқеӣ аз Supabase дубора мехонем, то refresh ҳам дуруст кор кунад.
+    window.setTimeout(() => {
+      loadAllFromSupabase().then((freshData) => {
+        if (!freshData) return;
+
+        const existsInFreshData = freshData.transfers.some((transfer) => transfer.id === mappedTransfer.id);
+
+        if (!existsInFreshData) {
+          console.warn('Saved transfer was not returned by Supabase reload. Keeping local copy:', mappedTransfer);
+          setData((prev) => ({
+            ...prev,
+            transfers: sortTransfersByTime(mergeTransfer(prev.transfers, mappedTransfer)),
+          }));
+        }
+      });
+    }, 300);
+
     return;
   }
 
@@ -474,28 +540,25 @@ const sendMessage = async (msg: ClientMessage) => {
         currency: msg.currency || 'USD',
       })
       .eq('id', msg.id)
-      .select()
+      .select('*')
       .single();
 
-    if (error) {
+    if (error || !updatedTransfer) {
       console.error('UPDATE_TRANSFER ERROR:', error);
-      alert('خطا дар вироиши гузариш: ' + error.message);
+      alert('خطا дар вироиши гузариш: ' + (error?.message || 'Маълумот нав нашуд'));
       return;
     }
 
+    const mappedTransfer = mapSupabaseTransfer(updatedTransfer, selectedDate);
+
     setData((prev) => ({
       ...prev,
-      transfers: prev.transfers.map((t) =>
-        t.id === msg.id
-          ? {
-              ...t,
-              amount: Number(updatedTransfer?.amount ?? msg.amount) || 0,
-              note: updatedTransfer?.note && updatedTransfer.note !== 'EMPTY' ? String(updatedTransfer.note) : '',
-              currency: updatedTransfer?.currency === 'CNY' ? 'CNY' : 'USD',
-            }
-          : t
-      ),
+      transfers: sortTransfersByTime(mergeTransfer(prev.transfers, mappedTransfer)),
     }));
+
+    window.setTimeout(() => {
+      loadAllFromSupabase();
+    }, 300);
 
     return;
   }
@@ -513,6 +576,10 @@ const sendMessage = async (msg: ClientMessage) => {
       ...prev,
       transfers: prev.transfers.filter((t) => t.id !== msg.id),
     }));
+
+    window.setTimeout(() => {
+      loadAllFromSupabase();
+    }, 300);
 
     return;
   }
