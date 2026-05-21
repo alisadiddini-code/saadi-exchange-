@@ -194,6 +194,53 @@ function sortTransfersByTime(transfers: Transfer[]) {
   });
 }
 
+
+async function fetchAllSupabaseRows<T = any>(
+  tableName: string,
+  options?: {
+    orderBy?: string;
+    ascending?: boolean;
+    secondOrderBy?: string;
+    secondAscending?: boolean;
+  }
+): Promise<{ data: T[]; error: any }> {
+  const pageSize = 1000;
+  let from = 0;
+  const allRows: T[] = [];
+
+  while (true) {
+    let query = supabase
+      .from(tableName)
+      .select('*')
+      .range(from, from + pageSize - 1);
+
+    if (options?.orderBy) {
+      query = query.order(options.orderBy, { ascending: options.ascending ?? true });
+    }
+
+    if (options?.secondOrderBy) {
+      query = query.order(options.secondOrderBy, { ascending: options.secondAscending ?? true });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { data: allRows, error };
+    }
+
+    const rows = (data || []) as T[];
+    allRows.push(...rows);
+
+    if (rows.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return { data: allRows, error: null };
+}
+
 function buildDailySeries(
   transfers: Transfer[],
   returnsMap: AppData['returns'],
@@ -364,41 +411,42 @@ export default function App() {
 const loadAllFromSupabase = async () => {
   const fallbackDate = selectedDate || format(new Date(), 'yyyy-MM-dd');
 
-  const { data: banksData, error: banksError } = await supabase
-    .from('banks')
-    .select('*')
-    .order('created_at', { ascending: true });
+  const { data: banksData, error: banksError } = await fetchAllSupabaseRows('banks', {
+    orderBy: 'created_at',
+    ascending: true,
+  });
 
   if (banksError) {
     console.error('Supabase banks error:', banksError);
     return null;
   }
 
-  const { data: companiesData, error: companiesError } = await supabase
-    .from('companies')
-    .select('*')
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
+  const { data: companiesData, error: companiesError } = await fetchAllSupabaseRows('companies', {
+    orderBy: 'sort_order',
+    ascending: true,
+    secondOrderBy: 'created_at',
+    secondAscending: true,
+  });
 
   if (companiesError) {
     console.error('Supabase companies error:', companiesError);
     return null;
   }
 
-  const { data: transfersData, error: transfersError } = await supabase
-    .from('transfers')
-    .select('*')
-    .order('transfer_date', { ascending: true })
-    .order('created_at', { ascending: true });
+  const { data: transfersData, error: transfersError } = await fetchAllSupabaseRows('transfers', {
+    orderBy: 'created_at',
+    ascending: true,
+  });
 
   if (transfersError) {
     console.error('Supabase transfers error:', transfersError);
     return null;
   }
 
-  const { data: returnsData, error: returnsError } = await supabase
-    .from('returns')
-    .select('*');
+  const { data: returnsData, error: returnsError } = await fetchAllSupabaseRows('returns', {
+    orderBy: 'date',
+    ascending: true,
+  });
 
   if (returnsError) {
     console.error('Supabase returns error:', returnsError);
