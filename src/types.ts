@@ -1,4 +1,4 @@
-export type Currency = "USD" | "CNY";
+export type Currency = "USD" | "EUR" | "CNY";
 
 export interface Bank {
   id: string;
@@ -63,6 +63,7 @@ export type ClientMessage =
       companyId: string;
       direction: "up" | "down";
     }
+  | { type: "MOVE_TO_TOP"; companyId: string }
   | { type: "DELETE_TRANSFER"; id: string }
   | { type: "DELETE_COMPANY"; id: string }
   | { type: "DELETE_BANK"; id: string };

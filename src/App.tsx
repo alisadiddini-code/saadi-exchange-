@@ -83,7 +83,9 @@ function getActiveRange(selectedDate: string, filterMode: DateFilterMode) {
 }
 
 function currencySymbol(currency: Currency) {
-  return currency === 'CNY' ? '¥' : '$';
+  if (currency === 'CNY') return '¥';
+  if (currency === 'EUR') return '€';
+  return '$';
 }
 
 function transferMatchesSearch(transfer: Transfer, searchQuery: string, companyName?: string) {
@@ -140,12 +142,14 @@ function summarizeByCurrency(transfers: Transfer[]) {
       acc[t.currency] += t.amount;
       return acc;
     },
-    { USD: 0, CNY: 0 } as Record<Currency, number>
+    { USD: 0, EUR: 0, CNY: 0 } as Record<Currency, number>
   );
 }
 
 function normalizeCurrency(value: unknown): Currency {
-  return value === 'CNY' ? 'CNY' : 'USD';
+  if (value === 'CNY') return 'CNY';
+  if (value === 'EUR') return 'EUR';
+  return 'USD';
 }
 
 function normalizeDate(value: unknown, fallback: string) {
@@ -264,6 +268,7 @@ function buildDailySeries(
       key,
       label: format(day, 'dd.MM'),
       totalUsd: totals.USD,
+      totalEur: totals.EUR,
       totalCny: totals.CNY,
       returned,
       netUsd: totals.USD - returned
@@ -669,6 +674,55 @@ const sendMessage = async (msg: ClientMessage) => {
     return;
   }
 
+  if (msg.type === 'MOVE_COMPANY') {
+    const company = data.companies.find((c) => c.id === msg.companyId);
+    if (!company) return;
+
+    const bankCompanies = [...data.companies]
+      .filter((c) => c.bankId === company.bankId)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    const idx = bankCompanies.findIndex((c) => c.id === msg.companyId);
+    if (idx === -1) return;
+
+    const targetIdx = msg.direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= bankCompanies.length) return;
+
+    const current = bankCompanies[idx];
+    const target = bankCompanies[targetIdx];
+    const currentOrder = current.sortOrder ?? idx;
+    const targetOrder = target.sortOrder ?? targetIdx;
+
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from('companies').update({ sort_order: targetOrder }).eq('id', current.id),
+      supabase.from('companies').update({ sort_order: currentOrder }).eq('id', target.id),
+    ]);
+
+    if (e1 || e2) return alert('Хато дар иваз кардани ҷой: ' + (e1?.message || e2?.message));
+    await loadAllFromSupabase();
+    return;
+  }
+
+  if (msg.type === 'MOVE_TO_TOP') {
+    const company = data.companies.find((c) => c.id === msg.companyId);
+    if (!company) return;
+
+    const bankCompanies = [...data.companies]
+      .filter((c) => c.bankId === company.bankId)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    const minOrder = bankCompanies.length > 0 ? (bankCompanies[0].sortOrder ?? 0) : 0;
+
+    const { error } = await supabase
+      .from('companies')
+      .update({ sort_order: minOrder - 1 })
+      .eq('id', msg.companyId);
+
+    if (error) return alert('Хато: ' + error.message);
+    await loadAllFromSupabase();
+    return;
+  }
+
   if (msg.type === 'DELETE_COMPANY') {
     const { error } = await supabase.from('companies').delete().eq('id', msg.id);
     if (error) return alert('خطا дар حذف ширкат: ' + error.message);
@@ -791,10 +845,11 @@ const sendMessage = async (msg: ClientMessage) => {
         const returned = getCompanyReturnForCurrentFilter(company.id);
 
         acc.USD += totals.USD - returned;
+        acc.EUR += totals.EUR;
         acc.CNY += totals.CNY;
         return acc;
       },
-      { USD: 0, CNY: 0 }
+      { USD: 0, EUR: 0, CNY: 0 }
     );
   };
 
@@ -843,8 +898,9 @@ const sendMessage = async (msg: ClientMessage) => {
       });
 
       transferSheetRows.push(['', '', '', 'USD', totals.USD, '']);
+      transferSheetRows.push(['', '', '', 'EUR', totals.EUR, '']);
       transferSheetRows.push(['', '', '', 'CNY', totals.CNY, '']);
-      transferSheetRows.push(['', '', '', 'Баргашт', returned, '']);
+      transferSheetRows.push(['', '', '', 'Баргашт (USD)', returned, '']);
       transferSheetRows.push([]);
       transferSheetRows.push([]);
     });
@@ -875,6 +931,7 @@ const sendMessage = async (msg: ClientMessage) => {
         company.name,
         String(transfers.length),
         numberFormat(totals.USD),
+        numberFormat(totals.EUR),
         numberFormat(totals.CNY),
         numberFormat(returned),
       ];
@@ -882,7 +939,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     autoTable(doc, {
       startY: 32,
-      head: [['Company', 'Count', 'USD', 'CNY', 'Returned']],
+      head: [['Company', 'Count', 'USD', 'EUR', 'CNY', 'Returned (USD)']],
       body: companyRows,
       styles: { fontSize: 9 },
       headStyles: { fillColor: [16, 185, 129] },
@@ -904,6 +961,7 @@ const sendMessage = async (msg: ClientMessage) => {
         name: company.name,
         count: transfers.length,
         usd: totals.USD,
+        eur: totals.EUR,
         cny: totals.CNY,
         returned,
       };
@@ -919,7 +977,8 @@ const sendMessage = async (msg: ClientMessage) => {
             <td>${row.name}</td>
             <td>${row.count}</td>
             <td>$${numberFormat(row.usd)}</td>
-            <td>¥${numberFormat(row.cny)}</td>
+            <td>${row.eur > 0 ? '&euro;' + numberFormat(row.eur) : '-'}</td>
+            <td>${row.cny > 0 ? '&yen;' + numberFormat(row.cny) : '-'}</td>
             <td>$${numberFormat(row.returned)}</td>
           </tr>
         `
@@ -946,8 +1005,9 @@ const sendMessage = async (msg: ClientMessage) => {
                 <th>Ширкат</th>
                 <th>Шумора</th>
                 <th>USD</th>
+                <th>EUR</th>
                 <th>CNY</th>
-                <th>Баргашт</th>
+                <th>Баргашт (USD)</th>
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -1196,6 +1256,7 @@ const sendMessage = async (msg: ClientMessage) => {
                     canMoveDown={companySortMode === 'manual' && index < visibleCompanies.length - 1}
                     onMoveUp={() => sendMessage({ type: 'MOVE_COMPANY', companyId: company.id, direction: 'up' })}
                     onMoveDown={() => sendMessage({ type: 'MOVE_COMPANY', companyId: company.id, direction: 'down' })}
+                    onMoveToTop={() => sendMessage({ type: 'MOVE_TO_TOP', companyId: company.id })}
                     onAddTransfer={(amount, note, currency) =>
                       sendMessage({
                         type: 'ADD_TRANSFER',
@@ -1274,6 +1335,9 @@ const sendMessage = async (msg: ClientMessage) => {
 
           <div className="text-right space-y-1">
             <div className="font-mono text-2xl font-bold">$ {numberFormat(bankTotals.USD)}</div>
+            {bankTotals.EUR > 0 && (
+              <div className="font-mono text-xl font-bold text-blue-300">€ {numberFormat(bankTotals.EUR)}</div>
+            )}
             {bankTotals.CNY > 0 && (
               <div className="font-mono text-xl font-bold text-yellow-300">¥ {numberFormat(bankTotals.CNY)}</div>
             )}
@@ -1362,6 +1426,7 @@ type CompanyCardProps = {
   canMoveDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onMoveToTop: () => void;
   onAddTransfer: (amount: number, note: string, currency: Currency) => void;
   onUpdateTransfer: (id: string, amount: number, note: string, currency: Currency) => void;
   onUpdateReturn: (amount: number) => void;
@@ -1377,11 +1442,11 @@ function CompanyCard({
   canAddTransfers,
   canEditReturn,
   filterLabel,
-  isIbt,
   canMoveUp,
   canMoveDown,
   onMoveUp,
   onMoveDown,
+  onMoveToTop,
   onAddTransfer,
   onUpdateTransfer,
   onUpdateReturn,
@@ -1488,6 +1553,16 @@ function CompanyCard({
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={onMoveToTop}
+            disabled={!canMoveUp}
+            className="px-2 py-1 rounded bg-brand-green/10 text-brand-green-dark border border-brand-green/20 text-[10px] font-bold hover:bg-brand-green/20 disabled:opacity-30 transition-colors"
+            title="Ба боло"
+          >
+            ↑ Ба боло
+          </button>
+
           <div className="text-xs font-mono bg-white px-2 py-1 rounded border border-gray-100 text-gray-500">
             ID: {company.id.slice(0, 4)}
           </div>
@@ -1531,7 +1606,8 @@ function CompanyCard({
                   className="p-2 rounded-lg border border-gray-200 text-sm outline-none"
                 >
                   <option value="USD">USD</option>
-                  {isIbt && <option value="CNY">CNY</option>}
+                  <option value="EUR">EUR</option>
+                  <option value="CNY">CNY</option>
                 </select>
 
                 <button
@@ -1595,7 +1671,11 @@ function CompanyCard({
                             </div>
                             <span className={cn(
                               'text-[10px] px-2 py-0.5 rounded-full font-semibold',
-                              t.currency === 'USD' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'
+                              t.currency === 'USD'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : t.currency === 'EUR'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-yellow-100 text-yellow-700'
                             )}>
                               {t.currency}
                             </span>
@@ -1641,7 +1721,8 @@ function CompanyCard({
                           className="p-2 rounded-lg border border-gray-200 text-sm outline-none"
                         >
                           <option value="USD">USD</option>
-                          {isIbt && <option value="CNY">CNY</option>}
+                          <option value="EUR">EUR</option>
+                          <option value="CNY">CNY</option>
                         </select>
 
                         <button
@@ -1684,6 +1765,15 @@ function CompanyCard({
               {formatCurrency(totals.USD, 'USD')}
             </span>
           </div>
+
+          {totals.EUR > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <span>Ҳамагӣ EUR</span>
+              <span className="font-mono font-medium text-blue-700 text-right break-all">
+                {formatCurrency(totals.EUR, 'EUR')}
+              </span>
+            </div>
+          )}
 
           {totals.CNY > 0 && (
             <div className="flex items-center justify-between gap-3">
@@ -1740,6 +1830,15 @@ function CompanyCard({
             {formatCurrency(netUsd, 'USD')}
           </span>
         </div>
+
+        {totals.EUR > 0 && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-base font-bold text-gray-800">Ҳамагӣ EUR</span>
+            <span className="text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-blue-700">
+              {formatCurrency(totals.EUR, 'EUR')}
+            </span>
+          </div>
+        )}
 
         {totals.CNY > 0 && (
           <div className="flex items-center justify-between gap-3">
@@ -1821,7 +1920,10 @@ function AnalyticsView({
   );
 
   const usdSeries = chartSeries.map((item) => ({ label: item.label, value: item.netUsd }));
+  const eurSeries = chartSeries.map((item) => ({ label: item.label, value: item.totalEur }));
   const cnySeries = chartSeries.map((item) => ({ label: item.label, value: item.totalCny }));
+
+  const hasEur = dailyTotals.EUR > 0 || weeklyTotals.EUR > 0 || monthlyTotals.EUR > 0;
 
   return (
     <div className="space-y-6">
@@ -1833,10 +1935,16 @@ function AnalyticsView({
           extra={`Шумора: ${dailyTransfers.length}`}
         />
         <MetricCard
+          title="EUR рӯз"
+          subtitle={format(parseISO(selectedDate), 'dd.MM.yyyy')}
+          value={formatCurrency(dailyTotals.EUR, 'EUR')}
+          extra="Евро"
+        />
+        <MetricCard
           title="CNY рӯз"
           subtitle={format(parseISO(selectedDate), 'dd.MM.yyyy')}
           value={formatCurrency(dailyTotals.CNY, 'CNY')}
-          extra={`IBT ва дигар ҳисобҳо`}
+          extra="Юан"
         />
         <MetricCard
           title="USD ҳафта"
@@ -1845,10 +1953,16 @@ function AnalyticsView({
           extra={`Шумора: ${weeklyTransfers.length}`}
         />
         <MetricCard
+          title="EUR ҳафта"
+          subtitle={`${format(weekStart, 'dd.MM')} - ${format(weekEnd, 'dd.MM')}`}
+          value={formatCurrency(weeklyTotals.EUR, 'EUR')}
+          extra="Евро"
+        />
+        <MetricCard
           title="CNY ҳафта"
           subtitle={`${format(weekStart, 'dd.MM')} - ${format(weekEnd, 'dd.MM')}`}
           value={formatCurrency(weeklyTotals.CNY, 'CNY')}
-          extra="Ҳаҷми юан"
+          extra="Юан"
         />
         <MetricCard
           title="USD моҳ"
@@ -1857,15 +1971,24 @@ function AnalyticsView({
           extra={`Шумора: ${monthlyTransfers.length}`}
         />
         <MetricCard
+          title="EUR моҳ"
+          subtitle={format(monthStart, 'MM.yyyy')}
+          value={formatCurrency(monthlyTotals.EUR, 'EUR')}
+          extra="Евро"
+        />
+        <MetricCard
           title="CNY моҳ"
           subtitle={format(monthStart, 'MM.yyyy')}
           value={formatCurrency(monthlyTotals.CNY, 'CNY')}
-          extra="Ҳаҷми юан"
+          extra="Юан"
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 xl:grid-cols-${hasEur ? '3' : '2'} gap-6`}>
         <SmallBarChart title="Софии USD дар ҳафта" data={usdSeries} colorClass="bg-emerald-500" />
+        {hasEur && (
+          <SmallBarChart title="Ҳаҷми EUR дар ҳафта" data={eurSeries} colorClass="bg-blue-500" />
+        )}
         <SmallBarChart title="Ҳаҷми CNY дар ҳафта" data={cnySeries} colorClass="bg-yellow-500" />
       </div>
     </div>
