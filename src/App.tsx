@@ -259,9 +259,9 @@ function buildDailySeries(
     const dayTransfers = transfers.filter((t) => t.date === key);
     const totals = summarizeByCurrency(dayTransfers);
 
-    const returned = Object.entries(returnsMap[key] || {}).reduce((sum, [companyId, amount]) => {
+    const returned = Object.entries(returnsMap[key] || {}).reduce((sum, [companyId, currencyMap]) => {
       if (!companyIds.includes(companyId)) return sum;
-      return sum + amount;
+      return sum + (currencyMap.USD ?? 0);
     }, 0);
 
     return {
@@ -478,8 +478,10 @@ const loadAllFromSupabase = async () => {
   (returnsData || []).forEach((item: any) => {
     const d = normalizeDate(item.date, fallbackDate);
     const companyId = String(item.company_id);
+    const currency = normalizeCurrency(item.currency);
     if (!mappedReturns[d]) mappedReturns[d] = {};
-    mappedReturns[d][companyId] = Number(item.amount || 0);
+    if (!mappedReturns[d][companyId]) mappedReturns[d][companyId] = {};
+    mappedReturns[d][companyId][currency] = Number(item.amount || 0);
   });
 
   const freshData: AppData = {
@@ -639,6 +641,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
   if (msg.type === 'UPDATE_RETURN') {
     const returnAmount = Number(msg.amount) || 0;
+    const returnCurrency = msg.currency || 'USD';
 
     const { data: savedData, error } = await supabase
       .from('returns')
@@ -646,9 +649,10 @@ const sendMessage = async (msg: ClientMessage) => {
         {
           company_id: msg.companyId,
           date: msg.date,
+          currency: returnCurrency,
           amount: returnAmount,
         },
-        { onConflict: 'company_id,date' }
+        { onConflict: 'company_id,date,currency' }
       )
       .select();
 
@@ -660,16 +664,23 @@ const sendMessage = async (msg: ClientMessage) => {
       return;
     }
 
-    setData((prev) => ({
-      ...prev,
-      returns: {
-        ...prev.returns,
-        [msg.date]: {
-          ...(prev.returns[msg.date] || {}),
-          [msg.companyId]: returnAmount,
+    setData((prev) => {
+      const prevDateMap = prev.returns[msg.date] || {};
+      const prevCompanyMap = prevDateMap[msg.companyId] || {};
+      return {
+        ...prev,
+        returns: {
+          ...prev.returns,
+          [msg.date]: {
+            ...prevDateMap,
+            [msg.companyId]: {
+              ...prevCompanyMap,
+              [returnCurrency]: returnAmount,
+            },
+          },
         },
-      },
-    }));
+      };
+    });
 
     return;
   }
@@ -775,17 +786,23 @@ const sendMessage = async (msg: ClientMessage) => {
     );
   };
 
-  const getCompanyReturnForCurrentFilter = (companyId: string) => {
+  const getCompanyReturnForCurrentFilter = (companyId: string): import('./types').ReturnsByCurrency => {
     if (dateFilterMode === 'day') {
-      return data.returns[selectedDate]?.[companyId] || 0;
+      return data.returns[selectedDate]?.[companyId] || {};
     }
 
-    return Object.entries(data.returns).reduce((sum, [dateKey, companyReturns]) => {
+    const result: import('./types').ReturnsByCurrency = {};
+    Object.entries(data.returns).forEach(([dateKey, companyReturns]) => {
       if (dateFilterMode !== 'all' && activeRange) {
-        if (!isDateWithinRange(dateKey, activeRange.start, activeRange.end)) return sum;
+        if (!isDateWithinRange(dateKey, activeRange.start, activeRange.end)) return;
       }
-      return sum + (companyReturns[companyId] || 0);
-    }, 0);
+      const currencyMap = companyReturns[companyId];
+      if (!currencyMap) return;
+      (Object.keys(currencyMap) as Currency[]).forEach((cur) => {
+        result[cur] = (result[cur] ?? 0) + (currencyMap[cur] ?? 0);
+      });
+    });
+    return result;
   };
 
   const sortedCompanies = useMemo(() => {
@@ -795,7 +812,7 @@ const sendMessage = async (msg: ClientMessage) => {
       const transfers = getCompanyTransfersForCurrentFilter(companyId).filter((t) => t.currency === 'USD');
       const totalTransfers = transfers.reduce((sum, t) => sum + t.amount, 0);
       const returned = getCompanyReturnForCurrentFilter(companyId);
-      return totalTransfers - returned;
+      return totalTransfers - (returned.USD ?? 0);
     };
 
     const getCount = (companyId: string) => getCompanyTransfersForCurrentFilter(companyId).length;
@@ -844,9 +861,9 @@ const sendMessage = async (msg: ClientMessage) => {
         const totals = summarizeByCurrency(transfers);
         const returned = getCompanyReturnForCurrentFilter(company.id);
 
-        acc.USD += totals.USD - returned;
-        acc.EUR += totals.EUR;
-        acc.CNY += totals.CNY;
+        acc.USD += totals.USD - (returned.USD ?? 0);
+        acc.EUR += totals.EUR - (returned.EUR ?? 0);
+        acc.CNY += totals.CNY - (returned.CNY ?? 0);
         return acc;
       },
       { USD: 0, EUR: 0, CNY: 0 }
@@ -900,7 +917,9 @@ const sendMessage = async (msg: ClientMessage) => {
       transferSheetRows.push(['', '', '', 'USD', totals.USD, '']);
       transferSheetRows.push(['', '', '', 'EUR', totals.EUR, '']);
       transferSheetRows.push(['', '', '', 'CNY', totals.CNY, '']);
-      transferSheetRows.push(['', '', '', 'Баргашт (USD)', returned, '']);
+      transferSheetRows.push(['', '', '', 'Баргашт USD', returned.USD ?? 0, '']);
+      transferSheetRows.push(['', '', '', 'Баргашт EUR', returned.EUR ?? 0, '']);
+      transferSheetRows.push(['', '', '', 'Баргашт CNY', returned.CNY ?? 0, '']);
       transferSheetRows.push([]);
       transferSheetRows.push([]);
     });
@@ -933,13 +952,15 @@ const sendMessage = async (msg: ClientMessage) => {
         numberFormat(totals.USD),
         numberFormat(totals.EUR),
         numberFormat(totals.CNY),
-        numberFormat(returned),
+        numberFormat(returned.USD ?? 0),
+        numberFormat(returned.EUR ?? 0),
+        numberFormat(returned.CNY ?? 0),
       ];
     });
 
     autoTable(doc, {
       startY: 32,
-      head: [['Company', 'Count', 'USD', 'EUR', 'CNY', 'Returned (USD)']],
+      head: [['Company', 'Count', 'USD', 'EUR', 'CNY', 'Ret.USD', 'Ret.EUR', 'Ret.CNY']],
       body: companyRows,
       styles: { fontSize: 9 },
       headStyles: { fillColor: [16, 185, 129] },
@@ -963,7 +984,9 @@ const sendMessage = async (msg: ClientMessage) => {
         usd: totals.USD,
         eur: totals.EUR,
         cny: totals.CNY,
-        returned,
+        retUsd: returned.USD ?? 0,
+        retEur: returned.EUR ?? 0,
+        retCny: returned.CNY ?? 0,
       };
     });
 
@@ -979,7 +1002,9 @@ const sendMessage = async (msg: ClientMessage) => {
             <td>$${numberFormat(row.usd)}</td>
             <td>${row.eur > 0 ? '&euro;' + numberFormat(row.eur) : '-'}</td>
             <td>${row.cny > 0 ? '&yen;' + numberFormat(row.cny) : '-'}</td>
-            <td>$${numberFormat(row.returned)}</td>
+            <td>${row.retUsd > 0 ? '$' + numberFormat(row.retUsd) : '-'}</td>
+            <td>${row.retEur > 0 ? '&euro;' + numberFormat(row.retEur) : '-'}</td>
+            <td>${row.retCny > 0 ? '&yen;' + numberFormat(row.retCny) : '-'}</td>
           </tr>
         `
       )
@@ -1007,7 +1032,9 @@ const sendMessage = async (msg: ClientMessage) => {
                 <th>USD</th>
                 <th>EUR</th>
                 <th>CNY</th>
-                <th>Баргашт (USD)</th>
+                <th>Барг.USD</th>
+                <th>Барг.EUR</th>
+                <th>Барг.CNY</th>
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -1247,7 +1274,7 @@ const sendMessage = async (msg: ClientMessage) => {
                     company={company}
                     transfers={getCompanyTransfersForCurrentFilter(company.id)}
                     visibleTransfers={getVisibleCompanyTransfers(company.id, company.name)}
-                    returnedAmount={getCompanyReturnForCurrentFilter(company.id)}
+                    returnedAmounts={getCompanyReturnForCurrentFilter(company.id)}
                     canAddTransfers={canEditDailyFields}
                     canEditReturn={canEditDailyFields}
                     filterLabel={tajikRangeLabel(dateFilterMode)}
@@ -1277,12 +1304,13 @@ const sendMessage = async (msg: ClientMessage) => {
                         currency
                       })
                     }
-                    onUpdateReturn={(amount) =>
+                    onUpdateReturn={(amount, currency) =>
                       sendMessage({
                         type: 'UPDATE_RETURN',
                         companyId: company.id,
                         amount,
-                        date: selectedDate
+                        date: selectedDate,
+                        currency
                       })
                     }
                     onDeleteTransfer={(id) => sendMessage({ type: 'DELETE_TRANSFER', id })}
@@ -1417,7 +1445,7 @@ type CompanyCardProps = {
   company: Company;
   transfers: Transfer[];
   visibleTransfers: Transfer[];
-  returnedAmount: number;
+  returnedAmounts: import('./types').ReturnsByCurrency;
   canAddTransfers: boolean;
   canEditReturn: boolean;
   filterLabel: string;
@@ -1429,7 +1457,7 @@ type CompanyCardProps = {
   onMoveToTop: () => void;
   onAddTransfer: (amount: number, note: string, currency: Currency) => void;
   onUpdateTransfer: (id: string, amount: number, note: string, currency: Currency) => void;
-  onUpdateReturn: (amount: number) => void;
+  onUpdateReturn: (amount: number, currency: Currency) => void;
   onDeleteTransfer: (id: string) => void;
   onDeleteCompany: () => void;
 };
@@ -1438,7 +1466,7 @@ function CompanyCard({
   company,
   transfers,
   visibleTransfers,
-  returnedAmount,
+  returnedAmounts,
   canAddTransfers,
   canEditReturn,
   filterLabel,
@@ -1463,13 +1491,20 @@ function CompanyCard({
   const [editCurrency, setEditCurrency] = useState<Currency>('USD');
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const [returnInput, setReturnInput] = useState('');
+  const [returnCurrency, setReturnCurrency] = useState<Currency>('USD');
 
   useEffect(() => {
-    setReturnInput(returnedAmount ? String(returnedAmount) : '');
-  }, [returnedAmount]);
+    const val = returnedAmounts[returnCurrency];
+    setReturnInput(val ? String(val) : '');
+  }, [returnedAmounts, returnCurrency]);
 
   const totals = summarizeByCurrency(transfers);
-  const netUsd = totals.USD - returnedAmount;
+  const returnedUsd = returnedAmounts.USD ?? 0;
+  const returnedEur = returnedAmounts.EUR ?? 0;
+  const returnedCny = returnedAmounts.CNY ?? 0;
+  const netUsd = totals.USD - returnedUsd;
+  const netEur = totals.EUR - returnedEur;
+  const netCny = totals.CNY - returnedCny;
 
   useEffect(() => {
     if (isAdding) amountInputRef.current?.focus();
@@ -1788,16 +1823,28 @@ function CompanyCard({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-red-500 font-medium">
             <ArrowDownCircle className="w-4 h-4" />
-            <span>Баргашт (USD)</span>
+            <span>Баргашт</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">$</span>
+            <select
+              value={returnCurrency}
+              onChange={(e) => setReturnCurrency(e.target.value as Currency)}
+              disabled={!canEditReturn}
+              className={cn(
+                'p-1 rounded border text-xs outline-none',
+                canEditReturn ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-100 text-gray-400'
+              )}
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="CNY">CNY</option>
+            </select>
             <input
               type="number"
               disabled={!canEditReturn}
               className={cn(
-                'w-32 border rounded-lg px-3 py-2 text-sm font-mono text-right outline-none',
+                'w-28 border rounded-lg px-3 py-2 text-sm font-mono text-right outline-none',
                 canEditReturn
                   ? 'bg-white border-gray-200 focus:ring-1 focus:ring-red-400'
                   : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
@@ -1806,7 +1853,7 @@ function CompanyCard({
               onChange={(e) => setReturnInput(e.target.value)}
               onBlur={() => {
                 if (!canEditReturn) return;
-                onUpdateReturn(parseFloat(returnInput) || 0);
+                onUpdateReturn(parseFloat(returnInput) || 0, returnCurrency);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -1819,35 +1866,47 @@ function CompanyCard({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-gray-200 flex items-center justify-between gap-3">
-          <span className="text-base font-bold text-gray-800">Софӣ USD</span>
-          <span
-            className={cn(
-              'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
-              netUsd >= 0 ? 'text-brand-green-dark' : 'text-red-600'
-            )}
-          >
-            {formatCurrency(netUsd, 'USD')}
-          </span>
+        <div className="pt-3 border-t border-gray-200 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-base font-bold text-gray-800">Софӣ USD</span>
+            <span
+              className={cn(
+                'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
+                netUsd >= 0 ? 'text-brand-green-dark' : 'text-red-600'
+              )}
+            >
+              {formatCurrency(netUsd, 'USD')}
+            </span>
+          </div>
+
+          {(totals.EUR > 0 || returnedEur > 0) && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-base font-bold text-gray-800">Софӣ EUR</span>
+              <span
+                className={cn(
+                  'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  netEur >= 0 ? 'text-blue-700' : 'text-red-600'
+                )}
+              >
+                {formatCurrency(netEur, 'EUR')}
+              </span>
+            </div>
+          )}
+
+          {(totals.CNY > 0 || returnedCny > 0) && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-base font-bold text-gray-800">Софӣ CNY</span>
+              <span
+                className={cn(
+                  'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  netCny >= 0 ? 'text-yellow-700' : 'text-red-600'
+                )}
+              >
+                {formatCurrency(netCny, 'CNY')}
+              </span>
+            </div>
+          )}
         </div>
-
-        {totals.EUR > 0 && (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-base font-bold text-gray-800">Ҳамагӣ EUR</span>
-            <span className="text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-blue-700">
-              {formatCurrency(totals.EUR, 'EUR')}
-            </span>
-          </div>
-        )}
-
-        {totals.CNY > 0 && (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-base font-bold text-gray-800">Ҳамагӣ CNY</span>
-            <span className="text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-yellow-700">
-              {formatCurrency(totals.CNY, 'CNY')}
-            </span>
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -1891,9 +1950,9 @@ function AnalyticsView({
 
       return (
         sum +
-        Object.entries(dateReturns).reduce((innerSum, [companyId, amount]) => {
+        Object.entries(dateReturns).reduce((innerSum, [companyId, currencyMap]) => {
           if (!companyIds.includes(companyId)) return innerSum;
-          return innerSum + amount;
+          return innerSum + (currencyMap.USD ?? 0);
         }, 0)
       );
     }, 0);

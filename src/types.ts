@@ -24,7 +24,8 @@ export interface Transfer {
   currency: Currency;
 }
 
-export type ReturnsByDate = Record<string, Record<string, number>>;
+export type ReturnsByCurrency = Partial<Record<Currency, number>>;
+export type ReturnsByDate = Record<string, Record<string, ReturnsByCurrency>>;
 
 export interface AppData {
   banks: Bank[];
@@ -57,6 +58,7 @@ export type ClientMessage =
       companyId: string;
       amount: number;
       date: string;
+      currency: Currency;
     }
   | {
       type: "MOVE_COMPANY";
