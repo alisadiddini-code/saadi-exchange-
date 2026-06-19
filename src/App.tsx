@@ -29,7 +29,8 @@ import {
   endOfWeek,
   startOfMonth,
   endOfMonth,
-  eachDayOfInterval
+  eachDayOfInterval,
+  eachMonthOfInterval
 } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -1912,6 +1913,120 @@ function CompanyCard({
   );
 }
 
+// ── Analytics dashboard types ────────────────────────────────────────────
+type AnalyticsPeriod = 'day' | 'week' | 'month' | 'all';
+type AnalyticsCurrencyFilter = 'ALL' | Currency;
+
+/** Sum returns per currency for a set of companyIds inside an optional date range */
+function sumReturnsByCurrencyInRange(
+  returnsMap: AppData['returns'],
+  companyIds: string[],
+  start: Date | null,
+  end: Date | null
+): Record<Currency, number> {
+  const result: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  Object.entries(returnsMap).forEach(([dateKey, companyMap]) => {
+    if (start && end && !isDateWithinRange(dateKey, start, end)) return;
+    Object.entries(companyMap).forEach(([companyId, currencyMap]) => {
+      if (companyIds.length && !companyIds.includes(companyId)) return;
+      (Object.keys(currencyMap) as Currency[]).forEach((cur) => {
+        result[cur] = (result[cur] || 0) + (currencyMap[cur] ?? 0);
+      });
+    });
+  });
+  return result;
+}
+
+function getPeriodRange(selectedDate: string, period: AnalyticsPeriod): { start: Date; end: Date } | null {
+  if (period === 'all') return null;
+  const d = parseISO(`${selectedDate}T00:00:00`);
+  if (period === 'day') return { start: d, end: d };
+  if (period === 'week') return {
+    start: startOfWeek(d, { weekStartsOn: 1 }),
+    end: endOfWeek(d, { weekStartsOn: 1 }),
+  };
+  return { start: startOfMonth(d), end: endOfMonth(d) };
+}
+
+function getPeriodLabel(selectedDate: string, period: AnalyticsPeriod): string {
+  const d = parseISO(`${selectedDate}T00:00:00`);
+  if (period === 'day') return format(d, 'dd.MM.yyyy');
+  if (period === 'week') {
+    const s = startOfWeek(d, { weekStartsOn: 1 });
+    const e = endOfWeek(d, { weekStartsOn: 1 });
+    return `${format(s, 'dd.MM')} – ${format(e, 'dd.MM.yyyy')}`;
+  }
+  if (period === 'month') return format(d, 'MM.yyyy');
+  return 'Ҳамаи давра';
+}
+
+type TrendPoint = {
+  label: string;
+  key: string;
+  netUsd: number; netEur: number; netCny: number;
+  totalUsd: number; totalEur: number; totalCny: number;
+  count: number;
+};
+
+function buildAnalyticsTrend(
+  transfers: Transfer[],
+  returnsMap: AppData['returns'],
+  companyIds: string[],
+  period: AnalyticsPeriod,
+  selectedDate: string
+): TrendPoint[] {
+  if (period === 'day') return [];
+
+  if (period === 'all') {
+    if (!transfers.length) return [];
+    const allDates = [...new Set(transfers.map((t) => t.date))].sort();
+    const firstMonth = startOfMonth(parseISO(`${allDates[0]}T00:00:00`));
+    const months = eachMonthOfInterval({ start: firstMonth, end: endOfMonth(new Date()) });
+    return months.map((monthStart) => {
+      const end = endOfMonth(monthStart);
+      const mt = transfers.filter((t) => isDateWithinRange(t.date, monthStart, end));
+      const totals = summarizeByCurrency(mt);
+      const ret = sumReturnsByCurrencyInRange(returnsMap, companyIds, monthStart, end);
+      return {
+        label: format(monthStart, 'MM.yy'),
+        key: format(monthStart, 'yyyy-MM'),
+        netUsd: totals.USD - ret.USD,
+        netEur: totals.EUR - ret.EUR,
+        netCny: totals.CNY - ret.CNY,
+        totalUsd: totals.USD,
+        totalEur: totals.EUR,
+        totalCny: totals.CNY,
+        count: mt.length,
+      };
+    });
+  }
+
+  const range = getPeriodRange(selectedDate, period);
+  if (!range) return [];
+  const days = eachDayOfInterval({ start: range.start, end: range.end });
+  const labelFmt = period === 'month' ? 'dd' : 'dd.MM';
+
+  return days.map((day) => {
+    const key = format(day, 'yyyy-MM-dd');
+    const dayD = parseISO(`${key}T00:00:00`);
+    const dt = transfers.filter((t) => t.date === key);
+    const totals = summarizeByCurrency(dt);
+    const ret = sumReturnsByCurrencyInRange(returnsMap, companyIds, dayD, dayD);
+    return {
+      label: format(day, labelFmt),
+      key,
+      netUsd: totals.USD - ret.USD,
+      netEur: totals.EUR - ret.EUR,
+      netCny: totals.CNY - ret.CNY,
+      totalUsd: totals.USD,
+      totalEur: totals.EUR,
+      totalCny: totals.CNY,
+      count: dt.length,
+    };
+  });
+}
+
+// ── AnalyticsViewProps (unchanged interface) ──────────────────────────────
 type AnalyticsViewProps = {
   data: AppData;
   selectedDate: string;
@@ -1919,12 +2034,10 @@ type AnalyticsViewProps = {
   companies: Company[];
 };
 
-function AnalyticsView({
-  data,
-  selectedDate,
-  selectedBank,
-  companies
-}: AnalyticsViewProps) {
+function AnalyticsView({ data, selectedDate, selectedBank, companies }: AnalyticsViewProps) {
+  const [period, setPeriod] = useState<AnalyticsPeriod>('day');
+  const [currencyFilter, setCurrencyFilter] = useState<AnalyticsCurrencyFilter>('ALL');
+
   if (!selectedBank) {
     return (
       <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
@@ -1935,125 +2048,359 @@ function AnalyticsView({
     );
   }
 
-  const companyIds = companies.map((company) => company.id);
-  const bankTransfers = data.transfers.filter((transfer) => transfer.bankId === selectedBank.id);
+  const companyIds = useMemo(() => companies.map((c) => c.id), [companies]);
 
-  const selectedDateObj = parseISO(`${selectedDate}T00:00:00`);
-  const weekStart = startOfWeek(selectedDateObj, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(selectedDateObj, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(selectedDateObj);
-  const monthEnd = endOfMonth(selectedDateObj);
-
-  const getReturnedTotalInRange = (start: Date, end: Date) => {
-    return Object.entries(data.returns).reduce((sum, [dateKey, dateReturns]) => {
-      if (!isDateWithinRange(dateKey, start, end)) return sum;
-
-      return (
-        sum +
-        Object.entries(dateReturns).reduce((innerSum, [companyId, currencyMap]) => {
-          if (!companyIds.includes(companyId)) return innerSum;
-          return innerSum + (currencyMap.USD ?? 0);
-        }, 0)
-      );
-    }, 0);
-  };
-
-  const dailyTransfers = bankTransfers.filter((transfer) => transfer.date === selectedDate);
-  const weeklyTransfers = bankTransfers.filter((transfer) => isDateWithinRange(transfer.date, weekStart, weekEnd));
-  const monthlyTransfers = bankTransfers.filter((transfer) => isDateWithinRange(transfer.date, monthStart, monthEnd));
-
-  const dailyTotals = summarizeByCurrency(dailyTransfers);
-  const weeklyTotals = summarizeByCurrency(weeklyTransfers);
-  const monthlyTotals = summarizeByCurrency(monthlyTransfers);
-
-  const dailyReturnTotal = getReturnedTotalInRange(selectedDateObj, selectedDateObj);
-  const weeklyReturnTotal = getReturnedTotalInRange(weekStart, weekEnd);
-  const monthlyReturnTotal = getReturnedTotalInRange(monthStart, monthEnd);
-
-  const chartSeries = buildDailySeries(
-    bankTransfers,
-    data.returns,
-    companyIds,
-    weekStart,
-    weekEnd
+  const bankTransfers = useMemo(
+    () => data.transfers.filter((t) => t.bankId === selectedBank.id),
+    [data.transfers, selectedBank.id]
   );
 
-  const usdSeries = chartSeries.map((item) => ({ label: item.label, value: item.netUsd }));
-  const eurSeries = chartSeries.map((item) => ({ label: item.label, value: item.totalEur }));
-  const cnySeries = chartSeries.map((item) => ({ label: item.label, value: item.totalCny }));
+  const range = useMemo(() => getPeriodRange(selectedDate, period), [selectedDate, period]);
 
-  const hasEur = dailyTotals.EUR > 0 || weeklyTotals.EUR > 0 || monthlyTotals.EUR > 0;
+  const periodTransfers = useMemo(() => {
+    if (!range) return bankTransfers;
+    return bankTransfers.filter((t) => isDateWithinRange(t.date, range.start, range.end));
+  }, [bankTransfers, range]);
+
+  const transferTotals = useMemo(() => summarizeByCurrency(periodTransfers), [periodTransfers]);
+
+  const periodReturns = useMemo(
+    () => sumReturnsByCurrencyInRange(data.returns, companyIds, range?.start ?? null, range?.end ?? null),
+    [data.returns, companyIds, range]
+  );
+
+  const netTotals = useMemo<Record<Currency, number>>(
+    () => ({
+      USD: transferTotals.USD - periodReturns.USD,
+      EUR: transferTotals.EUR - periodReturns.EUR,
+      CNY: transferTotals.CNY - periodReturns.CNY,
+    }),
+    [transferTotals, periodReturns]
+  );
+
+  const countByCurrency = useMemo(
+    () => ({
+      USD: periodTransfers.filter((t) => t.currency === 'USD').length,
+      EUR: periodTransfers.filter((t) => t.currency === 'EUR').length,
+      CNY: periodTransfers.filter((t) => t.currency === 'CNY').length,
+    }),
+    [periodTransfers]
+  );
+
+  const avgByCurrency = useMemo<Record<Currency, number>>(
+    () => ({
+      USD: countByCurrency.USD > 0 ? transferTotals.USD / countByCurrency.USD : 0,
+      EUR: countByCurrency.EUR > 0 ? transferTotals.EUR / countByCurrency.EUR : 0,
+      CNY: countByCurrency.CNY > 0 ? transferTotals.CNY / countByCurrency.CNY : 0,
+    }),
+    [transferTotals, countByCurrency]
+  );
+
+  const trendData = useMemo(
+    () => buildAnalyticsTrend(bankTransfers, data.returns, companyIds, period, selectedDate),
+    [bankTransfers, data.returns, companyIds, period, selectedDate]
+  );
+
+  const companyBreakdown = useMemo(() => {
+    return companies
+      .map((company) => {
+        const ct = periodTransfers.filter((t) => t.companyId === company.id);
+        const totals = summarizeByCurrency(ct);
+        const ret = sumReturnsByCurrencyInRange(
+          data.returns, [company.id], range?.start ?? null, range?.end ?? null
+        );
+        return {
+          name: company.name,
+          count: ct.length,
+          usd: totals.USD, eur: totals.EUR, cny: totals.CNY,
+          retUsd: ret.USD, retEur: ret.EUR, retCny: ret.CNY,
+          netUsd: totals.USD - ret.USD,
+          netEur: totals.EUR - ret.EUR,
+          netCny: totals.CNY - ret.CNY,
+        };
+      })
+      .filter((c) => c.count > 0)
+      .sort((a, b) => (b.usd + b.eur + b.cny) - (a.usd + a.eur + a.cny));
+  }, [companies, periodTransfers, data.returns, range]);
+
+  const periodLabel = getPeriodLabel(selectedDate, period);
+  const hasAnyData = periodTransfers.length > 0;
+  const hasEur = transferTotals.EUR > 0 || periodReturns.EUR > 0;
+  const hasCny = transferTotals.CNY > 0 || periodReturns.CNY > 0;
+  const showChart = period !== 'day' && trendData.length > 0;
+
+  const chartPeriodLabel =
+    period === 'all' ? 'Тренди моҳона' :
+    period === 'month' ? 'Рӯзона дар моҳ' : 'Рӯзона дар ҳафта';
+
+  const usdTrend = useMemo(
+    () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netUsd, 0) })),
+    [trendData]
+  );
+  const eurTrend = useMemo(
+    () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netEur, 0) })),
+    [trendData]
+  );
+  const cnyTrend = useMemo(
+    () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netCny, 0) })),
+    [trendData]
+  );
+
+  const colorMap: Record<Currency, { text: string; bg: string; btnActive: string }> = {
+    USD: { text: 'text-emerald-700', bg: 'bg-emerald-50', btnActive: 'bg-emerald-500 text-white' },
+    EUR: { text: 'text-blue-700',    bg: 'bg-blue-50',    btnActive: 'bg-blue-500 text-white'    },
+    CNY: { text: 'text-yellow-700',  bg: 'bg-yellow-50',  btnActive: 'bg-yellow-500 text-white'  },
+  };
+
+  const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
+    day: 'Рӯз', week: 'Ҳафта', month: 'Моҳ', all: 'Ҳама',
+  };
+
+  const activeCurrencies: Currency[] = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
+    (cur) => currencyFilter === 'ALL' || currencyFilter === cur
+  );
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <MetricCard
-          title="USD рӯз"
-          subtitle={format(parseISO(selectedDate), 'dd.MM.yyyy')}
-          value={formatCurrency(dailyTotals.USD - dailyReturnTotal, 'USD')}
-          extra={`Шумора: ${dailyTransfers.length}`}
-        />
-        <MetricCard
-          title="EUR рӯз"
-          subtitle={format(parseISO(selectedDate), 'dd.MM.yyyy')}
-          value={formatCurrency(dailyTotals.EUR, 'EUR')}
-          extra="Евро"
-        />
-        <MetricCard
-          title="CNY рӯз"
-          subtitle={format(parseISO(selectedDate), 'dd.MM.yyyy')}
-          value={formatCurrency(dailyTotals.CNY, 'CNY')}
-          extra="Юан"
-        />
-        <MetricCard
-          title="USD ҳафта"
-          subtitle={`${format(weekStart, 'dd.MM')} - ${format(weekEnd, 'dd.MM')}`}
-          value={formatCurrency(weeklyTotals.USD - weeklyReturnTotal, 'USD')}
-          extra={`Шумора: ${weeklyTransfers.length}`}
-        />
-        <MetricCard
-          title="EUR ҳафта"
-          subtitle={`${format(weekStart, 'dd.MM')} - ${format(weekEnd, 'dd.MM')}`}
-          value={formatCurrency(weeklyTotals.EUR, 'EUR')}
-          extra="Евро"
-        />
-        <MetricCard
-          title="CNY ҳафта"
-          subtitle={`${format(weekStart, 'dd.MM')} - ${format(weekEnd, 'dd.MM')}`}
-          value={formatCurrency(weeklyTotals.CNY, 'CNY')}
-          extra="Юан"
-        />
-        <MetricCard
-          title="USD моҳ"
-          subtitle={format(monthStart, 'MM.yyyy')}
-          value={formatCurrency(monthlyTotals.USD - monthlyReturnTotal, 'USD')}
-          extra={`Шумора: ${monthlyTransfers.length}`}
-        />
-        <MetricCard
-          title="EUR моҳ"
-          subtitle={format(monthStart, 'MM.yyyy')}
-          value={formatCurrency(monthlyTotals.EUR, 'EUR')}
-          extra="Евро"
-        />
-        <MetricCard
-          title="CNY моҳ"
-          subtitle={format(monthStart, 'MM.yyyy')}
-          value={formatCurrency(monthlyTotals.CNY, 'CNY')}
-          extra="Юан"
-        />
+      {/* ── Controls ── */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Period tabs */}
+        <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
+          {(['day', 'week', 'month', 'all'] as AnalyticsPeriod[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPeriod(p)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors',
+                period === p ? 'bg-brand-green text-white' : 'text-gray-500 hover:bg-gray-100'
+              )}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
+        {/* Currency filter */}
+        <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
+          {(['ALL', 'USD', 'EUR', 'CNY'] as AnalyticsCurrencyFilter[]).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCurrencyFilter(c)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors',
+                currencyFilter === c
+                  ? c === 'USD' ? 'bg-emerald-500 text-white'
+                    : c === 'EUR' ? 'bg-blue-500 text-white'
+                    : c === 'CNY' ? 'bg-yellow-500 text-white'
+                    : 'bg-brand-green text-white'
+                  : 'text-gray-500 hover:bg-gray-100'
+              )}
+            >
+              {c === 'ALL' ? 'Ҳама' : c}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-sm font-medium text-gray-600 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+          {selectedBank.name} · {periodLabel}
+        </span>
+
+        {period === 'all' && bankTransfers.length > 0 && (
+          <span className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+            Ҳамагӣ {bankTransfers.length} гузариш
+          </span>
+        )}
       </div>
 
-      <div className={`grid grid-cols-1 xl:grid-cols-${hasEur ? '3' : '2'} gap-6`}>
-        <SmallBarChart title="Софии USD дар ҳафта" data={usdSeries} colorClass="bg-emerald-500" />
-        {hasEur && (
-          <SmallBarChart title="Ҳаҷми EUR дар ҳафта" data={eurSeries} colorClass="bg-blue-500" />
+      {/* ── Per-currency summary blocks ── */}
+      <div className="grid grid-cols-1 gap-4">
+        {activeCurrencies.map((cur) => {
+          const gross = transferTotals[cur];
+          const ret = periodReturns[cur];
+          const net = netTotals[cur];
+          const cnt = countByCurrency[cur];
+          const avg = avgByCurrency[cur];
+          if (currencyFilter === 'ALL' && gross === 0 && ret === 0) return null;
+          return (
+            <div key={cur} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {/* currency header */}
+              <div className={cn('px-5 py-3 border-b border-gray-100 flex items-center gap-3', colorMap[cur].bg)}>
+                <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
+                  {currencySymbol(cur)} {cur}
+                </span>
+                <span className="text-xs text-gray-400 ml-auto">{cnt} гузариш</span>
+              </div>
+              {/* metric columns */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-gray-50">
+                <div className="px-5 py-4">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Гузариш</p>
+                  <p className={cn('text-xl font-bold font-mono mt-2', colorMap[cur].text)}>
+                    {formatCurrency(gross, cur)}
+                  </p>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Баргашт</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-red-500">
+                    {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300">—</span>}
+                  </p>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Соф</p>
+                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600')}>
+                    {formatCurrency(net, cur)}
+                  </p>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Шумора</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-gray-700">{cnt}</p>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Миёна</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-gray-500">
+                    {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300">—</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {!hasAnyData && (
+          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-400 font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
+          </div>
         )}
-        <SmallBarChart title="Ҳаҷми CNY дар ҳафта" data={cnySeries} colorClass="bg-yellow-500" />
       </div>
+
+      {/* ── Trend charts ── */}
+      {showChart && (
+        <div
+          className={cn(
+            'grid gap-6',
+            (currencyFilter === 'ALL' ? 1 + (hasEur ? 1 : 0) + (hasCny ? 1 : 0) : 1) >= 3
+              ? 'xl:grid-cols-3'
+              : (currencyFilter === 'ALL' ? 1 + (hasEur ? 1 : 0) + (hasCny ? 1 : 0) : 1) >= 2
+              ? 'xl:grid-cols-2'
+              : 'grid-cols-1'
+          )}
+        >
+          {(currencyFilter === 'ALL' || currencyFilter === 'USD') && transferTotals.USD > 0 && (
+            <SmallBarChart
+              title={`${chartPeriodLabel} · USD Соф`}
+              data={usdTrend}
+              colorClass="bg-emerald-500"
+            />
+          )}
+          {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && hasEur && (
+            <SmallBarChart
+              title={`${chartPeriodLabel} · EUR Соф`}
+              data={eurTrend}
+              colorClass="bg-blue-500"
+            />
+          )}
+          {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && hasCny && (
+            <SmallBarChart
+              title={`${chartPeriodLabel} · CNY Соф`}
+              data={cnyTrend}
+              colorClass="bg-yellow-500"
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── Company breakdown table ── */}
+      {companyBreakdown.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+            <h3 className="font-bold text-gray-800">Таҳлил аз рӯйи ширкат</h3>
+            <span className="text-xs text-gray-400 ml-auto">{companyBreakdown.length} ширкат</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-max">
+              <thead>
+                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-semibold sticky left-0 bg-gray-50">Ширкат</th>
+                  <th className="text-right px-4 py-3 font-semibold">Шум.</th>
+                  {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
+                    <>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-600">USD</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-700">Соф$</th>
+                    </>
+                  )}
+                  {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
+                    <>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-600">EUR</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.€</th>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-700">Соф€</th>
+                    </>
+                  )}
+                  {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
+                    <>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-600">CNY</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-700">Соф¥</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {companyBreakdown.map((row, i) => (
+                  <tr key={i} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-gray-800 sticky left-0 bg-white">{row.name}</td>
+                    <td className="text-right px-4 py-3 font-mono text-gray-500">{row.count}</td>
+                    {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
+                      <>
+                        <td className="text-right px-4 py-3 font-mono text-emerald-700">
+                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200">—</span>}
+                        </td>
+                        <td className="text-right px-4 py-3 font-mono text-red-400">
+                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200">—</span>}
+                        </td>
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700' : 'text-red-600')}>
+                          {formatCurrency(row.netUsd, 'USD')}
+                        </td>
+                      </>
+                    )}
+                    {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
+                      <>
+                        <td className="text-right px-4 py-3 font-mono text-blue-700">
+                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200">—</span>}
+                        </td>
+                        <td className="text-right px-4 py-3 font-mono text-red-400">
+                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200">—</span>}
+                        </td>
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700' : 'text-red-600')}>
+                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200">—</span>}
+                        </td>
+                      </>
+                    )}
+                    {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
+                      <>
+                        <td className="text-right px-4 py-3 font-mono text-yellow-700">
+                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200">—</span>}
+                        </td>
+                        <td className="text-right px-4 py-3 font-mono text-red-400">
+                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200">—</span>}
+                        </td>
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700' : 'text-red-600')}>
+                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200">—</span>}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 type MetricCardProps = {
   title: string;
   subtitle: string;
