@@ -36,7 +36,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { AppData, Bank, ClientMessage, Company, Currency, ServerMessage, Transfer } from './types';
+import { AppData, Bank, ClientMessage, Company, Currency, DataSourceMode, Order, ServerMessage, Transfer } from './types';
+import { loadYusufOrders } from './orders';
 import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
 
@@ -343,6 +344,11 @@ export default function App() {
   const [companySortMode, setCompanySortMode] = useState<CompanySortMode>(() =>
     getStoredString('saadi_company_sort_mode', 'manual') as CompanySortMode
   );
+
+  // Phase 2A: data source toggle
+  const [sourceMode, setSourceMode] = useState<DataSourceMode>(
+    () => (localStorage.getItem('saadi_source_mode') as DataSourceMode) || 'manual'
+  );
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -370,6 +376,10 @@ export default function App() {
       localStorage.setItem('saadi_selected_bank_id', selectedBankId);
     }
   }, [selectedBankId]);
+
+  useEffect(() => {
+    localStorage.setItem('saadi_source_mode', sourceMode);
+  }, [sourceMode]);
 
 //   useEffect(() => {
 //   const wsBase =
@@ -415,6 +425,16 @@ export default function App() {
 // }, []);
 
 const loadAllFromSupabase = async () => {
+    // Phase 2A: Yusuf Mode
+    if (sourceMode === 'yusuf') {
+      const freshData = await loadYusufOrders();
+      setData(freshData);
+      if (freshData.banks.length > 0 && !selectedBankId) {
+        setSelectedBankId(freshData.banks[0].id);
+      }
+      setWsConnected(true);
+      return freshData;
+    }
   const fallbackDate = selectedDate || format(new Date(), 'yyyy-MM-dd');
 
   const { data: banksData, error: banksError } = await fetchAllSupabaseRows('banks', {
@@ -509,9 +529,10 @@ const loadAllFromSupabase = async () => {
   return freshData;
 };
 
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   loadAllFromSupabase();
-}, []);
+}, [sourceMode]); // re-fetch when source mode toggles
 
 
 const sendMessage = async (msg: ClientMessage) => {
@@ -1127,6 +1148,28 @@ const sendMessage = async (msg: ClientMessage) => {
               <BarChart3 className="w-4 h-4" />
               Таҳлил
             </button>
+
+            {/* Phase 2A: Source Mode toggle */}
+            <div className="w-px h-5 bg-gray-200" />
+            <button
+              type="button"
+              onClick={() =>
+                setSourceMode((prev) => (prev === 'manual' ? 'yusuf' : 'manual'))
+              }
+              className={cn(
+                'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-1.5',
+                sourceMode === 'yusuf'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400/60'
+              )}
+              title={
+                sourceMode === 'yusuf'
+                  ? 'Yusuf Mode'
+                  : 'Manual Mode'
+              }
+            >
+              {sourceMode === 'yusuf' ? '🟢 Yusuf' : '🔵 Дастӣ'}
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -1276,8 +1319,8 @@ const sendMessage = async (msg: ClientMessage) => {
                     transfers={getCompanyTransfersForCurrentFilter(company.id)}
                     visibleTransfers={getVisibleCompanyTransfers(company.id, company.name)}
                     returnedAmounts={getCompanyReturnForCurrentFilter(company.id)}
-                    canAddTransfers={canEditDailyFields}
-                    canEditReturn={canEditDailyFields}
+                    canAddTransfers={canEditDailyFields && sourceMode === 'manual'}
+                    canEditReturn={canEditDailyFields && sourceMode === 'manual'}
                     filterLabel={tajikRangeLabel(dateFilterMode)}
                     isIbt={selectedBank.name.toUpperCase() === 'IBT'}
                     canMoveUp={companySortMode === 'manual' && index > 0}
@@ -1716,6 +1759,20 @@ function CompanyCard({
                               {t.currency}
                             </span>
                           </div>
+                          {(t as Order).sourceType === 'whatsapp' && (
+                            <div className="flex items-center gap-1 flex-wrap mt-1">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">🟢 Auto</span>
+                              {(t as Order).workflowStatus && (t as Order).workflowStatus !== 'received' && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-700 border border-blue-200">{(t as Order).workflowStatus}</span>
+                              )}
+                              {(t as Order).extractionStatus === 'complete' && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-gray-50 text-gray-500 border border-gray-200">✓ {Math.round(((t as Order).confidenceScore ?? 0) * 100)}%</span>
+                              )}
+                              {(t as Order).contractNumber && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-violet-50 text-violet-700 border border-violet-200">📄 {(t as Order).contractNumber}</span>
+                              )}
+                            </div>
+                          )}
                           {t.note && (
                             <div className="text-[10px] text-gray-500 mt-0.5 break-all">{t.note}</div>
                           )}
@@ -2451,4 +2508,4 @@ function Modal({
       </motion.div>
     </div>
   );
-}
+    }
