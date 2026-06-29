@@ -73,3 +73,17 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: "INIT"; data: AppData }
   | { type: "UPDATE"; data: AppData };
+
+// ── Phase 2A additions ───────────────────────────────────────────────────────
+export type DataSourceMode = 'manual' | 'yusuf';
+export type OrderSourceType = 'manual' | 'whatsapp' | 'archive';
+export interface Order extends Transfer {
+  sourceType: OrderSourceType;
+  workflowStatus?: string;
+  extractionStatus?: string;
+  confidenceScore?: number;
+  orderNumber?: number;
+  contractNumber?: string;
+  companyName?: string;
+  bankName?: string;
+}
