@@ -37,7 +37,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AppData, Bank, ClientMessage, Company, Currency, DataSourceMode, Order, ServerMessage, Transfer } from './types';
-import { loadYusufOrders } from './orders';
+import { loadYusufOrders, saveYusufMapping } from './orders';
 import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
 
@@ -85,8 +85,8 @@ function getActiveRange(selectedDate: string, filterMode: DateFilterMode) {
 }
 
 function currencySymbol(currency: Currency) {
-  if (currency === 'CNY') return '¥';
-  if (currency === 'EUR') return '€';
+  if (currency === 'CNY') return 'Â¥';
+  if (currency === 'EUR') return 'â¬';
   return '$';
 }
 
@@ -115,16 +115,16 @@ function formatRangeLabel(selectedDate: string, filterMode: DateFilterMode) {
   const d = parseISO(`${selectedDate}T00:00:00`);
 
   if (filterMode === 'day') return format(d, 'dd.MM.yyyy');
-  if (filterMode === 'week') return `Ҳафта аз ${format(startOfWeek(d, { weekStartsOn: 1 }), 'dd.MM.yyyy')}`;
+  if (filterMode === 'week') return `Ò²Ð°ÑÑÐ° Ð°Ð· ${format(startOfWeek(d, { weekStartsOn: 1 }), 'dd.MM.yyyy')}`;
   if (filterMode === 'month') return format(d, 'MM.yyyy');
-  return 'Ҳама давра';
+  return 'Ò²Ð°Ð¼Ð° Ð´Ð°Ð²ÑÐ°';
 }
 
 function tajikRangeLabel(filterMode: DateFilterMode) {
-  if (filterMode === 'day') return 'Рӯз';
-  if (filterMode === 'week') return 'Ҳафта';
-  if (filterMode === 'month') return 'Моҳ';
-  return 'Ҳама';
+  if (filterMode === 'day') return 'Ð Ó¯Ð·';
+  if (filterMode === 'week') return 'Ò²Ð°ÑÑÐ°';
+  if (filterMode === 'month') return 'ÐÐ¾Ò³';
+  return 'Ò²Ð°Ð¼Ð°';
 }
 
 function numberFormat(value: number) {
@@ -349,6 +349,7 @@ export default function App() {
   const [sourceMode, setSourceMode] = useState<DataSourceMode>(
     () => (localStorage.getItem('saadi_source_mode') as DataSourceMode) || 'manual'
   );
+  const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -380,6 +381,13 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('saadi_source_mode', sourceMode);
   }, [sourceMode]);
+
+  const handleAssignYusufOrder = async (saadiCompanyId: string) => {
+    if (!assigningOrder || !assigningOrder.companyName) return;
+    await saveYusufMapping(assigningOrder.companyName, assigningOrder.bankId, saadiCompanyId);
+    setAssigningOrder(null);
+    await loadAllFromSupabase();
+  };
 
 //   useEffect(() => {
 //   const wsBase =
@@ -540,7 +548,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
   if (msg.type === 'ADD_BANK') {
     const { error } = await supabase.from('banks').insert({ name: msg.name });
-    if (error) return alert('خطا در افزودن بانک: ' + error.message);
+    if (error) return alert('Ø®Ø·Ø§ Ø¯Ø± Ø§ÙØ²ÙØ¯Ù Ø¨Ø§ÙÚ©: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
@@ -551,7 +559,7 @@ const sendMessage = async (msg: ClientMessage) => {
       bank_id: msg.bankId,
       sort_order: data.companies.filter((c) => c.bankId === msg.bankId).length,
     });
-    if (error) return alert('خطا در افزودن شرکت: ' + error.message);
+    if (error) return alert('Ø®Ø·Ø§ Ø¯Ø± Ø§ÙØ²ÙØ¯Ù Ø´Ø±Ú©Øª: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
@@ -575,20 +583,20 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error || !savedTransfer) {
       console.error('ADD_TRANSFER ERROR:', error);
-      alert('Хато дар иловаи интиқол: ' + (error?.message || 'Маълумот сабт нашуд'));
+      alert('Ð¥Ð°ÑÐ¾ Ð´Ð°Ñ Ð¸Ð»Ð¾Ð²Ð°Ð¸ Ð¸Ð½ÑÐ¸ÒÐ¾Ð»: ' + (error?.message || 'ÐÐ°ÑÐ»ÑÐ¼Ð¾Ñ ÑÐ°Ð±Ñ Ð½Ð°ÑÑÐ´'));
       return;
     }
 
     const mappedTransfer = mapSupabaseTransfer(savedTransfer, msg.date);
     console.log('TRANSFER SAVED:', savedTransfer);
 
-    // 1) Дарҳол дар экран нишон медиҳем, то оператор корро идома дода тавонад.
+    // 1) ÐÐ°ÑÒ³Ð¾Ð» Ð´Ð°Ñ ÑÐºÑÐ°Ð½ Ð½Ð¸ÑÐ¾Ð½ Ð¼ÐµÐ´Ð¸Ò³ÐµÐ¼, ÑÐ¾ Ð¾Ð¿ÐµÑÐ°ÑÐ¾Ñ ÐºÐ¾ÑÑÐ¾ Ð¸Ð´Ð¾Ð¼Ð° Ð´Ð¾Ð´Ð° ÑÐ°Ð²Ð¾Ð½Ð°Ð´.
     setData((prev) => ({
       ...prev,
       transfers: sortTransfersByTime(mergeTransfer(prev.transfers, mappedTransfer)),
     }));
 
-    // 2) Пас аз сабти воқеӣ аз Supabase дубора мехонем, то refresh ҳам дуруст кор кунад.
+    // 2) ÐÐ°Ñ Ð°Ð· ÑÐ°Ð±ÑÐ¸ Ð²Ð¾ÒÐµÓ£ Ð°Ð· Supabase Ð´ÑÐ±Ð¾ÑÐ° Ð¼ÐµÑÐ¾Ð½ÐµÐ¼, ÑÐ¾ refresh Ò³Ð°Ð¼ Ð´ÑÑÑÑÑ ÐºÐ¾Ñ ÐºÑÐ½Ð°Ð´.
     window.setTimeout(() => {
       loadAllFromSupabase().then((freshData) => {
         if (!freshData) return;
@@ -622,7 +630,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error || !updatedTransfer) {
       console.error('UPDATE_TRANSFER ERROR:', error);
-      alert('خطا дар вироиши гузариш: ' + (error?.message || 'Маълумот нав нашуд'));
+      alert('Ø®Ø·Ø§ Ð´Ð°Ñ Ð²Ð¸ÑÐ¾Ð¸ÑÐ¸ Ð³ÑÐ·Ð°ÑÐ¸Ñ: ' + (error?.message || 'ÐÐ°ÑÐ»ÑÐ¼Ð¾Ñ Ð½Ð°Ð² Ð½Ð°ÑÑÐ´'));
       return;
     }
 
@@ -645,7 +653,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error) {
       console.error('DELETE_TRANSFER ERROR:', error);
-      alert('خطا дар حذف انتقال: ' + error.message);
+      alert('Ø®Ø·Ø§ Ð´Ð°Ñ Ø­Ø°Ù Ø§ÙØªÙØ§Ù: ' + error.message);
       return;
     }
 
@@ -682,7 +690,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error) {
       console.error('UPDATE_RETURN ERROR:', error);
-      alert('خطа дар ثبت برگашт: ' + error.message);
+      alert('Ø®Ø·Ð° Ð´Ð°Ñ Ø«Ø¨Øª Ø¨Ø±Ú¯Ð°ÑÑ: ' + error.message);
       return;
     }
 
@@ -731,7 +739,7 @@ const sendMessage = async (msg: ClientMessage) => {
       supabase.from('companies').update({ sort_order: currentOrder }).eq('id', target.id),
     ]);
 
-    if (e1 || e2) return alert('Хато дар иваз кардани ҷой: ' + (e1?.message || e2?.message));
+    if (e1 || e2) return alert('Ð¥Ð°ÑÐ¾ Ð´Ð°Ñ Ð¸Ð²Ð°Ð· ÐºÐ°ÑÐ´Ð°Ð½Ð¸ Ò·Ð¾Ð¹: ' + (e1?.message || e2?.message));
     await loadAllFromSupabase();
     return;
   }
@@ -751,21 +759,21 @@ const sendMessage = async (msg: ClientMessage) => {
       .update({ sort_order: minOrder - 1 })
       .eq('id', msg.companyId);
 
-    if (error) return alert('Хато: ' + error.message);
+    if (error) return alert('Ð¥Ð°ÑÐ¾: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
 
   if (msg.type === 'DELETE_COMPANY') {
     const { error } = await supabase.from('companies').delete().eq('id', msg.id);
-    if (error) return alert('خطا дар حذف ширкат: ' + error.message);
+    if (error) return alert('Ø®Ø·Ø§ Ð´Ð°Ñ Ø­Ø°Ù ÑÐ¸ÑÐºÐ°Ñ: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
 
   if (msg.type === 'DELETE_BANK') {
     const { error } = await supabase.from('banks').delete().eq('id', msg.id);
-    if (error) return alert('خطا дар حذف бонк: ' + error.message);
+    if (error) return alert('Ø®Ø·Ø§ Ð´Ð°Ñ Ø­Ø°Ù Ð±Ð¾Ð½Ðº: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
@@ -897,7 +905,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
   const handleDeleteCompany = (company: Company) => {
     const confirmDelete = window.confirm(
-      `Ширкати "${company.name}" нест карда шавад?\n\nҲамаи гузаришҳо ва маблағҳои баргаштӣ ҳам нест мешаванд.`
+      `Ð¨Ð¸ÑÐºÐ°ÑÐ¸ "${company.name}" Ð½ÐµÑÑ ÐºÐ°ÑÐ´Ð° ÑÐ°Ð²Ð°Ð´?\n\nÒ²Ð°Ð¼Ð°Ð¸ Ð³ÑÐ·Ð°ÑÐ¸ÑÒ³Ð¾ Ð²Ð° Ð¼Ð°Ð±Ð»Ð°ÒÒ³Ð¾Ð¸ Ð±Ð°ÑÐ³Ð°ÑÑÓ£ Ò³Ð°Ð¼ Ð½ÐµÑÑ Ð¼ÐµÑÐ°Ð²Ð°Ð½Ð´.`
     );
     if (!confirmDelete) return;
     sendMessage({ type: 'DELETE_COMPANY', id: company.id });
@@ -905,7 +913,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
   const handleDeleteBank = (bank: Bank) => {
     const confirmDelete = window.confirm(
-      `Бонки "${bank.name}" нест карда шавад?\n\nҲамаи ширкатҳо, гузаришҳо ва баргаштҳо ҳам нест мешаванд.`
+      `ÐÐ¾Ð½ÐºÐ¸ "${bank.name}" Ð½ÐµÑÑ ÐºÐ°ÑÐ´Ð° ÑÐ°Ð²Ð°Ð´?\n\nÒ²Ð°Ð¼Ð°Ð¸ ÑÐ¸ÑÐºÐ°ÑÒ³Ð¾, Ð³ÑÐ·Ð°ÑÐ¸ÑÒ³Ð¾ Ð²Ð° Ð±Ð°ÑÐ³Ð°ÑÑÒ³Ð¾ Ò³Ð°Ð¼ Ð½ÐµÑÑ Ð¼ÐµÑÐ°Ð²Ð°Ð½Ð´.`
     );
     if (!confirmDelete) return;
     sendMessage({ type: 'DELETE_BANK', id: bank.id });
@@ -922,8 +930,8 @@ const sendMessage = async (msg: ClientMessage) => {
       const returned = getCompanyReturnForCurrentFilter(company.id);
       const totals = summarizeByCurrency(transfers);
 
-      transferSheetRows.push([`Ширкат: ${company.name}`]);
-      transferSheetRows.push(['№', 'Сана', 'Соат', 'Асъор', 'Маблағ', 'Рақами ҳисоб / Эзоҳ']);
+      transferSheetRows.push([`Ð¨Ð¸ÑÐºÐ°Ñ: ${company.name}`]);
+      transferSheetRows.push(['â', 'Ð¡Ð°Ð½Ð°', 'Ð¡Ð¾Ð°Ñ', 'ÐÑÑÐ¾Ñ', 'ÐÐ°Ð±Ð»Ð°Ò', 'Ð Ð°ÒÐ°Ð¼Ð¸ Ò³Ð¸ÑÐ¾Ð± / Ð­Ð·Ð¾Ò³']);
 
       transfers.forEach((transfer, index) => {
         transferSheetRows.push([
@@ -939,15 +947,15 @@ const sendMessage = async (msg: ClientMessage) => {
       transferSheetRows.push(['', '', '', 'USD', totals.USD, '']);
       transferSheetRows.push(['', '', '', 'EUR', totals.EUR, '']);
       transferSheetRows.push(['', '', '', 'CNY', totals.CNY, '']);
-      transferSheetRows.push(['', '', '', 'Баргашт USD', returned.USD ?? 0, '']);
-      transferSheetRows.push(['', '', '', 'Баргашт EUR', returned.EUR ?? 0, '']);
-      transferSheetRows.push(['', '', '', 'Баргашт CNY', returned.CNY ?? 0, '']);
+      transferSheetRows.push(['', '', '', 'ÐÐ°ÑÐ³Ð°ÑÑ USD', returned.USD ?? 0, '']);
+      transferSheetRows.push(['', '', '', 'ÐÐ°ÑÐ³Ð°ÑÑ EUR', returned.EUR ?? 0, '']);
+      transferSheetRows.push(['', '', '', 'ÐÐ°ÑÐ³Ð°ÑÑ CNY', returned.CNY ?? 0, '']);
       transferSheetRows.push([]);
       transferSheetRows.push([]);
     });
 
     const wsTransfers = XLSX.utils.aoa_to_sheet(transferSheetRows);
-    XLSX.utils.book_append_sheet(wb, wsTransfers, 'Гузаришҳо');
+    XLSX.utils.book_append_sheet(wb, wsTransfers, 'ÐÑÐ·Ð°ÑÐ¸ÑÒ³Ð¾');
     XLSX.writeFile(
       wb,
       `hisobot-${selectedBank.name.replace(/\s+/g, '-').toLowerCase()}-${dateFilterMode}-${selectedDate}.xlsx`
@@ -1035,7 +1043,7 @@ const sendMessage = async (msg: ClientMessage) => {
     const html = `
       <html>
         <head>
-          <title>Ҳисобот</title>
+          <title>Ò²Ð¸ÑÐ¾Ð±Ð¾Ñ</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 32px; color: #111827; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -1049,14 +1057,14 @@ const sendMessage = async (msg: ClientMessage) => {
           <table>
             <thead>
               <tr>
-                <th>Ширкат</th>
-                <th>Шумора</th>
+                <th>Ð¨Ð¸ÑÐºÐ°Ñ</th>
+                <th>Ð¨ÑÐ¼Ð¾ÑÐ°</th>
                 <th>USD</th>
                 <th>EUR</th>
                 <th>CNY</th>
-                <th>Барг.USD</th>
-                <th>Барг.EUR</th>
-                <th>Барг.CNY</th>
+                <th>ÐÐ°ÑÐ³.USD</th>
+                <th>ÐÐ°ÑÐ³.EUR</th>
+                <th>ÐÐ°ÑÐ³.CNY</th>
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -1080,7 +1088,7 @@ const sendMessage = async (msg: ClientMessage) => {
               <Banknote className="w-8 h-8" />
               Saadi Exchange
             </h1>
-            <p className="text-gray-500 text-sm mt-1">Системаи назорати гузаришҳои рӯзона</p>
+            <p className="text-gray-500 text-sm mt-1">Ð¡Ð¸ÑÑÐµÐ¼Ð°Ð¸ Ð½Ð°Ð·Ð¾ÑÐ°ÑÐ¸ Ð³ÑÐ·Ð°ÑÐ¸ÑÒ³Ð¾Ð¸ ÑÓ¯Ð·Ð¾Ð½Ð°</p>
           </div>
 
           <div className="flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
@@ -1132,7 +1140,7 @@ const sendMessage = async (msg: ClientMessage) => {
                   : 'bg-white text-gray-600 border-gray-200 hover:border-brand-green/50'
               )}
             >
-              Сабт
+              Ð¡Ð°Ð±Ñ
             </button>
 
             <button
@@ -1146,7 +1154,7 @@ const sendMessage = async (msg: ClientMessage) => {
               )}
             >
               <BarChart3 className="w-4 h-4" />
-              Таҳлил
+              Ð¢Ð°Ò³Ð»Ð¸Ð»
             </button>
 
             {/* Phase 2A: Source Mode toggle */}
@@ -1168,14 +1176,14 @@ const sendMessage = async (msg: ClientMessage) => {
                   : 'Manual Mode'
               }
             >
-              {sourceMode === 'yusuf' ? '🟢 Yusuf' : '🔵 Дастӣ'}
+              {sourceMode === 'yusuf' ? 'ð¢ Yusuf' : 'ðµ ÐÐ°ÑÑÓ£'}
             </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Filter className="w-4 h-4" />
-              <span className="font-medium">Давра:</span>
+              <span className="font-medium">ÐÐ°Ð²ÑÐ°:</span>
             </div>
 
             {(['day', 'week', 'month', 'all'] as DateFilterMode[]).map((mode) => (
@@ -1230,7 +1238,7 @@ const sendMessage = async (msg: ClientMessage) => {
               className="px-3 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors text-sm font-medium flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              Нести бонк
+              ÐÐµÑÑÐ¸ Ð±Ð¾Ð½Ðº
             </button>
           )}
         </div>
@@ -1240,7 +1248,7 @@ const sendMessage = async (msg: ClientMessage) => {
             <Search className="w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Ҷустуҷӯ аз рӯйи маблағ, асъор, рақами ҳисоб, соат, сана ё ширкат..."
+              placeholder="Ò¶ÑÑÑÑÒ·Ó¯ Ð°Ð· ÑÓ¯Ð¹Ð¸ Ð¼Ð°Ð±Ð»Ð°Ò, Ð°ÑÑÐ¾Ñ, ÑÐ°ÒÐ°Ð¼Ð¸ Ò³Ð¸ÑÐ¾Ð±, ÑÐ¾Ð°Ñ, ÑÐ°Ð½Ð° Ñ ÑÐ¸ÑÐºÐ°Ñ..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-400"
@@ -1251,7 +1259,7 @@ const sendMessage = async (msg: ClientMessage) => {
                 onClick={() => setSearchQuery('')}
                 className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
               >
-                Пок
+                ÐÐ¾Ðº
               </button>
             )}
           </div>
@@ -1263,13 +1271,13 @@ const sendMessage = async (msg: ClientMessage) => {
               onChange={(e) => setCompanySortMode(e.target.value as CompanySortMode)}
               className="bg-transparent outline-none text-sm text-gray-700"
             >
-              <option value="manual">Ҷойи дастӣ</option>
-              <option value="name-asc">Ном A-Я</option>
-              <option value="name-desc">Ном Я-A</option>
-              <option value="net-desc">USD соф калон-кам</option>
-              <option value="net-asc">USD соф кам-калон</option>
-              <option value="count-desc">Шумора калон-кам</option>
-              <option value="count-asc">Шумора кам-калон</option>
+              <option value="manual">Ò¶Ð¾Ð¹Ð¸ Ð´Ð°ÑÑÓ£</option>
+              <option value="name-asc">ÐÐ¾Ð¼ A-Ð¯</option>
+              <option value="name-desc">ÐÐ¾Ð¼ Ð¯-A</option>
+              <option value="net-desc">USD ÑÐ¾Ñ ÐºÐ°Ð»Ð¾Ð½-ÐºÐ°Ð¼</option>
+              <option value="net-asc">USD ÑÐ¾Ñ ÐºÐ°Ð¼-ÐºÐ°Ð»Ð¾Ð½</option>
+              <option value="count-desc">Ð¨ÑÐ¼Ð¾ÑÐ° ÐºÐ°Ð»Ð¾Ð½-ÐºÐ°Ð¼</option>
+              <option value="count-asc">Ð¨ÑÐ¼Ð¾ÑÐ° ÐºÐ°Ð¼-ÐºÐ°Ð»Ð¾Ð½</option>
             </select>
           </div>
 
@@ -1301,7 +1309,7 @@ const sendMessage = async (msg: ClientMessage) => {
               className="px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
             >
               <Printer className="w-4 h-4 text-blue-500" />
-              Чоп
+              Ð§Ð¾Ð¿
             </button>
           </div>
         </div>
@@ -1321,6 +1329,11 @@ const sendMessage = async (msg: ClientMessage) => {
                     returnedAmounts={getCompanyReturnForCurrentFilter(company.id)}
                     canAddTransfers={canEditDailyFields && sourceMode === 'manual'}
                     canEditReturn={canEditDailyFields && sourceMode === 'manual'}
+                    onRequestAssign={
+                      sourceMode === 'yusuf' && company.id.startsWith('_yusuf_unmatched_')
+                        ? (order: Order) => setAssigningOrder(order)
+                        : undefined
+                    }
                     filterLabel={tajikRangeLabel(dateFilterMode)}
                     isIbt={selectedBank.name.toUpperCase() === 'IBT'}
                     canMoveUp={companySortMode === 'manual' && index > 0}
@@ -1371,14 +1384,14 @@ const sendMessage = async (msg: ClientMessage) => {
                 <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3 group-hover:bg-brand-green-light transition-colors">
                   <Plus className="w-6 h-6" />
                 </div>
-                <span className="font-medium">Иловаи ширкат</span>
+                <span className="font-medium">ÐÐ»Ð¾Ð²Ð°Ð¸ ÑÐ¸ÑÐºÐ°Ñ</span>
               </button>
             </div>
           ) : (
             <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
               <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700">Бонк вуҷуд надорад</h3>
-              <p className="text-gray-500 mt-2">Аввал бонк илова кунед</p>
+              <h3 className="text-xl font-semibold text-gray-700">ÐÐ¾Ð½Ðº Ð²ÑÒ·ÑÐ´ Ð½Ð°Ð´Ð¾ÑÐ°Ð´</h3>
+              <p className="text-gray-500 mt-2">ÐÐ²Ð²Ð°Ð» Ð±Ð¾Ð½Ðº Ð¸Ð»Ð¾Ð²Ð° ÐºÑÐ½ÐµÐ´</p>
             </div>
           )
         ) : (
@@ -1399,7 +1412,7 @@ const sendMessage = async (msg: ClientMessage) => {
             </div>
             <div>
               <p className="text-brand-green-light text-sm font-medium uppercase tracking-wider">
-                Ҳамагӣ барои {selectedBank.name}
+                Ò²Ð°Ð¼Ð°Ð³Ó£ Ð±Ð°ÑÐ¾Ð¸ {selectedBank.name}
               </p>
               <p className="text-xs opacity-70">{formatRangeLabel(selectedDate, dateFilterMode)}</p>
             </div>
@@ -1408,20 +1421,20 @@ const sendMessage = async (msg: ClientMessage) => {
           <div className="text-right space-y-1">
             <div className="font-mono text-2xl font-bold">$ {numberFormat(bankTotals.USD)}</div>
             {bankTotals.EUR > 0 && (
-              <div className="font-mono text-xl font-bold text-blue-300">€ {numberFormat(bankTotals.EUR)}</div>
+              <div className="font-mono text-xl font-bold text-blue-300">â¬ {numberFormat(bankTotals.EUR)}</div>
             )}
             {bankTotals.CNY > 0 && (
-              <div className="font-mono text-xl font-bold text-yellow-300">¥ {numberFormat(bankTotals.CNY)}</div>
+              <div className="font-mono text-xl font-bold text-yellow-300">Â¥ {numberFormat(bankTotals.CNY)}</div>
             )}
           </div>
         </div>
       )}
 
-      <Modal isOpen={isAddingBank} onClose={() => setIsAddingBank(false)} title="Иловаи бонк">
+      <Modal isOpen={isAddingBank} onClose={() => setIsAddingBank(false)} title="ÐÐ»Ð¾Ð²Ð°Ð¸ Ð±Ð¾Ð½Ðº">
         <div className="space-y-4">
           <input
             type="text"
-            placeholder="Номи бонк"
+            placeholder="ÐÐ¾Ð¼Ð¸ Ð±Ð¾Ð½Ðº"
             className="w-full p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
             value={newBankName}
             onChange={(e) => setNewBankName(e.target.value)}
@@ -1437,7 +1450,7 @@ const sendMessage = async (msg: ClientMessage) => {
             }}
             className="w-full py-3 bg-brand-green text-white rounded-xl font-semibold disabled:opacity-50"
           >
-            Сабт
+            Ð¡Ð°Ð±Ñ
           </button>
         </div>
       </Modal>
@@ -1445,12 +1458,12 @@ const sendMessage = async (msg: ClientMessage) => {
       <Modal
         isOpen={isAddingCompany}
         onClose={() => setIsAddingCompany(false)}
-        title={`Иловаи ширкат ба ${selectedBank?.name || ''}`}
+        title={`ÐÐ»Ð¾Ð²Ð°Ð¸ ÑÐ¸ÑÐºÐ°Ñ Ð±Ð° ${selectedBank?.name || ''}`}
       >
         <div className="space-y-4">
           <input
             type="text"
-            placeholder="Номи ширкат"
+            placeholder="ÐÐ¾Ð¼Ð¸ ÑÐ¸ÑÐºÐ°Ñ"
             className="w-full p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
             value={newCompanyName}
             onChange={(e) => setNewCompanyName(e.target.value)}
@@ -1468,7 +1481,7 @@ const sendMessage = async (msg: ClientMessage) => {
             }}
             className="w-full py-3 bg-brand-green text-white rounded-xl font-semibold disabled:opacity-50"
           >
-            Сабт
+            Ð¡Ð°Ð±Ñ
           </button>
         </div>
       </Modal>
@@ -1479,7 +1492,29 @@ const sendMessage = async (msg: ClientMessage) => {
           wsConnected ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
         )}
       >
-        {wsConnected ? 'Пайваст шуд' : 'Пайвастшавӣ...'}
+        {wsConnected ? 'ÐÐ°Ð¹Ð²Ð°ÑÑ ÑÑÐ´' : 'ÐÐ°Ð¹Ð²Ð°ÑÑÑÐ°Ð²Ó£...'}
+      {assigningOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setAssigningOrder(null)}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Assign to Saadi Company</h3>
+            <p className="text-sm text-gray-500 mb-4">Beneficiary: <strong>{assigningOrder.companyName}</strong></p>
+            <div className="space-y-2">
+              {data.companies
+                .filter(c => c.bankId === assigningOrder.bankId && !c.id.startsWith('_yusuf'))
+                .map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => handleAssignYusufOrder(c.id)}
+                    className="w-full text-left px-4 py-2 rounded-lg border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm"
+                  >
+                    {c.name}
+                  </button>
+                ))}
+            </div>
+            <button onClick={() => setAssigningOrder(null)} className="mt-4 w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
@@ -1504,6 +1539,7 @@ type CompanyCardProps = {
   onUpdateReturn: (amount: number, currency: Currency) => void;
   onDeleteTransfer: (id: string) => void;
   onDeleteCompany: () => void;
+  onRequestAssign?: (order: Order) => void;
 };
 
 function CompanyCard({
@@ -1523,7 +1559,8 @@ function CompanyCard({
   onUpdateTransfer,
   onUpdateReturn,
   onDeleteTransfer,
-  onDeleteCompany
+  onDeleteCompany,
+  onRequestAssign,
 }: CompanyCardProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -1607,7 +1644,7 @@ function CompanyCard({
       <div className="p-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
         <div>
           <h3 className="font-bold text-gray-800 text-lg">{company.name}</h3>
-          <div className="text-xs text-gray-400 mt-1">Намоиш: {filterLabel}</div>
+          <div className="text-xs text-gray-400 mt-1">ÐÐ°Ð¼Ð¾Ð¸Ñ: {filterLabel}</div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1617,7 +1654,7 @@ function CompanyCard({
               onClick={onMoveUp}
               disabled={!canMoveUp}
               className="p-1 rounded bg-white border border-gray-200 disabled:opacity-30"
-              title="Боло"
+              title="ÐÐ¾Ð»Ð¾"
             >
               <ChevronUp className="w-3 h-3" />
             </button>
@@ -1626,7 +1663,7 @@ function CompanyCard({
               onClick={onMoveDown}
               disabled={!canMoveDown}
               className="p-1 rounded bg-white border border-gray-200 disabled:opacity-30"
-              title="Поён"
+              title="ÐÐ¾ÑÐ½"
             >
               <ChevronDown className="w-3 h-3" />
             </button>
@@ -1637,9 +1674,9 @@ function CompanyCard({
             onClick={onMoveToTop}
             disabled={!canMoveUp}
             className="px-2 py-1 rounded bg-brand-green/10 text-brand-green-dark border border-brand-green/20 text-[10px] font-bold hover:bg-brand-green/20 disabled:opacity-30 transition-colors"
-            title="Ба боло"
+            title="ÐÐ° Ð±Ð¾Ð»Ð¾"
           >
-            ↑ Ба боло
+            â ÐÐ° Ð±Ð¾Ð»Ð¾
           </button>
 
           <div className="text-xs font-mono bg-white px-2 py-1 rounded border border-gray-100 text-gray-500">
@@ -1649,7 +1686,7 @@ function CompanyCard({
             type="button"
             onClick={onDeleteCompany}
             className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-            title="Нести ширкат"
+            title="ÐÐµÑÑÐ¸ ÑÐ¸ÑÐºÐ°Ñ"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -1664,7 +1701,7 @@ function CompanyCard({
               onClick={() => setIsAdding(true)}
               className="w-full py-3 px-4 border border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-brand-green hover:text-brand-green transition-colors flex items-center justify-center gap-2 shrink-0"
             >
-              <Plus className="w-4 h-4" /> Иловаи гузариш
+              <Plus className="w-4 h-4" /> ÐÐ»Ð¾Ð²Ð°Ð¸ Ð³ÑÐ·Ð°ÑÐ¸Ñ
             </button>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 shrink-0">
@@ -1672,7 +1709,7 @@ function CompanyCard({
                 <input
                   ref={amountInputRef}
                   type="number"
-                  placeholder={`Маблағ (${currency})`}
+                  placeholder={`ÐÐ°Ð±Ð»Ð°Ò (${currency})`}
                   className="flex-1 p-2 rounded-lg border border-gray-200 text-sm focus:ring-1 focus:ring-brand-green outline-none"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -1693,40 +1730,40 @@ function CompanyCard({
                   type="submit"
                   className="bg-brand-green text-white px-4 rounded-lg text-sm font-bold hover:bg-brand-green-dark transition-colors"
                 >
-                  Сабт
+                  Ð¡Ð°Ð±Ñ
                 </button>
               </div>
 
               <input
                 type="text"
-                placeholder="Рақами ҳисоб / Эзоҳ"
+                placeholder="Ð Ð°ÒÐ°Ð¼Ð¸ Ò³Ð¸ÑÐ¾Ð± / Ð­Ð·Ð¾Ò³"
                 className="w-full p-2 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-brand-green outline-none"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
 
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-gray-400 uppercase font-bold">Enter барои сабт</span>
+                <span className="text-[10px] text-gray-400 uppercase font-bold">Enter Ð±Ð°ÑÐ¾Ð¸ ÑÐ°Ð±Ñ</span>
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
                   className="text-[10px] text-gray-400 hover:text-gray-600 uppercase font-bold"
                 >
-                  Бекор
+                  ÐÐµÐºÐ¾Ñ
                 </button>
               </div>
             </form>
           )
         ) : (
           <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-            Барои илова ё таҳрир ба филтри <span className="font-semibold">Рӯз</span> гузаред.
+            ÐÐ°ÑÐ¾Ð¸ Ð¸Ð»Ð¾Ð²Ð° Ñ ÑÐ°Ò³ÑÐ¸Ñ Ð±Ð° ÑÐ¸Ð»ÑÑÐ¸ <span className="font-semibold">Ð Ó¯Ð·</span> Ð³ÑÐ·Ð°ÑÐµÐ´.
           </div>
         )}
 
         <div className="space-y-2 h-96 overflow-y-auto pr-2 border border-gray-100 rounded-xl p-3 bg-white">
           {visibleTransfers.length === 0 ? (
             <p className="text-center text-xs text-gray-400 py-10 italic">
-              {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
+              {transfers.length === 0 ? 'ÐÐ°Ñ Ð¸Ð½ Ð´Ð°Ð²ÑÐ° Ð³ÑÐ·Ð°ÑÐ¸Ñ Ð½ÐµÑÑ' : 'ÐÐ· ÑÓ¯Ð¹Ð¸ Ò·ÑÑÑÑÒ·Ó¯ ÑÐ¸Ð·Ðµ ÑÑÑ Ð½Ð°ÑÑÐ´'}
             </p>
           ) : (
             visibleTransfers.map((t, index) => {
@@ -1761,15 +1798,24 @@ function CompanyCard({
                           </div>
                           {(t as Order).sourceType === 'whatsapp' && (
                             <div className="flex items-center gap-1 flex-wrap mt-1">
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">🟢 Auto</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">ð¢ Auto</span>
                               {(t as Order).workflowStatus && (t as Order).workflowStatus !== 'received' && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-700 border border-blue-200">{(t as Order).workflowStatus}</span>
                               )}
                               {(t as Order).extractionStatus === 'complete' && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-gray-50 text-gray-500 border border-gray-200">✓ {Math.round(((t as Order).confidenceScore ?? 0) * 100)}%</span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-gray-50 text-gray-500 border border-gray-200">â {Math.round(((t as Order).confidenceScore ?? 0) * 100)}%</span>
                               )}
                               {(t as Order).contractNumber && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-violet-50 text-violet-700 border border-violet-200">📄 {(t as Order).contractNumber}</span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-violet-50 text-violet-700 border border-violet-200">ð {(t as Order).contractNumber}</span>
+                              )}
+                              {onRequestAssign && (
+                                <button
+                                  type="button"
+                                  onClick={() => onRequestAssign(t as Order)}
+                                  className="text-[9px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                                >
+                                  ＋ Assign to Saadi Company
+                                </button>
                               )}
                             </div>
                           )}
@@ -1838,7 +1884,7 @@ function CompanyCard({
                         type="text"
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
-                        placeholder="Рақами ҳисоб / Эзоҳ..."
+                        placeholder="Ð Ð°ÒÐ°Ð¼Ð¸ Ò³Ð¸ÑÐ¾Ð± / Ð­Ð·Ð¾Ò³..."
                         className="w-full p-2 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-brand-green outline-none"
                       />
                     </div>
@@ -1853,7 +1899,7 @@ function CompanyCard({
       <div className="p-5 bg-gray-50/50 border-t border-gray-100 space-y-4">
         <div className="space-y-2 text-sm text-gray-500">
           <div className="flex items-center justify-between gap-3">
-            <span>Ҳамагӣ USD</span>
+            <span>Ò²Ð°Ð¼Ð°Ð³Ó£ USD</span>
             <span className="font-mono font-medium text-gray-700 text-right break-all">
               {formatCurrency(totals.USD, 'USD')}
             </span>
@@ -1861,7 +1907,7 @@ function CompanyCard({
 
           {totals.EUR > 0 && (
             <div className="flex items-center justify-between gap-3">
-              <span>Ҳамагӣ EUR</span>
+              <span>Ò²Ð°Ð¼Ð°Ð³Ó£ EUR</span>
               <span className="font-mono font-medium text-blue-700 text-right break-all">
                 {formatCurrency(totals.EUR, 'EUR')}
               </span>
@@ -1870,7 +1916,7 @@ function CompanyCard({
 
           {totals.CNY > 0 && (
             <div className="flex items-center justify-between gap-3">
-              <span>Ҳамагӣ CNY</span>
+              <span>Ò²Ð°Ð¼Ð°Ð³Ó£ CNY</span>
               <span className="font-mono font-medium text-gray-700 text-right break-all">
                 {formatCurrency(totals.CNY, 'CNY')}
               </span>
@@ -1881,7 +1927,7 @@ function CompanyCard({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-red-500 font-medium">
             <ArrowDownCircle className="w-4 h-4" />
-            <span>Баргашт</span>
+            <span>ÐÐ°ÑÐ³Ð°ÑÑ</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1926,7 +1972,7 @@ function CompanyCard({
 
         <div className="pt-3 border-t border-gray-200 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-base font-bold text-gray-800">Софӣ USD</span>
+            <span className="text-base font-bold text-gray-800">Ð¡Ð¾ÑÓ£ USD</span>
             <span
               className={cn(
                 'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
@@ -1939,7 +1985,7 @@ function CompanyCard({
 
           {(totals.EUR > 0 || returnedEur > 0) && (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-base font-bold text-gray-800">Софӣ EUR</span>
+              <span className="text-base font-bold text-gray-800">Ð¡Ð¾ÑÓ£ EUR</span>
               <span
                 className={cn(
                   'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
@@ -1953,7 +1999,7 @@ function CompanyCard({
 
           {(totals.CNY > 0 || returnedCny > 0) && (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-base font-bold text-gray-800">Софӣ CNY</span>
+              <span className="text-base font-bold text-gray-800">Ð¡Ð¾ÑÓ£ CNY</span>
               <span
                 className={cn(
                   'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
@@ -1970,7 +2016,7 @@ function CompanyCard({
   );
 }
 
-// ── Analytics dashboard types ────────────────────────────────────────────
+// ââ Analytics dashboard types ââââââââââââââââââââââââââââââââââââââââââââ
 type AnalyticsPeriod = 'day' | 'week' | 'month' | 'all';
 type AnalyticsCurrencyFilter = 'ALL' | Currency;
 
@@ -2011,10 +2057,10 @@ function getPeriodLabel(selectedDate: string, period: AnalyticsPeriod): string {
   if (period === 'week') {
     const s = startOfWeek(d, { weekStartsOn: 1 });
     const e = endOfWeek(d, { weekStartsOn: 1 });
-    return `${format(s, 'dd.MM')} – ${format(e, 'dd.MM.yyyy')}`;
+    return `${format(s, 'dd.MM')} â ${format(e, 'dd.MM.yyyy')}`;
   }
   if (period === 'month') return format(d, 'MM.yyyy');
-  return 'Ҳамаи давра';
+  return 'Ò²Ð°Ð¼Ð°Ð¸ Ð´Ð°Ð²ÑÐ°';
 }
 
 type TrendPoint = {
@@ -2083,7 +2129,7 @@ function buildAnalyticsTrend(
   });
 }
 
-// ── AnalyticsViewProps (unchanged interface) ──────────────────────────────
+// ââ AnalyticsViewProps (unchanged interface) ââââââââââââââââââââââââââââââ
 type AnalyticsViewProps = {
   data: AppData;
   selectedDate: string;
@@ -2099,8 +2145,8 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
     return (
       <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
         <BarChart3 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700">Бонк интихоб нашудааст</h3>
-        <p className="text-gray-500 mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
+        <h3 className="text-xl font-semibold text-gray-700">ÐÐ¾Ð½Ðº Ð¸Ð½ÑÐ¸ÑÐ¾Ð± Ð½Ð°ÑÑÐ´Ð°Ð°ÑÑ</h3>
+        <p className="text-gray-500 mt-2">ÐÐ°ÑÐ¾Ð¸ Ð´Ð¸Ð´Ð°Ð½Ð¸ ÑÐ°Ò³Ð»Ð¸Ð» Ð°Ð²Ð²Ð°Ð» Ð±Ð¾Ð½ÐºÑÐ¾ Ð¸Ð½ÑÐ¸ÑÐ¾Ð± ÐºÑÐ½ÐµÐ´.</p>
       </div>
     );
   }
@@ -2187,8 +2233,8 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
   const showChart = period !== 'day' && trendData.length > 0;
 
   const chartPeriodLabel =
-    period === 'all' ? 'Тренди моҳона' :
-    period === 'month' ? 'Рӯзона дар моҳ' : 'Рӯзона дар ҳафта';
+    period === 'all' ? 'Ð¢ÑÐµÐ½Ð´Ð¸ Ð¼Ð¾Ò³Ð¾Ð½Ð°' :
+    period === 'month' ? 'Ð Ó¯Ð·Ð¾Ð½Ð° Ð´Ð°Ñ Ð¼Ð¾Ò³' : 'Ð Ó¯Ð·Ð¾Ð½Ð° Ð´Ð°Ñ Ò³Ð°ÑÑÐ°';
 
   const usdTrend = useMemo(
     () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netUsd, 0) })),
@@ -2210,7 +2256,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
   };
 
   const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
-    day: 'Рӯз', week: 'Ҳафта', month: 'Моҳ', all: 'Ҳама',
+    day: 'Ð Ó¯Ð·', week: 'Ò²Ð°ÑÑÐ°', month: 'ÐÐ¾Ò³', all: 'Ò²Ð°Ð¼Ð°',
   };
 
   const activeCurrencies: Currency[] = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
@@ -2219,7 +2265,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
 
   return (
     <div className="space-y-6">
-      {/* ── Controls ── */}
+      {/* ââ Controls ââ */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Period tabs */}
         <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
@@ -2255,23 +2301,23 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                   : 'text-gray-500 hover:bg-gray-100'
               )}
             >
-              {c === 'ALL' ? 'Ҳама' : c}
+              {c === 'ALL' ? 'Ò²Ð°Ð¼Ð°' : c}
             </button>
           ))}
         </div>
 
         <span className="text-sm font-medium text-gray-600 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
-          {selectedBank.name} · {periodLabel}
+          {selectedBank.name} Â· {periodLabel}
         </span>
 
         {period === 'all' && bankTransfers.length > 0 && (
           <span className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
-            Ҳамагӣ {bankTransfers.length} гузариш
+            Ò²Ð°Ð¼Ð°Ð³Ó£ {bankTransfers.length} Ð³ÑÐ·Ð°ÑÐ¸Ñ
           </span>
         )}
       </div>
 
-      {/* ── Per-currency summary blocks ── */}
+      {/* ââ Per-currency summary blocks ââ */}
       <div className="grid grid-cols-1 gap-4">
         {activeCurrencies.map((cur) => {
           const gross = transferTotals[cur];
@@ -2287,36 +2333,36 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                 <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
                   {currencySymbol(cur)} {cur}
                 </span>
-                <span className="text-xs text-gray-400 ml-auto">{cnt} гузариш</span>
+                <span className="text-xs text-gray-400 ml-auto">{cnt} Ð³ÑÐ·Ð°ÑÐ¸Ñ</span>
               </div>
               {/* metric columns */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-gray-50">
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Гузариш</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">ÐÑÐ·Ð°ÑÐ¸Ñ</p>
                   <p className={cn('text-xl font-bold font-mono mt-2', colorMap[cur].text)}>
                     {formatCurrency(gross, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Баргашт</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">ÐÐ°ÑÐ³Ð°ÑÑ</p>
                   <p className="text-xl font-bold font-mono mt-2 text-red-500">
-                    {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300">—</span>}
+                    {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300">â</span>}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Соф</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Ð¡Ð¾Ñ</p>
                   <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600')}>
                     {formatCurrency(net, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Шумора</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Ð¨ÑÐ¼Ð¾ÑÐ°</p>
                   <p className="text-xl font-bold font-mono mt-2 text-gray-700">{cnt}</p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Миёна</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">ÐÐ¸ÑÐ½Ð°</p>
                   <p className="text-xl font-bold font-mono mt-2 text-gray-500">
-                    {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300">—</span>}
+                    {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300">â</span>}
                   </p>
                 </div>
               </div>
@@ -2327,12 +2373,12 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         {!hasAnyData && (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
             <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
+            <p className="text-gray-400 font-medium">ÐÐ°Ñ Ð¸Ð½ Ð´Ð°Ð²ÑÐ° Ð¼Ð°ÑÐ»ÑÐ¼Ð¾ÑÐµ Ð²ÑÒ·ÑÐ´ Ð½Ð°Ð´Ð¾ÑÐ°Ð´</p>
           </div>
         )}
       </div>
 
-      {/* ── Trend charts ── */}
+      {/* ââ Trend charts ââ */}
       {showChart && (
         <div
           className={cn(
@@ -2346,21 +2392,21 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         >
           {(currencyFilter === 'ALL' || currencyFilter === 'USD') && transferTotals.USD > 0 && (
             <SmallBarChart
-              title={`${chartPeriodLabel} · USD Соф`}
+              title={`${chartPeriodLabel} Â· USD Ð¡Ð¾Ñ`}
               data={usdTrend}
               colorClass="bg-emerald-500"
             />
           )}
           {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && hasEur && (
             <SmallBarChart
-              title={`${chartPeriodLabel} · EUR Соф`}
+              title={`${chartPeriodLabel} Â· EUR Ð¡Ð¾Ñ`}
               data={eurTrend}
               colorClass="bg-blue-500"
             />
           )}
           {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && hasCny && (
             <SmallBarChart
-              title={`${chartPeriodLabel} · CNY Соф`}
+              title={`${chartPeriodLabel} Â· CNY Ð¡Ð¾Ñ`}
               data={cnyTrend}
               colorClass="bg-yellow-500"
             />
@@ -2368,38 +2414,38 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         </div>
       )}
 
-      {/* ── Company breakdown table ── */}
+      {/* ââ Company breakdown table ââ */}
       {companyBreakdown.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-            <h3 className="font-bold text-gray-800">Таҳлил аз рӯйи ширкат</h3>
-            <span className="text-xs text-gray-400 ml-auto">{companyBreakdown.length} ширкат</span>
+            <h3 className="font-bold text-gray-800">Ð¢Ð°Ò³Ð»Ð¸Ð» Ð°Ð· ÑÓ¯Ð¹Ð¸ ÑÐ¸ÑÐºÐ°Ñ</h3>
+            <span className="text-xs text-gray-400 ml-auto">{companyBreakdown.length} ÑÐ¸ÑÐºÐ°Ñ</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-max">
               <thead>
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wider">
-                  <th className="text-left px-4 py-3 font-semibold sticky left-0 bg-gray-50">Ширкат</th>
-                  <th className="text-right px-4 py-3 font-semibold">Шум.</th>
+                  <th className="text-left px-4 py-3 font-semibold sticky left-0 bg-gray-50">Ð¨Ð¸ÑÐºÐ°Ñ</th>
+                  <th className="text-right px-4 py-3 font-semibold">Ð¨ÑÐ¼.</th>
                   {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
                     <>
                       <th className="text-right px-4 py-3 font-semibold text-emerald-600">USD</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.$</th>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-700">Соф$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400">ÐÐ°ÑÐ³.$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-700">Ð¡Ð¾Ñ$</th>
                     </>
                   )}
                   {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
                     <>
                       <th className="text-right px-4 py-3 font-semibold text-blue-600">EUR</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.€</th>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-700">Соф€</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400">ÐÐ°ÑÐ³.â¬</th>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-700">Ð¡Ð¾Ñâ¬</th>
                     </>
                   )}
                   {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
                     <>
                       <th className="text-right px-4 py-3 font-semibold text-yellow-600">CNY</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.¥</th>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-700">Соф¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400">ÐÐ°ÑÐ³.Â¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-700">Ð¡Ð¾ÑÂ¥</th>
                     </>
                   )}
                 </tr>
@@ -2412,10 +2458,10 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                     {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
                       <>
                         <td className="text-right px-4 py-3 font-mono text-emerald-700">
-                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200">—</span>}
+                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200">â</span>}
                         </td>
                         <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200">—</span>}
+                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200">â</span>}
                         </td>
                         <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700' : 'text-red-600')}>
                           {formatCurrency(row.netUsd, 'USD')}
@@ -2425,26 +2471,26 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                     {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
                       <>
                         <td className="text-right px-4 py-3 font-mono text-blue-700">
-                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200">—</span>}
+                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200">â</span>}
                         </td>
                         <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200">—</span>}
+                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200">â</span>}
                         </td>
                         <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700' : 'text-red-600')}>
-                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200">—</span>}
+                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200">â</span>}
                         </td>
                       </>
                     )}
                     {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
                       <>
                         <td className="text-right px-4 py-3 font-mono text-yellow-700">
-                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200">—</span>}
+                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200">â</span>}
                         </td>
                         <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200">—</span>}
+                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200">â</span>}
                         </td>
                         <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700' : 'text-red-600')}>
-                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200">—</span>}
+                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200">â</span>}
                         </td>
                       </>
                     )}
