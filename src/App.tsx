@@ -179,6 +179,9 @@ function mapSupabaseTransfer(row: any, fallbackDate: string): Transfer {
     note: row?.note && row.note !== 'EMPTY' ? String(row.note) : '',
     date,
     timestamp,
+    preparedConfirmed: Boolean(row?.prepared_confirmed),
+    invoiceConfirmed: Boolean(row?.invoice_confirmed),
+    swiftConfirmed: Boolean(row?.swift_confirmed),
   };
 }
 
@@ -750,6 +753,38 @@ const sendMessage = async (msg: ClientMessage) => {
   }
 };
 
+const updateTransferConfirmation = async (
+  id: string,
+  field: 'prepared' | 'invoice' | 'swift',
+  value: boolean
+) => {
+  const column =
+    field === 'prepared' ? 'prepared_confirmed' : field === 'invoice' ? 'invoice_confirmed' : 'swift_confirmed';
+  const key =
+    field === 'prepared' ? 'preparedConfirmed' : field === 'invoice' ? 'invoiceConfirmed' : 'swiftConfirmed';
+
+  // Танҳо ҳамин майдон тағйир меёбад — тартиби гузаришҳо ва дигар маълумот дахл намекунад
+  setData((prev) => ({
+    ...prev,
+    transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
+  }));
+
+  const { error } = await supabase
+    .from('transfers')
+    .update({ [column]: value })
+    .eq('id', id);
+
+  if (error) {
+    console.error('updateTransferConfirmation ERROR:', error);
+    alert('Хато дар сабти тасдиқ: ' + error.message);
+    // Бозгашт ба ҳолати қаблӣ дар сурати хато
+    setData((prev) => ({
+      ...prev,
+      transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
+    }));
+  }
+};
+
   const selectedBank = useMemo(() => {
     if (!data.banks || data.banks.length === 0) return null;
     return data.banks.find((b) => b.id === selectedBankId) || data.banks[0];
@@ -1305,6 +1340,9 @@ const sendMessage = async (msg: ClientMessage) => {
                         currency
                       })
                     }
+                    onUpdateConfirmation={(id, field, value) =>
+                      updateTransferConfirmation(id, field, value)
+                    }
                     onUpdateReturn={(amount, currency) =>
                       sendMessage({
                         type: 'UPDATE_RETURN',
@@ -1458,6 +1496,7 @@ type CompanyCardProps = {
   onMoveToTop: () => void;
   onAddTransfer: (amount: number, note: string, currency: Currency) => void;
   onUpdateTransfer: (id: string, amount: number, note: string, currency: Currency) => void;
+  onUpdateConfirmation: (id: string, field: 'prepared' | 'invoice' | 'swift', value: boolean) => void;
   onUpdateReturn: (amount: number, currency: Currency) => void;
   onDeleteTransfer: (id: string) => void;
   onDeleteCompany: () => void;
@@ -1478,6 +1517,7 @@ function CompanyCard({
   onMoveToTop,
   onAddTransfer,
   onUpdateTransfer,
+  onUpdateConfirmation,
   onUpdateReturn,
   onDeleteTransfer,
   onDeleteCompany
@@ -1692,7 +1732,7 @@ function CompanyCard({
               return (
                 <div key={t.id} className="border-b border-gray-50 pb-2 last:border-b-0">
                   {!isEditing ? (
-                    <div className="flex items-start justify-between group">
+                    <div className="flex items-start justify-between gap-2 flex-wrap group">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="text-[10px] text-white bg-gray-400 rounded-full w-5 h-5 flex items-center justify-center font-bold mt-0.5 shrink-0">
                           {index + 1}
@@ -1723,21 +1763,53 @@ function CompanyCard({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(t)}
-                          className="p-1 text-gray-300 hover:text-blue-500 transition-all"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteTransfer(t.id)}
-                          className="p-1 text-gray-300 hover:text-red-500 transition-all"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                      <div className="flex items-center gap-2 flex-wrap justify-end ml-auto shrink-0">
+                        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                          <label className="flex items-center gap-1 cursor-pointer select-none" title="Омода / Ба бонк фиристода шуд">
+                            <input
+                              type="checkbox"
+                              checked={t.preparedConfirmed}
+                              onChange={(e) => onUpdateConfirmation(t.id, 'prepared', e.target.checked)}
+                              className="w-3.5 h-3.5 rounded-sm border-gray-300 accent-brand-green cursor-pointer"
+                            />
+                            <span className="text-[9px] font-semibold text-gray-500 whitespace-nowrap">Омода</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer select-none" title="Фактура гирифта шуд">
+                            <input
+                              type="checkbox"
+                              checked={t.invoiceConfirmed}
+                              onChange={(e) => onUpdateConfirmation(t.id, 'invoice', e.target.checked)}
+                              className="w-3.5 h-3.5 rounded-sm border-gray-300 accent-brand-green cursor-pointer"
+                            />
+                            <span className="text-[9px] font-semibold text-gray-500 whitespace-nowrap">Фактура</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer select-none" title="SWIFT гирифта шуд">
+                            <input
+                              type="checkbox"
+                              checked={t.swiftConfirmed}
+                              onChange={(e) => onUpdateConfirmation(t.id, 'swift', e.target.checked)}
+                              className="w-3.5 h-3.5 rounded-sm border-gray-300 accent-brand-green cursor-pointer"
+                            />
+                            <span className="text-[9px] font-semibold text-gray-500 whitespace-nowrap">SWIFT</span>
+                          </label>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(t)}
+                            className="p-1 text-gray-300 hover:text-blue-500 transition-all"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteTransfer(t.id)}
+                            className="p-1 text-gray-300 hover:text-red-500 transition-all"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
