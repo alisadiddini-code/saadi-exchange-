@@ -804,6 +804,7 @@ const sendMessage = async (msg: ClientMessage) => {
     return data.transfers
       .filter((transfer) => transfer.companyId === companyId)
       .filter((transfer) => {
+        if (companyId.startsWith('_yusuf_unmatched_')) return true;
         if (!activeRange) return true;
         return isDateWithinRange(transfer.date, activeRange.start, activeRange.end);
       })
@@ -871,6 +872,20 @@ const sendMessage = async (msg: ClientMessage) => {
 
     return base;
   }, [filteredCompanies, companySortMode, data.transfers, data.returns, selectedDate, dateFilterMode]);
+
+  const yusufStats = useMemo(() => {
+    if (sourceMode !== 'yusuf') return null;
+    const all = data.transfers.filter((t) => (t as any).sourceType === 'whatsapp');
+    const unmatched = all.filter((t) => t.companyId.startsWith('_yusuf_unmatched_'));
+    const matched = all.filter((t) => !t.companyId.startsWith('_yusuf_unmatched_'));
+    const forBank = selectedBank
+      ? all.filter((t) => {
+          const co = data.companies.find((c) => c.id === t.companyId);
+          return co ? co.bankId === selectedBank.id : t.companyId === `_yusuf_unmatched_${selectedBank.id}`;
+        })
+      : [];
+    return { total: all.length, matched: matched.length, unmatched: unmatched.length, forBank: forBank.length };
+  }, [sourceMode, data.transfers, data.companies, selectedBank]);
 
   const visibleCompanies = useMemo(() => {
     if (!searchQuery.trim()) return sortedCompanies;
@@ -1162,7 +1177,11 @@ const sendMessage = async (msg: ClientMessage) => {
             <button
               type="button"
               onClick={() =>
-                setSourceMode((prev) => (prev === 'manual' ? 'yusuf' : 'manual'))
+                setSourceMode((prev) => {
+                    const next = prev === 'manual' ? 'yusuf' : 'manual';
+                    if (next === 'yusuf') setDateFilterMode('all');
+                    return next;
+                  })
               }
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-1.5',
@@ -1319,7 +1338,18 @@ const sendMessage = async (msg: ClientMessage) => {
         {viewMode === 'tracker' ? (
           selectedBank ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AnimatePresence mode="popLayout">
+              {sourceMode === 'yusuf' && yusufStats && (
+                  <div className="col-span-full bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-900 font-mono leading-relaxed">
+                    <span className="font-semibold">🐛 Yusuf Debug</span>
+                    {' · '}Total: {yusufStats.total} · Matched: {yusufStats.matched} · Unmatched: {yusufStats.unmatched} · Bank: {selectedBank?.name ?? '—'} · Date: {dateFilterMode}
+                  </div>
+                )}
+        {sourceMode === 'yusuf' && yusufStats?.forBank === 0 && (
+                  <div className="col-span-full text-center text-gray-400 py-10 text-sm">
+                    Барои ин бонк ва санаи интихобшуда фармоишоти Юсуф ёфт нашуд.
+                  </div>
+                )}
+        <AnimatePresence mode="popLayout">
                 {visibleCompanies.map((company, index) => (
                   <CompanyCard
                     key={company.id}
