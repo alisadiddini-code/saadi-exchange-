@@ -42,13 +42,11 @@ function mapYusufRow(row: any, saadiCompanyId: string): Order {
 }
 
 export async function loadYusufOrders(): Promise<AppData> {
-  // 1. Real Saadi banks
   const { data: banksData, error: banksErr } = await supabase
     .from('banks').select('*').order('created_at', { ascending: true });
   if (banksErr) { console.error('[Yusuf] banks:', banksErr); return { banks: [], companies: [], transfers: [], returns: {} }; }
   const banks: Bank[] = (banksData || []).map((b: any) => ({ id: String(b.id), name: String(b.name || '') }));
 
-  // 2. Real Saadi accounting companies
   const { data: companiesData, error: companiesErr } = await supabase
     .from('companies').select('*').order('sort_order', { ascending: true });
   if (companiesErr) { console.error('[Yusuf] companies:', companiesErr); return { banks, companies: [], transfers: [], returns: {} }; }
@@ -60,7 +58,6 @@ export async function loadYusufOrders(): Promise<AppData> {
     returnedAmount: c.returned_amount != null ? Number(c.returned_amount) : undefined,
   }));
 
-  // 3. Load mappings -> Map<"company_name|bank_id", saadi_company_id>
   const { data: mappingsData } = await supabase
     .from('yusuf_saadi_company_mappings').select('*');
   const mappings = new Map<string, string>();
@@ -68,14 +65,12 @@ export async function loadYusufOrders(): Promise<AppData> {
     mappings.set(`${m.beneficiary_company_name}|${m.our_bank_id}`, String(m.saadi_company_id));
   }
 
-  // 4. Load v_saadi_orders
   const { data: ordersData, error: ordersErr } = await supabase
     .from('v_saadi_orders').select('*')
     .order('transfer_date', { ascending: true })
     .order('created_at',    { ascending: true });
   if (ordersErr) { console.error('[Yusuf] v_saadi_orders:', ordersErr); return { banks, companies: saadiCompanies, transfers: [], returns: {} }; }
 
-  // 5. Map each order — look up saadi company, fall back to synthetic unmatched card
   const syntheticUnmatched = new Map<string, Company>();
   const transfers: Order[] = [];
 
