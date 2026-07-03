@@ -346,6 +346,10 @@ export default function App() {
   const [companySortMode, setCompanySortMode] = useState<CompanySortMode>(() =>
     getStoredString('saadi_company_sort_mode', 'manual') as CompanySortMode
   );
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
+    const stored = getStoredString('saadi_selected_company_id', '');
+    return stored || null;
+  });
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -367,6 +371,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('saadi_company_sort_mode', companySortMode);
   }, [companySortMode]);
+
+  useEffect(() => {
+    if (selectedCompanyId) {
+      localStorage.setItem('saadi_selected_company_id', selectedCompanyId);
+    }
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     if (selectedBankId) {
@@ -878,6 +888,20 @@ const updateTransferConfirmation = async (
     return base;
   }, [filteredCompanies, companySortMode, data.transfers, data.returns, selectedDate, dateFilterMode]);
 
+  useEffect(() => {
+    if (sortedCompanies.length === 0) {
+      if (selectedCompanyId !== null) setSelectedCompanyId(null);
+      return;
+    }
+    const stillExists = selectedCompanyId && sortedCompanies.some((c) => c.id === selectedCompanyId);
+    if (!stillExists) setSelectedCompanyId(sortedCompanies[0].id);
+  }, [sortedCompanies, selectedCompanyId]);
+
+  const selectedCompany = useMemo(
+    () => filteredCompanies.find((c) => c.id === selectedCompanyId) || null,
+    [filteredCompanies, selectedCompanyId]
+  );
+
   const visibleCompanies = useMemo(() => {
     if (!searchQuery.trim()) return sortedCompanies;
 
@@ -1302,72 +1326,105 @@ const updateTransferConfirmation = async (
       <main className="flex-1">
         {viewMode === 'tracker' ? (
           selectedBank ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AnimatePresence mode="popLayout">
-                {visibleCompanies.map((company, index) => (
-                  <CompanyCard
-                    key={company.id}
-                    company={company}
-                    transfers={getCompanyTransfersForCurrentFilter(company.id)}
-                    visibleTransfers={getVisibleCompanyTransfers(company.id, company.name)}
-                    returnedAmounts={getCompanyReturnForCurrentFilter(company.id)}
-                    canAddTransfers={canEditDailyFields}
-                    canEditReturn={canEditDailyFields}
-                    filterLabel={tajikRangeLabel(dateFilterMode)}
-                    isIbt={selectedBank.name.toUpperCase() === 'IBT'}
-                    canMoveUp={companySortMode === 'manual' && index > 0}
-                    canMoveDown={companySortMode === 'manual' && index < visibleCompanies.length - 1}
-                    onMoveUp={() => sendMessage({ type: 'MOVE_COMPANY', companyId: company.id, direction: 'up' })}
-                    onMoveDown={() => sendMessage({ type: 'MOVE_COMPANY', companyId: company.id, direction: 'down' })}
-                    onMoveToTop={() => sendMessage({ type: 'MOVE_TO_TOP', companyId: company.id })}
-                    onAddTransfer={(amount, note, currency) =>
-                      sendMessage({
-                        type: 'ADD_TRANSFER',
-                        companyId: company.id,
-                        bankId: selectedBank.id,
-                        amount,
-                        note,
-                        date: selectedDate,
-                        currency
-                      })
-                    }
-                    onUpdateTransfer={(id, amount, note, currency) =>
-                      sendMessage({
-                        type: 'UPDATE_TRANSFER',
-                        id,
-                        amount,
-                        note,
-                        currency
-                      })
-                    }
-                    onUpdateConfirmation={(id, field, value) =>
-                      updateTransferConfirmation(id, field, value)
-                    }
-                    onUpdateReturn={(amount, currency) =>
-                      sendMessage({
-                        type: 'UPDATE_RETURN',
-                        companyId: company.id,
-                        amount,
-                        date: selectedDate,
-                        currency
-                      })
-                    }
-                    onDeleteTransfer={(id) => sendMessage({ type: 'DELETE_TRANSFER', id })}
-                    onDeleteCompany={() => handleDeleteCompany(company)}
-                  />
-                ))}
-              </AnimatePresence>
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="w-full md:w-64 shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:sticky md:top-4">
+                <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
+                  {visibleCompanies.map((company) => {
+                    const isSelected = company.id === selectedCompanyId;
+                    const companyTotals = summarizeByCurrency(getCompanyTransfersForCurrentFilter(company.id));
 
-              <button
-                type="button"
-                onClick={() => setIsAddingCompany(true)}
-                className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-gray-400 hover:text-brand-green hover:border-brand-green transition-all group min-h-[220px]"
-              >
-                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3 group-hover:bg-brand-green-light transition-colors">
-                  <Plus className="w-6 h-6" />
+                    return (
+                      <button
+                        key={company.id}
+                        type="button"
+                        onClick={() => setSelectedCompanyId(company.id)}
+                        className={cn(
+                          'text-left px-3 py-2.5 rounded-xl border transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
+                          isSelected
+                            ? 'bg-brand-green text-white border-brand-green shadow-sm'
+                            : 'bg-white text-gray-600 border-gray-100 hover:border-brand-green/40 hover:bg-brand-green-light/40'
+                        )}
+                      >
+                        <div className="font-semibold text-sm">{company.name}</div>
+                        <div className={cn('text-[10px] mt-0.5 font-mono', isSelected ? 'text-white/80' : 'text-gray-400')}>
+                          {formatCurrency(companyTotals.USD, 'USD')}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <span className="font-medium">Иловаи ширкат</span>
-              </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCompany(true)}
+                  className="mt-2 w-full border-2 border-dashed border-gray-200 rounded-xl py-2.5 flex items-center justify-center gap-2 text-gray-400 hover:text-brand-green hover:border-brand-green transition-all text-sm font-medium shrink-0"
+                >
+                  <Plus className="w-4 h-4" /> Иловаи ширкат
+                </button>
+              </div>
+
+              <div className="flex-1 min-w-0 w-full">
+                {selectedCompany ? (
+                  <AnimatePresence mode="popLayout">
+                    <CompanyCard
+                      key={selectedCompany.id}
+                      company={selectedCompany}
+                      transfers={getCompanyTransfersForCurrentFilter(selectedCompany.id)}
+                      visibleTransfers={getVisibleCompanyTransfers(selectedCompany.id, selectedCompany.name)}
+                      returnedAmounts={getCompanyReturnForCurrentFilter(selectedCompany.id)}
+                      canAddTransfers={canEditDailyFields}
+                      canEditReturn={canEditDailyFields}
+                      filterLabel={tajikRangeLabel(dateFilterMode)}
+                      isIbt={selectedBank.name.toUpperCase() === 'IBT'}
+                      canMoveUp={companySortMode === 'manual' && sortedCompanies.findIndex((c) => c.id === selectedCompany.id) > 0}
+                      canMoveDown={companySortMode === 'manual' && sortedCompanies.findIndex((c) => c.id === selectedCompany.id) < sortedCompanies.length - 1}
+                      onMoveUp={() => sendMessage({ type: 'MOVE_COMPANY', companyId: selectedCompany.id, direction: 'up' })}
+                      onMoveDown={() => sendMessage({ type: 'MOVE_COMPANY', companyId: selectedCompany.id, direction: 'down' })}
+                      onMoveToTop={() => sendMessage({ type: 'MOVE_TO_TOP', companyId: selectedCompany.id })}
+                      onAddTransfer={(amount, note, currency) =>
+                        sendMessage({
+                          type: 'ADD_TRANSFER',
+                          companyId: selectedCompany.id,
+                          bankId: selectedBank.id,
+                          amount,
+                          note,
+                          date: selectedDate,
+                          currency
+                        })
+                      }
+                      onUpdateTransfer={(id, amount, note, currency) =>
+                        sendMessage({
+                          type: 'UPDATE_TRANSFER',
+                          id,
+                          amount,
+                          note,
+                          currency
+                        })
+                      }
+                      onUpdateConfirmation={(id, field, value) =>
+                        updateTransferConfirmation(id, field, value)
+                      }
+                      onUpdateReturn={(amount, currency) =>
+                        sendMessage({
+                          type: 'UPDATE_RETURN',
+                          companyId: selectedCompany.id,
+                          amount,
+                          date: selectedDate,
+                          currency
+                        })
+                      }
+                      onDeleteTransfer={(id) => sendMessage({ type: 'DELETE_TRANSFER', id })}
+                      onDeleteCompany={() => handleDeleteCompany(selectedCompany)}
+                    />
+                  </AnimatePresence>
+                ) : (
+                  <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                    <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-700">Ширкат вуҷуд надорад</h3>
+                    <p className="text-gray-500 mt-2">Аввал ширкат илова кунед</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
@@ -1720,7 +1777,7 @@ function CompanyCard({
           </div>
         )}
 
-        <div className="space-y-2 h-96 overflow-y-auto pr-2 border border-gray-100 rounded-xl p-3 bg-white">
+        <div className="space-y-2 pr-2 border border-gray-100 rounded-xl p-3 bg-white">
           {visibleTransfers.length === 0 ? (
             <p className="text-center text-xs text-gray-400 py-10 italic">
               {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
@@ -2485,42 +2542,4 @@ function MetricCard({ title, subtitle, value, extra }: MetricCardProps) {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 min-w-0 overflow-hidden">
       <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</p>
       <p className="text-xs text-gray-400 mt-1 break-words">{subtitle}</p>
-      <div className="mt-4 font-bold font-mono text-brand-green-dark leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
-        <span className="tracking-tight">{value}</span>
-      </div>
-      <div className="mt-3 text-xs text-gray-500 break-words">{extra}</div>
-    </div>
-  );
-}
-
-function Modal({
-  isOpen,
-  onClose,
-  title,
-  children
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
-      >
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <Plus className="w-6 h-6 rotate-45 text-gray-400" />
-          </button>
-        </div>
-        <div className="p-6">{children}</div>
-      </motion.div>
-    </div>
-  );
-}
+      <
