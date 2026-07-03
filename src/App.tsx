@@ -749,38 +749,6 @@ const sendMessage = async (msg: ClientMessage) => {
     return;
   }
 
-const updateTransferConfirmation = async (
-  id: string,
-  field: 'prepared' | 'invoice' | 'swift',
-  value: boolean
-) => {
-  const column =
-    field === 'prepared' ? 'prepared_confirmed' : field === 'invoice' ? 'invoice_confirmed' : 'swift_confirmed';
-  const key =
-    field === 'prepared' ? 'preparedConfirmed' : field === 'invoice' ? 'invoiceConfirmed' : 'swiftConfirmed';
-
-  // Танҳо ҳамин майдон тағйир меёбад — тартиби гузаришҳо ва дигар маълумот дахл намекунад
-  setData((prev) => ({
-    ...prev,
-    transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
-  }));
-
-  const { error } = await supabase
-    .from('transfers')
-    .update({ [column]: value })
-    .eq('id', id);
-
-  if (error) {
-    console.error('updateTransferConfirmation ERROR:', error);
-    showToast('Хато дар сабти тасдиқ: ' + error.message);
-    // Бозгашт ба ҳолати қаблӣ дар сурати хато
-    setData((prev) => ({
-      ...prev,
-      transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
-    }));
-  }
-};
-
   if (msg.type === 'UPDATE_RETURN') {
     const returnAmount = Number(msg.amount) || 0;
     const returnCurrency = msg.currency || 'USD';
@@ -888,6 +856,38 @@ const updateTransferConfirmation = async (
     if (error) return showToast('خطا дар حذف бонк: ' + error.message);
     await loadAllFromSupabase();
     return;
+  }
+};
+
+const updateTransferConfirmation = async (
+  id: string,
+  field: 'prepared' | 'invoice' | 'swift',
+  value: boolean
+) => {
+  const column =
+    field === 'prepared' ? 'prepared_confirmed' : field === 'invoice' ? 'invoice_confirmed' : 'swift_confirmed';
+  const key =
+    field === 'prepared' ? 'preparedConfirmed' : field === 'invoice' ? 'invoiceConfirmed' : 'swiftConfirmed';
+
+  // Танҳо ҳамин майдон тағйир меёбад — тартиби гузаришҳо ва дигар маълумот дахл намекунад
+  setData((prev) => ({
+    ...prev,
+    transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
+  }));
+
+  const { error } = await supabase
+    .from('transfers')
+    .update({ [column]: value })
+    .eq('id', id);
+
+  if (error) {
+    console.error('updateTransferConfirmation ERROR:', error);
+    showToast('Хато дар сабти тасдиқ: ' + error.message);
+    // Бозгашт ба ҳолати қаблӣ дар сурати хато
+    setData((prev) => ({
+      ...prev,
+      transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
+    }));
   }
 };
 
