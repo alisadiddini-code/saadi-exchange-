@@ -20,7 +20,10 @@ import {
   FileSpreadsheet,
   FileText,
   ArrowUpDown,
-  Printer
+  Printer,
+  Check,
+  Receipt,
+  Send
 } from 'lucide-react';
 import {
   format,
@@ -653,6 +656,38 @@ const sendMessage = async (msg: ClientMessage) => {
     return;
   }
 
+const updateTransferConfirmation = async (
+  id: string,
+  field: 'prepared' | 'invoice' | 'swift',
+  value: boolean
+) => {
+  const column =
+    field === 'prepared' ? 'prepared_confirmed' : field === 'invoice' ? 'invoice_confirmed' : 'swift_confirmed';
+  const key =
+    field === 'prepared' ? 'preparedConfirmed' : field === 'invoice' ? 'invoiceConfirmed' : 'swiftConfirmed';
+
+  // Танҳо ҳамин майдон тағйир меёбад — тартиби гузаришҳо ва дигар маълумот дахл намекунад
+  setData((prev) => ({
+    ...prev,
+    transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
+  }));
+
+  const { error } = await supabase
+    .from('transfers')
+    .update({ [column]: value })
+    .eq('id', id);
+
+  if (error) {
+    console.error('updateTransferConfirmation ERROR:', error);
+    alert('Хато дар сабти тасдиқ: ' + error.message);
+    // Бозгашт ба ҳолати қаблӣ дар сурати хато
+    setData((prev) => ({
+      ...prev,
+      transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
+    }));
+  }
+};
+
   if (msg.type === 'UPDATE_RETURN') {
     const returnAmount = Number(msg.amount) || 0;
     const returnCurrency = msg.currency || 'USD';
@@ -760,38 +795,6 @@ const sendMessage = async (msg: ClientMessage) => {
     if (error) return alert('خطا дар حذف бонк: ' + error.message);
     await loadAllFromSupabase();
     return;
-  }
-};
-
-const updateTransferConfirmation = async (
-  id: string,
-  field: 'prepared' | 'invoice' | 'swift',
-  value: boolean
-) => {
-  const column =
-    field === 'prepared' ? 'prepared_confirmed' : field === 'invoice' ? 'invoice_confirmed' : 'swift_confirmed';
-  const key =
-    field === 'prepared' ? 'preparedConfirmed' : field === 'invoice' ? 'invoiceConfirmed' : 'swiftConfirmed';
-
-  // Танҳо ҳамин майдон тағйир меёбад — тартиби гузаришҳо ва дигар маълумот дахл намекунад
-  setData((prev) => ({
-    ...prev,
-    transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
-  }));
-
-  const { error } = await supabase
-    .from('transfers')
-    .update({ [column]: value })
-    .eq('id', id);
-
-  if (error) {
-    console.error('updateTransferConfirmation ERROR:', error);
-    alert('Хато дар сабти тасдиқ: ' + error.message);
-    // Бозгашт ба ҳолати қаблӣ дар сурати хато
-    setData((prev) => ({
-      ...prev,
-      transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
-    }));
   }
 };
 
@@ -2542,4 +2545,42 @@ function MetricCard({ title, subtitle, value, extra }: MetricCardProps) {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 min-w-0 overflow-hidden">
       <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</p>
       <p className="text-xs text-gray-400 mt-1 break-words">{subtitle}</p>
-      <
+      <div className="mt-4 font-bold font-mono text-brand-green-dark leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
+        <span className="tracking-tight">{value}</span>
+      </div>
+      <div className="mt-3 text-xs text-gray-500 break-words">{extra}</div>
+    </div>
+  );
+}
+
+function Modal({
+  isOpen,
+  onClose,
+  title,
+  children
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+      >
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Plus className="w-6 h-6 rotate-45 text-gray-400" />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </motion.div>
+    </div>
+  );
+}
