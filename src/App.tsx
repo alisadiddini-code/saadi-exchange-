@@ -436,17 +436,15 @@ function SkeletonBlock() {
 
 function RotatingShowcase() {
   return (
-    <div className="hidden 2xl:block fixed left-6 top-1/2 -translate-y-1/2 z-30 w-36 pointer-events-none select-none">
-      <div className="glass-panel rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden ring-1 ring-brand-green/20">
-        <video
-          src="/character-rotate-v2.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-auto block"
-        />
-      </div>
+    <div className="hidden 2xl:block fixed left-2 top-1/2 -translate-y-1/2 z-30 w-[26rem] pointer-events-none select-none character-float">
+      <video
+        src="/character-rotate-v2.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="w-full h-auto block drop-shadow-2xl"
+      />
     </div>
   );
 }
