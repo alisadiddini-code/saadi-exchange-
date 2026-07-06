@@ -439,7 +439,7 @@ function RotatingShowcase() {
     <div className="hidden 2xl:block fixed left-6 top-1/2 -translate-y-1/2 z-30 w-36 pointer-events-none select-none">
       <div className="glass-panel rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden ring-1 ring-brand-green/20">
         <video
-          src="/character-rotate.mp4"
+          src="/character-rotate-v2.mp4"
           autoPlay
           loop
           muted
