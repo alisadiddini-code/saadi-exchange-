@@ -434,6 +434,23 @@ function SkeletonBlock() {
   );
 }
 
+function RotatingShowcase() {
+  return (
+    <div className="hidden 2xl:block fixed left-6 top-1/2 -translate-y-1/2 z-30 w-36 pointer-events-none select-none">
+      <div className="glass-panel rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden ring-1 ring-brand-green/20">
+        <video
+          src="/character-rotate.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-auto block"
+        />
+      </div>
+    </div>
+  );
+}
+
 function CoinLogo() {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -1271,6 +1288,7 @@ const updateTransferConfirmation = async (
 
   return (
     <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-gray-950 transition-colors">
+      <RotatingShowcase />
       <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
