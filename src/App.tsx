@@ -10,7 +10,6 @@ import {
   TrendingUp,
   ArrowDownCircle,
   Trash2,
-  Banknote,
   BarChart3,
   Pencil,
   Save,
@@ -297,7 +296,7 @@ function SmallBarChart({
   const maxValue = Math.max(...data.map((item) => item.value), 1);
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
+    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
       <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
 
       <div className="h-64 flex items-end gap-3">
@@ -346,7 +345,7 @@ function DonutChart({
   let offsetAcc = 0;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
+    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
       <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <svg viewBox="0 0 100 100" className="w-40 h-40 shrink-0 -rotate-90">
@@ -392,6 +391,70 @@ function DonutChart({
   );
 }
 
+const AVATAR_COLORS = [
+  'bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'bg-violet-500',
+  'bg-pink-500', 'bg-cyan-500', 'bg-orange-500', 'bg-teal-500',
+];
+
+function avatarColorFor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function CompanyAvatar({ name, selected }: { name: string; selected?: boolean }) {
+  const initial = name.trim().charAt(0).toUpperCase() || '?';
+  return (
+    <div
+      className={cn(
+        'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-sm',
+        selected ? 'bg-white/25 ring-1 ring-white/40' : avatarColorFor(name)
+      )}
+    >
+      {initial}
+    </div>
+  );
+}
+
+function SkeletonBlock() {
+  return (
+    <div className="flex flex-col md:flex-row gap-6 items-start">
+      <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 space-y-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-12 rounded-xl shimmer" />
+        ))}
+      </div>
+      <div className="flex-1 min-w-0 w-full glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 space-y-3">
+        <div className="h-6 w-40 rounded-lg shimmer" />
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-10 rounded-lg shimmer" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CoinLogo() {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  return (
+    <div className="coin-spin-wrap shrink-0">
+      <div className="coin-spin w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-lg overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center">
+        {!imgFailed ? (
+          <img
+            src="/coin-logo.png"
+            alt="Saadi Exchange"
+            className="w-full h-full object-cover"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <span className="text-white font-bold text-lg">S</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [data, setData] = useState<AppData>({ banks: [], companies: [], transfers: [], returns: {} });
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -406,6 +469,7 @@ export default function App() {
   const [newBankName, setNewBankName] = useState('');
   const [newCompanyName, setNewCompanyName] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => getStoredString('saadi_theme', 'light') === 'dark');
 
   useEffect(() => {
@@ -611,7 +675,7 @@ const loadAllFromSupabase = async () => {
 };
 
 useEffect(() => {
-  loadAllFromSupabase();
+  loadAllFromSupabase().finally(() => setIsInitialLoading(false));
 }, []);
 
 let toastIdCounter = 0;
@@ -1207,17 +1271,19 @@ const updateTransferConfirmation = async (
 
   return (
     <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-gray-950 transition-colors">
-      <header className="flex flex-col gap-4 mb-8">
+      <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-brand-green-dark flex items-center gap-2">
-              <Banknote className="w-8 h-8" />
-              Saadi Exchange
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Системаи назорати гузаришҳои рӯзона</p>
+          <div className="flex items-center gap-3">
+            <CoinLogo />
+            <div>
+              <h1 className="text-3xl font-bold text-brand-green-dark">
+                Saadi Exchange
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Системаи назорати гузаришҳои рӯзона</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-white dark:bg-gray-900 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-3 glass-panel p-2 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
             <button
               type="button"
               onClick={() => {
@@ -1433,10 +1499,12 @@ const updateTransferConfirmation = async (
       </div>
 
       <main className="flex-1">
-        {viewMode === 'tracker' ? (
+        {isInitialLoading ? (
+          <SkeletonBlock />
+        ) : viewMode === 'tracker' ? (
           selectedBank ? (
             <div className="flex flex-col md:flex-row gap-6 items-start">
-              <div className="w-full md:w-64 shrink-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 md:sticky md:top-4">
+              <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 md:sticky md:top-4">
                 <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
                   {visibleCompanies.map((company) => {
                     const isSelected = company.id === selectedCompanyId;
@@ -1469,9 +1537,14 @@ const updateTransferConfirmation = async (
                             {unconfirmedCount}
                           </span>
                         )}
-                        <div className="font-semibold text-sm">{company.name}</div>
-                        <div className={cn('text-[10px] mt-0.5 font-mono', isSelected ? 'text-white/80' : 'text-gray-400 dark:text-gray-500')}>
-                          {formatCurrency(companyTotals.USD, 'USD')}
+                        <div className="flex items-center gap-2">
+                          <CompanyAvatar name={company.name} selected={isSelected} />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm truncate">{company.name}</div>
+                            <div className={cn('text-[10px] mt-0.5 font-mono', isSelected ? 'text-white/80' : 'text-gray-400 dark:text-gray-500')}>
+                              {formatCurrency(companyTotals.USD, 'USD')}
+                            </div>
+                          </div>
                         </div>
                       </button>
                     );
@@ -1742,6 +1815,19 @@ function CompanyCard({
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const [returnInput, setReturnInput] = useState('');
   const [returnCurrency, setReturnCurrency] = useState<Currency>('USD');
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const tiltCardRef = useRef<HTMLDivElement | null>(null);
+
+  const handleTiltMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = tiltCardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: py * -3, y: px * 3 });
+  };
+
+  const handleTiltLeave = () => setTilt({ x: 0, y: 0 });
 
   useEffect(() => {
     const val = returnedAmounts[returnCurrency];
@@ -1808,9 +1894,16 @@ function CompanyCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+      className="rounded-2xl"
     >
-      <div className="p-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+      <div
+        ref={tiltCardRef}
+        onMouseMove={handleTiltMove}
+        onMouseLeave={handleTiltLeave}
+        style={{ transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+        className="tilt-card glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+      >
+      <div className="p-5 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between bg-gray-50/30 dark:bg-transparent">
         <div>
           <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{company.name}</h3>
           <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Намоиш: {filterLabel}</div>
@@ -1974,33 +2067,33 @@ function CompanyCard({
 
                       <div className="flex items-center gap-2 flex-wrap justify-end ml-auto shrink-0">
                         <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                          <label className="flex items-center gap-1 cursor-pointer select-none" title="Омода / Ба бонк фиристода шуд">
+                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Омода / Ба бонк фиристода шуд">
                             <input
                               type="checkbox"
                               checked={t.preparedConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'prepared', e.target.checked)}
-                              className="w-3.5 h-3.5 rounded-sm border-gray-300 accent-brand-green cursor-pointer"
+                              className="confirm-check"
                             />
                             <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Омода</span>
-                          </label>
-                          <label className="flex items-center gap-1 cursor-pointer select-none" title="Фактура гирифта шуд">
+                          </motion.label>
+                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Фактура гирифта шуд">
                             <input
                               type="checkbox"
                               checked={t.invoiceConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'invoice', e.target.checked)}
-                              className="w-3.5 h-3.5 rounded-sm border-gray-300 accent-brand-green cursor-pointer"
+                              className="confirm-check"
                             />
                             <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Фактура</span>
-                          </label>
-                          <label className="flex items-center gap-1 cursor-pointer select-none" title="SWIFT гирифта шуд">
+                          </motion.label>
+                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="SWIFT гирифта шуд">
                             <input
                               type="checkbox"
                               checked={t.swiftConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'swift', e.target.checked)}
-                              className="w-3.5 h-3.5 rounded-sm border-gray-300 accent-brand-green cursor-pointer"
+                              className="confirm-check"
                             />
                             <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">SWIFT</span>
-                          </label>
+                          </motion.label>
                         </div>
 
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
@@ -2189,6 +2282,7 @@ function CompanyCard({
             </div>
           )}
         </div>
+      </div>
       </div>
     </motion.div>
   );
@@ -2528,9 +2622,9 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         )}
       </div>
 
-      {/* ── Per-currency summary blocks ── */}
-      <div className="grid grid-cols-1 gap-4">
-        {activeCurrencies.map((cur) => {
+      {/* ── Per-currency summary blocks (bento grid) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {activeCurrencies.map((cur, curIdx) => {
           const gross = transferTotals[cur];
           const ret = periodReturns[cur];
           const net = netTotals[cur];
@@ -2538,7 +2632,13 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
           const avg = avgByCurrency[cur];
           if (currencyFilter === 'ALL' && gross === 0 && ret === 0) return null;
           return (
-            <div key={cur} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div
+              key={cur}
+              className={cn(
+                'glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden',
+                curIdx === 0 ? 'lg:col-span-2' : 'lg:col-span-1'
+              )}
+            >
               {/* currency header */}
               <div className={cn('px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3', colorMap[cur].bg)}>
                 <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
@@ -2638,7 +2738,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
 
       {/* ── Company breakdown table ── */}
       {companyBreakdown.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
             <h3 className="font-bold text-gray-800 dark:text-gray-100">Таҳлил аз рӯйи ширкат</h3>
             <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{companyBreakdown.length} ширкат</span>
@@ -2735,7 +2835,7 @@ type MetricCardProps = {
 
 function MetricCard({ title, subtitle, value, extra }: MetricCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 min-w-0 overflow-hidden">
+    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 min-w-0 overflow-hidden">
       <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 break-words">{subtitle}</p>
       <div className="mt-4 font-bold font-mono text-brand-green-dark leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
@@ -2764,7 +2864,7 @@ function Modal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="glass-panel rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
       >
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>

@@ -25,3 +25,113 @@ input[type="number"]::-webkit-outer-spin-button {
 .card-shadow {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
+
+@keyframes coin-spin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+.coin-spin-wrap {
+  perspective: 700px;
+}
+
+.coin-spin {
+  animation: coin-spin 7s linear infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.coin-spin:hover {
+  animation-play-state: paused;
+}
+
+@keyframes header-gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.header-gradient {
+  background: linear-gradient(120deg, var(--color-brand-green-light) 0%, #ffffff 35%, var(--color-brand-green-light) 70%, #ffffff 100%);
+  background-size: 200% 200%;
+  animation: header-gradient-shift 12s ease-in-out infinite;
+}
+
+.dark .header-gradient {
+  background: linear-gradient(120deg, #052e22 0%, #0a1f1a 35%, #063d2c 70%, #0a1f1a 100%);
+  background-size: 200% 200%;
+  animation: header-gradient-shift 12s ease-in-out infinite;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.dark .glass-panel {
+  background: rgba(17, 24, 39, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.tilt-card {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@keyframes shimmer-sweep {
+  from { background-position: -400px 0; }
+  to { background-position: 400px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--color-brand-green-light) 0%, #ffffff 50%, var(--color-brand-green-light) 100%);
+  background-size: 800px 100%;
+  animation: shimmer-sweep 1.6s linear infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(90deg, #0f2b21 0%, #1a3d30 50%, #0f2b21 100%);
+  background-size: 800px 100%;
+  animation: shimmer-sweep 1.6s linear infinite;
+}
+
+.confirm-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-brand-green);
+  background: #ffffff;
+  cursor: pointer;
+  position: relative;
+  transition: box-shadow 0.2s ease, background 0.2s ease, transform 0.1s ease;
+}
+
+.dark .confirm-check {
+  background: #111827;
+  border-color: var(--color-brand-green);
+}
+
+.confirm-check:active {
+  transform: scale(0.9);
+}
+
+.confirm-check:checked {
+  background: var(--color-brand-green);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25), 0 0 10px 1px rgba(16, 185, 129, 0.55);
+}
+
+.confirm-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
