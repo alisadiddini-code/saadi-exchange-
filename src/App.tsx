@@ -1286,7 +1286,6 @@ const updateTransferConfirmation = async (
 
   return (
     <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-gray-950 transition-colors">
-      <RotatingShowcase />
       <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
