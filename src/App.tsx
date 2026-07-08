@@ -1285,7 +1285,7 @@ const updateTransferConfirmation = async (
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-gray-950 transition-colors">
+    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-transparent transition-colors">
       <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -1356,7 +1356,7 @@ const updateTransferConfirmation = async (
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors',
                 viewMode === 'tracker'
-                  ? 'bg-brand-green text-white border-brand-green'
+                  ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)]'
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
@@ -1369,7 +1369,7 @@ const updateTransferConfirmation = async (
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-2',
                 viewMode === 'analytics'
-                  ? 'bg-brand-green text-white border-brand-green'
+                  ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)]'
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
@@ -1392,7 +1392,7 @@ const updateTransferConfirmation = async (
                 className={cn(
                   'px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
                   dateFilterMode === mode
-                    ? 'bg-brand-green text-white border-brand-green'
+                    ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)]'
                     : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
                 )}
               >
@@ -1413,7 +1413,7 @@ const updateTransferConfirmation = async (
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-medium transition-all border',
                 selectedBankId === bank.id
-                  ? 'bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20'
+                  ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-md shadow-brand-green/20'
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
@@ -1537,8 +1537,8 @@ const updateTransferConfirmation = async (
                         className={cn(
                           'relative text-left px-3 py-2.5 rounded-xl border transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
                           isSelected
-                            ? 'bg-brand-green text-white border-brand-green shadow-sm'
-                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-800 hover:border-brand-green/40 hover:bg-brand-green-light/40'
+                            ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-sm'
+                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-800 hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
                         )}
                       >
                         {unconfirmedCount > 0 && (
@@ -1656,7 +1656,7 @@ const updateTransferConfirmation = async (
       </main>
 
       {selectedBank && viewMode === 'tracker' && (
-        <div className="mt-10 bg-brand-green-dark text-white p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="mt-10 bg-brand-green-dark dark:bg-gradient-to-br dark:from-emerald-950 dark:via-emerald-900 dark:to-gray-950 dark:border dark:border-emerald-500/25 dark:backdrop-blur-xl text-white p-6 rounded-3xl shadow-xl dark:shadow-emerald-500/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
               <TrendingUp className="w-6 h-6" />
@@ -2059,7 +2059,7 @@ function CompanyCard({
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <div className="text-sm font-bold text-gray-700 dark:text-gray-200 break-all">
+                            <div className="text-sm font-bold text-gray-700 dark:text-white break-all">
                               {formatCurrency(t.amount, t.currency)}
                             </div>
                             <span className={cn(
@@ -2258,11 +2258,11 @@ function CompanyCard({
 
         <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-base font-bold text-gray-800 dark:text-gray-100">Софӣ USD</span>
+            <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ USD</span>
             <span
               className={cn(
                 'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
-                netUsd >= 0 ? 'text-brand-green-dark' : 'text-red-600'
+                netUsd >= 0 ? 'text-brand-green-dark dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
             >
               {formatCurrency(netUsd, 'USD')}
@@ -2271,11 +2271,11 @@ function CompanyCard({
 
           {(totals.EUR > 0 || returnedEur > 0) && (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-base font-bold text-gray-800 dark:text-gray-100">Софӣ EUR</span>
+              <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ EUR</span>
               <span
                 className={cn(
                   'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
-                  netEur >= 0 ? 'text-blue-700' : 'text-red-600'
+                  netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                 )}
               >
                 {formatCurrency(netEur, 'EUR')}
@@ -2285,11 +2285,11 @@ function CompanyCard({
 
           {(totals.CNY > 0 || returnedCny > 0) && (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-base font-bold text-gray-800 dark:text-gray-100">Софӣ CNY</span>
+              <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ CNY</span>
               <span
                 className={cn(
                   'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
-                  netCny >= 0 ? 'text-yellow-700' : 'text-red-600'
+                  netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                 )}
               >
                 {formatCurrency(netCny, 'CNY')}
@@ -2570,9 +2570,9 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
   );
 
   const colorMap: Record<Currency, { text: string; bg: string; btnActive: string }> = {
-    USD: { text: 'text-emerald-700', bg: 'bg-emerald-50', btnActive: 'bg-emerald-500 text-white' },
-    EUR: { text: 'text-blue-700',    bg: 'bg-blue-50',    btnActive: 'bg-blue-500 text-white'    },
-    CNY: { text: 'text-yellow-700',  bg: 'bg-yellow-50',  btnActive: 'bg-yellow-500 text-white'  },
+    USD: { text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', btnActive: 'bg-emerald-500 text-white' },
+    EUR: { text: 'text-blue-700 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-950/40',    btnActive: 'bg-blue-500 text-white'    },
+    CNY: { text: 'text-yellow-700 dark:text-yellow-400',  bg: 'bg-yellow-50 dark:bg-yellow-950/40',  btnActive: 'bg-yellow-500 text-white'  },
   };
 
   const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
@@ -2671,23 +2671,23 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                 </div>
                 <div className="px-5 py-4">
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Баргашт</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-red-500">
+                  <p className="text-xl font-bold font-mono mt-2 text-red-500 dark:text-red-400">
                     {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
                 <div className="px-5 py-4">
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Соф</p>
-                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600')}>
+                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
                     {formatCurrency(net, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Шумора</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-700 dark:text-gray-200">{cnt}</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-gray-700 dark:text-white">{cnt}</p>
                 </div>
                 <div className="px-5 py-4">
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Миёна</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-500 dark:text-gray-400">
+                  <p className="text-xl font-bold font-mono mt-2 text-gray-500 dark:text-gray-200">
                     {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
@@ -2766,23 +2766,23 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                   <th className="text-right px-4 py-3 font-semibold">Шум.</th>
                   {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
                     <>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-600">USD</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.$</th>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-700">Соф$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">USD</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-400">Соф$</th>
                     </>
                   )}
                   {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
                     <>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-600">EUR</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.€</th>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-700">Соф€</th>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-600 dark:text-blue-400">EUR</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.€</th>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-700 dark:text-blue-400">Соф€</th>
                     </>
                   )}
                   {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
                     <>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-600">CNY</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.¥</th>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-700">Соф¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-600 dark:text-yellow-400">CNY</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-700 dark:text-yellow-400">Соф¥</th>
                     </>
                   )}
                 </tr>
@@ -2790,44 +2790,44 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {companyBreakdown.map((row, i) => (
                   <tr key={i} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/70 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-900">{row.name}</td>
-                    <td className="text-right px-4 py-3 font-mono text-gray-500 dark:text-gray-400">{row.count}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-white sticky left-0 bg-white dark:bg-gray-900">{row.name}</td>
+                    <td className="text-right px-4 py-3 font-mono text-gray-500 dark:text-gray-300">{row.count}</td>
                     {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
                       <>
-                        <td className="text-right px-4 py-3 font-mono text-emerald-700">
-                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-emerald-700 dark:text-emerald-400">
+                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
+                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700' : 'text-red-600')}>
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
                           {formatCurrency(row.netUsd, 'USD')}
                         </td>
                       </>
                     )}
                     {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
                       <>
-                        <td className="text-right px-4 py-3 font-mono text-blue-700">
-                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-blue-700 dark:text-blue-400">
+                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
+                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700' : 'text-red-600')}>
-                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200">—</span>}
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400')}>
+                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
                       </>
                     )}
                     {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
                       <>
-                        <td className="text-right px-4 py-3 font-mono text-yellow-700">
-                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-yellow-700 dark:text-yellow-400">
+                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
+                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700' : 'text-red-600')}>
-                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200">—</span>}
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400')}>
+                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
                       </>
                     )}
@@ -2853,7 +2853,7 @@ function MetricCard({ title, subtitle, value, extra }: MetricCardProps) {
     <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 min-w-0 overflow-hidden">
       <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 break-words">{subtitle}</p>
-      <div className="mt-4 font-bold font-mono text-brand-green-dark leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
+      <div className="mt-4 font-bold font-mono text-brand-green-dark dark:text-emerald-400 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
         <span className="tracking-tight">{value}</span>
       </div>
       <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 break-words">{extra}</div>
