@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -10,6 +10,42 @@
   --color-brand-green: #10b981;
   --color-brand-green-dark: #059669;
   --color-brand-green-light: #d1fae5;
+
+  /*
+   * Stage 1.5 — centralized visual-identity tokens.
+   * Light-mode values live here; .dark overrides the same custom
+   * properties below so every `bg-surface-1` / `text-ink` / `border-line`
+   * utility automatically resolves per-theme without touching components.
+   */
+  --color-surface-0: #f6faf8;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #ffffff;
+  --color-ink: #0f1a16;
+  --color-ink-muted: #4b5d55;
+  --color-line: #dbe8e2;
+}
+
+:root {
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgba(15, 26, 22, 0.05), 0 1px 1px rgba(15, 26, 22, 0.03);
+  --shadow-card-hover: 0 16px 36px -16px rgba(15, 26, 22, 0.18), 0 4px 12px -4px rgba(15, 26, 22, 0.08);
+  --shadow-glow: 0 0 0 1px rgba(16, 185, 129, 0.18), 0 0 22px -6px rgba(16, 185, 129, 0.4);
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+}
+
+.dark {
+  --color-surface-0: #08121a;
+  --color-surface-1: #0e1b24;
+  --color-surface-2: #142530;
+  --color-ink: #eef5f1;
+  --color-ink-muted: #93a8a0;
+  --color-line: rgba(16, 185, 129, 0.14);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 22px 48px -18px rgba(0, 0, 0, 0.6), 0 6px 18px -6px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 0 1px rgba(52, 211, 153, 0.24), 0 0 26px -6px rgba(52, 211, 153, 0.45);
 }
 
 body {
@@ -24,6 +60,13 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .card-shadow {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Financial figures: tabular numerals so columns of amounts line up,
+   slightly tightened tracking so large mono numbers don't feel loose. */
+.money {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 @keyframes coin-spin {
@@ -64,23 +107,42 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(16, 185, 129, 0.08);
 }
 
+/*
+ * Glass system — deeper and less transparent than before ("premium" per
+ * the brief, not "see-through"). Owns its own box-shadow so every card
+ * using .glass-panel (header toolbar, sidebar, KPI/bento cards, company
+ * cards, charts, modals) gets the same elevation for free, with no
+ * per-component changes needed. This rule is unlayered CSS, so it takes
+ * precedence over any Tailwind `shadow-*`/`border-*` utility a component
+ * still carries alongside it — no need to strip those utilities out.
+ */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: var(--color-line);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .dark .glass-panel {
-  background: linear-gradient(165deg, rgba(6, 20, 16, 0.75) 0%, rgba(10, 14, 20, 0.7) 100%);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.06), 0 4px 24px -8px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(165deg, rgba(10, 22, 18, 0.92) 0%, rgba(12, 18, 26, 0.9) 100%);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.06), var(--shadow-card);
 }
 
-.dark body {
-  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(5, 46, 34, 0.35), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(5, 46, 34, 0.15), transparent),
-    #060a0d;
+/* Opt-in hover elevation for genuinely interactive cards (buttons, tabs).
+   Static display-only cards (MetricCard, chart cards) don't get this. */
+.card-hover {
+  transition: transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .tilt-card {
@@ -154,4 +216,50 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .character-float {
   animation: character-float 6s ease-in-out infinite;
+}
+
+/* Chart hover affordances — CSS-only, no component logic needed. */
+.donut-segment {
+  transition: stroke-width var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
+}
+
+.donut-segment:hover {
+  stroke-width: 17;
+}
+
+.bar-tooltip {
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+  pointer-events: none;
+}
+
+.bar-tooltip-anchor:hover .bar-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-spin,
+  .character-float,
+  .header-gradient,
+  .dark .header-gradient,
+  .shimmer,
+  .dark .shimmer {
+    animation: none !important;
+  }
+
+  .tilt-card {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .glass-panel,
+  .card-hover {
+    transition: none !important;
+  }
+
+  .card-hover:hover {
+    transform: none !important;
+  }
 }

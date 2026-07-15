@@ -36,7 +36,7 @@ import {
   eachDayOfInterval,
   eachMonthOfInterval
 } from 'date-fns';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -296,26 +296,36 @@ function SmallBarChart({
   const maxValue = Math.max(...data.map((item) => item.value), 1);
 
   return (
-    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 overflow-hidden">
+      <div className="text-lg font-bold text-ink mb-4">{title}</div>
 
       <div className="h-64 flex items-end gap-3">
         {data.map((item) => {
           const height = Math.max((item.value / maxValue) * 100, item.value > 0 ? 6 : 0);
 
           return (
-            <div key={item.label} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-2">
-              <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate max-w-full">
+            <div key={item.label} className="bar-tooltip-anchor flex-1 min-w-0 flex flex-col items-center justify-end gap-2">
+              <div className="money text-[10px] text-ink-muted font-mono truncate max-w-full">
                 {item.value > 0 ? numberFormat(item.value) : ''}
               </div>
-              <div className="w-full h-44 flex items-end">
+              <div className="relative w-full h-44 flex items-end">
+                {/* faint reference gridlines at 25/50/75% */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+                  <div className="border-t border-line" />
+                  <div className="border-t border-line" />
+                  <div className="border-t border-line" />
+                  <div className="border-t border-line" />
+                </div>
                 <div
-                  className={cn('w-full rounded-t-xl transition-all', colorClass)}
+                  className={cn('relative w-full rounded-t-xl transition-all', colorClass)}
                   style={{ height: `${height}%` }}
                   title={`${item.label}: ${numberFormat(item.value)}`}
                 />
+                <div className="bar-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink text-surface-1 text-[10px] font-mono px-2 py-1 shadow-lg z-10">
+                  {item.label}: {numberFormat(item.value)}
+                </div>
               </div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">{item.label}</div>
+              <div className="text-[11px] text-ink-muted">{item.label}</div>
             </div>
           );
         })}
@@ -324,7 +334,7 @@ function SmallBarChart({
   );
 }
 
-const DONUT_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+const DONUT_COLORS = ['#10b981', '#38bdf8', '#f59e0b', '#94a3b8', '#fb7185', '#2dd4bf', '#c4b5fd', '#facc15'];
 
 function DonutChart({
   title,
@@ -345,11 +355,11 @@ function DonutChart({
   let offsetAcc = 0;
 
   return (
-    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 overflow-hidden">
+      <div className="text-lg font-bold text-ink mb-4">{title}</div>
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <svg viewBox="0 0 100 100" className="w-40 h-40 shrink-0 -rotate-90">
-          <circle cx="50" cy="50" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="14" />
+          <circle cx="50" cy="50" r={radius} fill="none" className="stroke-line" strokeWidth="14" />
           {filtered.map((item, i) => {
             const fraction = item.value / total;
             const dash = fraction * circumference;
@@ -367,6 +377,7 @@ function DonutChart({
                 strokeWidth="14"
                 strokeDasharray={`${dash} ${gap}`}
                 strokeDashoffset={dashoffset}
+                className="donut-segment"
               >
                 <title>{`${item.label}: ${numberFormat(item.value)} (${Math.round(fraction * 100)}%)`}</title>
               </circle>
@@ -380,9 +391,9 @@ function DonutChart({
                 className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
               />
-              <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{item.label}</span>
-              <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
-              <span className="font-mono font-semibold text-gray-800 dark:text-gray-100 text-xs shrink-0">{numberFormat(item.value)}</span>
+              <span className="text-ink truncate flex-1">{item.label}</span>
+              <span className="text-ink-muted text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
+              <span className="money font-mono font-semibold text-ink text-xs shrink-0">{numberFormat(item.value)}</span>
             </div>
           ))}
         </div>
@@ -454,7 +465,7 @@ function CoinLogo() {
 
   return (
     <div className="coin-spin-wrap shrink-0">
-      <div className="coin-spin w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-lg overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center">
+      <div className="coin-spin w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-[var(--shadow-glow)] overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center">
         {!imgFailed ? (
           <img
             src="/coin-logo.png"
@@ -1292,7 +1303,7 @@ const updateTransferConfirmation = async (
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-transparent transition-colors">
+    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-surface-0 dark:bg-transparent transition-colors">
       <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -1529,7 +1540,7 @@ const updateTransferConfirmation = async (
         ) : viewMode === 'tracker' ? (
           selectedBank ? (
             <div className="flex flex-col md:flex-row gap-6 items-start">
-              <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 md:sticky md:top-4">
+              <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-line shadow-sm p-3 md:sticky md:top-4">
                 <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
                   {visibleCompanies.map((company) => {
                     const isSelected = company.id === selectedCompanyId;
@@ -1545,10 +1556,10 @@ const updateTransferConfirmation = async (
                         type="button"
                         onClick={() => setSelectedCompanyId(company.id)}
                         className={cn(
-                          'relative text-left px-3 py-2.5 rounded-xl border transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
+                          'relative text-left px-3 py-2.5 rounded-xl border card-hover transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
                           isSelected
-                            ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-sm'
-                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-800 hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
+                            ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md shadow-[var(--shadow-glow)]'
+                            : 'bg-surface-1 text-gray-600 dark:text-gray-300 border-line hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
                         )}
                       >
                         {unconfirmedCount > 0 && (
@@ -1855,6 +1866,7 @@ function CompanyCard({
   };
 
   const handleTiltLeave = () => setTilt({ x: 0, y: 0 });
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     // Any unrelated data reload elsewhere in the app (another company's
@@ -1933,10 +1945,10 @@ function CompanyCard({
     >
       <div
         ref={tiltCardRef}
-        onMouseMove={handleTiltMove}
-        onMouseLeave={handleTiltLeave}
-        style={{ transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
-        className="tilt-card glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+        onMouseMove={prefersReducedMotion ? undefined : handleTiltMove}
+        onMouseLeave={prefersReducedMotion ? undefined : handleTiltLeave}
+        style={prefersReducedMotion ? undefined : { transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+        className="tilt-card glass-panel rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col min-h-[720px]"
       >
       <div className="p-5 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between bg-gray-50/30 dark:bg-transparent">
         <div>
@@ -2323,7 +2335,7 @@ function CompanyCard({
             <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ USD</span>
             <span
               className={cn(
-                'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
+                'money text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
                 netUsd >= 0 ? 'text-brand-green-dark dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
             >
@@ -2336,7 +2348,7 @@ function CompanyCard({
               <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ EUR</span>
               <span
                 className={cn(
-                  'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
                   netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                 )}
               >
@@ -2350,7 +2362,7 @@ function CompanyCard({
               <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ CNY</span>
               <span
                 className={cn(
-                  'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
                   netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                 )}
               >
@@ -2712,44 +2724,44 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
             <div
               key={cur}
               className={cn(
-                'glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden',
+                'glass-panel rounded-2xl border border-line shadow-sm overflow-hidden',
                 curIdx === 0 ? 'lg:col-span-2' : 'lg:col-span-1'
               )}
             >
               {/* currency header */}
-              <div className={cn('px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3', colorMap[cur].bg)}>
+              <div className={cn('px-5 py-3 border-b border-line flex items-center gap-3', colorMap[cur].bg)}>
                 <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
                   {currencySymbol(cur)} {cur}
                 </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{cnt} гузариш</span>
+                <span className="text-xs text-ink-muted ml-auto">{cnt} гузариш</span>
               </div>
-              {/* metric columns */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-gray-50 dark:divide-gray-800">
+              {/* metric columns — net figure leads, count/avg step back */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-line">
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Гузариш</p>
-                  <p className={cn('text-xl font-bold font-mono mt-2', colorMap[cur].text)}>
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Гузариш</p>
+                  <p className={cn('money text-lg font-semibold font-mono mt-2', colorMap[cur].text)}>
                     {formatCurrency(gross, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Баргашт</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-red-500 dark:text-red-400">
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Баргашт</p>
+                  <p className="money text-lg font-semibold font-mono mt-2 text-red-500 dark:text-red-400">
                     {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
-                <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Соф</p>
-                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
+                <div className="px-5 py-4 bg-black/[0.015] dark:bg-white/[0.03]">
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-bold">Соф</p>
+                  <p className={cn('money text-2xl font-extrabold font-mono mt-2 tracking-tight', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
                     {formatCurrency(net, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Шумора</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-700 dark:text-white">{cnt}</p>
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Шумора</p>
+                  <p className="money text-sm font-medium font-mono mt-2 text-ink-muted">{cnt}</p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Миёна</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-500 dark:text-gray-200">
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Миёна</p>
+                  <p className="money text-sm font-medium font-mono mt-2 text-ink-muted">
                     {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
