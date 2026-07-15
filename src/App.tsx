@@ -24,7 +24,11 @@ import {
   Receipt,
   Send,
   Sun,
-  Moon
+  Moon,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Landmark
 } from 'lucide-react';
 import {
   format,
@@ -116,6 +120,190 @@ const TRANSFER_STATUS_CLASS: Record<TransferStatus, string> = {
   'in-progress': 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
   waiting: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
 };
+
+// Same USD/EUR/CNY color identity AnalyticsView's local colorMap already
+// uses — shared here so the Command Center's currency cards match it
+// exactly without duplicating slightly-different values.
+const CURRENCY_COLOR_MAP: Record<Currency, { text: string }> = {
+  USD: { text: 'text-emerald-700 dark:text-emerald-400' },
+  EUR: { text: 'text-blue-700 dark:text-blue-400' },
+  CNY: { text: 'text-yellow-700 dark:text-yellow-400' },
+};
+
+// ── Command Center: a single derived operational summary ──────────────────
+// Pure read-only aggregation over already-loaded data (data.transfers,
+// data.banks, data.companies, data.returns) for the currently selected day.
+// Nothing here is persisted, nothing here is new stored state, and this
+// function does not call Supabase — it is exactly one pass over that day's
+// transfers, computed once per (data, selectedDate) change via useMemo at
+// the call site.
+type CommandCenterBankRow = {
+  bankId: string;
+  bankName: string;
+  count: number;
+  totalsByCurrency: Record<Currency, number>;
+  incompleteCount: number;
+  completionPct: number;
+};
+
+type CommandCenterCompanyRow = {
+  companyId: string;
+  companyName: string;
+  bankId: string;
+  bankName: string;
+  pendingCount: number;
+  missingSwift: number;
+  missingInvoice: number;
+  notSent: number;
+  hasReturnIssue: boolean;
+};
+
+type CommandCenterSummary = {
+  date: string;
+  totalTransfers: number;
+  totalsByCurrency: Record<Currency, number>;
+  returnsByCurrency: Record<Currency, number>;
+  netByCurrency: Record<Currency, number>;
+  countByCurrency: Record<Currency, number>;
+  incompleteByCurrency: Record<Currency, number>;
+  activeCurrencies: Currency[];
+  pipeline: { total: number; sentToBank: number; invoiceReceived: number; swiftReceived: number; complete: number };
+  unresolved: { notSent: number; missingInvoice: number; missingSwift: number };
+  bankWorkload: CommandCenterBankRow[];
+  companyAttention: CommandCenterCompanyRow[];
+  activityByHour: { label: string; value: number }[];
+};
+
+function buildCommandCenterSummary(data: AppData, selectedDate: string): CommandCenterSummary {
+  const todayTransfers = data.transfers.filter((t) => t.date === selectedDate);
+
+  const totalsByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  const countByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  const incompleteByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+
+  let sentToBank = 0;
+  let invoiceReceived = 0;
+  let swiftReceived = 0;
+  let complete = 0;
+  let notSent = 0;
+  let missingInvoice = 0;
+  let missingSwift = 0;
+
+  const byHour = new Map<string, number>();
+  const bankMap = new Map<string, CommandCenterBankRow>();
+  const companyMap = new Map<string, CommandCenterCompanyRow>();
+
+  for (const t of todayTransfers) {
+    totalsByCurrency[t.currency] += t.amount;
+    countByCurrency[t.currency] += 1;
+
+    const isComplete = t.preparedConfirmed && t.invoiceConfirmed && t.swiftConfirmed;
+    if (t.preparedConfirmed) sentToBank += 1; else notSent += 1;
+    if (t.invoiceConfirmed) invoiceReceived += 1; else missingInvoice += 1;
+    if (t.swiftConfirmed) swiftReceived += 1; else missingSwift += 1;
+    if (isComplete) complete += 1; else incompleteByCurrency[t.currency] += 1;
+
+    let hourLabel = '—';
+    try {
+      hourLabel = format(parseISO(t.timestamp), 'HH:00');
+    } catch {
+      // malformed timestamp on old data — skip bucketing this one, don't crash the summary
+    }
+    if (hourLabel !== '—') {
+      byHour.set(hourLabel, (byHour.get(hourLabel) ?? 0) + 1);
+    }
+
+    const bank = data.banks.find((b) => b.id === t.bankId);
+    if (!bankMap.has(t.bankId)) {
+      bankMap.set(t.bankId, {
+        bankId: t.bankId,
+        bankName: bank?.name ?? '—',
+        count: 0,
+        totalsByCurrency: { USD: 0, EUR: 0, CNY: 0 },
+        incompleteCount: 0,
+        completionPct: 100,
+      });
+    }
+    const bankRow = bankMap.get(t.bankId)!;
+    bankRow.count += 1;
+    bankRow.totalsByCurrency[t.currency] += t.amount;
+    if (!isComplete) bankRow.incompleteCount += 1;
+
+    const company = data.companies.find((c) => c.id === t.companyId);
+    if (!companyMap.has(t.companyId)) {
+      companyMap.set(t.companyId, {
+        companyId: t.companyId,
+        companyName: company?.name ?? '—',
+        bankId: t.bankId,
+        bankName: bank?.name ?? '—',
+        pendingCount: 0,
+        missingSwift: 0,
+        missingInvoice: 0,
+        notSent: 0,
+        hasReturnIssue: false,
+      });
+    }
+    const companyRow = companyMap.get(t.companyId)!;
+    if (!isComplete) companyRow.pendingCount += 1;
+    if (!t.swiftConfirmed) companyRow.missingSwift += 1;
+    if (!t.invoiceConfirmed) companyRow.missingInvoice += 1;
+    if (!t.preparedConfirmed) companyRow.notSent += 1;
+  }
+
+  const returnsByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  const dayReturns = data.returns[selectedDate] || {};
+  Object.entries(dayReturns).forEach(([companyId, currencyMap]) => {
+    (Object.keys(currencyMap) as Currency[]).forEach((cur) => {
+      returnsByCurrency[cur] += currencyMap[cur] ?? 0;
+    });
+    const companyRow = companyMap.get(companyId);
+    if (companyRow && Object.values(currencyMap).some((v) => (v ?? 0) > 0)) {
+      companyRow.hasReturnIssue = true;
+    }
+  });
+
+  const netByCurrency: Record<Currency, number> = {
+    USD: totalsByCurrency.USD - returnsByCurrency.USD,
+    EUR: totalsByCurrency.EUR - returnsByCurrency.EUR,
+    CNY: totalsByCurrency.CNY - returnsByCurrency.CNY,
+  };
+
+  const activeCurrencies = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
+    (cur) => totalsByCurrency[cur] > 0 || returnsByCurrency[cur] > 0
+  );
+
+  const bankWorkload = Array.from(bankMap.values())
+    .map((b) => ({
+      ...b,
+      completionPct: b.count > 0 ? Math.round(((b.count - b.incompleteCount) / b.count) * 100) : 100,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const companyAttention = Array.from(companyMap.values())
+    .filter((c) => c.pendingCount > 0 || c.hasReturnIssue)
+    .sort((a, b) => (b.missingSwift + b.missingInvoice + b.notSent) - (a.missingSwift + a.missingInvoice + a.notSent))
+    .slice(0, 6);
+
+  const activityByHour = Array.from(byHour.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([label, value]) => ({ label, value }));
+
+  return {
+    date: selectedDate,
+    totalTransfers: todayTransfers.length,
+    totalsByCurrency,
+    returnsByCurrency,
+    netByCurrency,
+    countByCurrency,
+    incompleteByCurrency,
+    activeCurrencies,
+    pipeline: { total: todayTransfers.length, sentToBank, invoiceReceived, swiftReceived, complete },
+    unresolved: { notSent, missingInvoice, missingSwift },
+    bankWorkload,
+    companyAttention,
+    activityByHour,
+  };
+}
 
 function transferMatchesSearch(transfer: Transfer, searchQuery: string, companyName?: string) {
   const query = searchQuery.trim().toLowerCase();
@@ -524,6 +712,315 @@ function CoinLogo() {
   );
 }
 
+// ── Command Center ─────────────────────────────────────────────────────────
+// The compact operational-overview strip shown above the tracker's bank
+// tabs. Everything here is read-only presentation over `summary`
+// (buildCommandCenterSummary output) — no Supabase calls, no new stored
+// state, no changes to the confirmation/return/filter logic it summarizes.
+function AttentionTile({
+  icon: Icon,
+  label,
+  count,
+  onClick,
+}: {
+  icon: typeof Send;
+  label: string;
+  count: number;
+  onClick: () => void;
+}) {
+  const isClear = count === 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isClear}
+      className={cn(
+        'flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors card-hover',
+        isClear
+          ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 cursor-default'
+          : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 hover:bg-amber-100 dark:hover:bg-amber-500/15 cursor-pointer'
+      )}
+    >
+      <div
+        className={cn(
+          'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+          isClear ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400'
+        )}
+      >
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <div
+          className={cn(
+            'money text-xl font-extrabold font-mono leading-none',
+            isClear ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
+          )}
+        >
+          {count}
+        </div>
+        <div className="text-[11px] text-ink-muted mt-1 truncate">{label}</div>
+      </div>
+    </button>
+  );
+}
+
+function CommandCenter({
+  summary,
+  dateLabel,
+  lastSyncedAt,
+  onJumpToCompany,
+}: {
+  summary: CommandCenterSummary;
+  dateLabel: string;
+  lastSyncedAt: Date | null;
+  onJumpToCompany: (companyId: string, bankId: string) => void;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const unresolvedTotal = summary.unresolved.notSent + summary.unresolved.missingInvoice + summary.unresolved.missingSwift;
+  const maxBankCount = Math.max(...summary.bankWorkload.map((b) => b.count), 1);
+  const maxHourCount = Math.max(...summary.activityByHour.map((h) => h.value), 1);
+
+  const jumpToFirstWith = (key: 'notSent' | 'missingInvoice' | 'missingSwift') => {
+    const target = summary.companyAttention.find((c) => c[key] > 0);
+    if (target) onJumpToCompany(target.companyId, target.bankId);
+  };
+
+  const pipelineSteps: { key: string; label: string; count: number }[] = [
+    { key: 'total', label: 'Ҳамагӣ', count: summary.pipeline.total },
+    { key: 'sent', label: 'Ба бонк фиристода шуд', count: summary.pipeline.sentToBank },
+    { key: 'invoice', label: 'Фактура гирифта шуд', count: summary.pipeline.invoiceReceived },
+    { key: 'swift', label: 'SWIFT гирифта шуд', count: summary.pipeline.swiftReceived },
+    { key: 'complete', label: 'Анҷом ёфт', count: summary.pipeline.complete },
+  ];
+
+  if (summary.totalTransfers === 0) {
+    return (
+      <motion.div
+        initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="command-center-surface glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+      >
+        <div className="text-center py-10 px-5">
+          <div className="w-14 h-14 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+            <Clock className="w-7 h-7 text-brand-green dark:text-emerald-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-ink">Барои {dateLabel} гузариш нест</h3>
+          <p className="text-ink-muted text-sm mt-1">Ҳамин ки гузаришҳо сабт шаванд, ин ҷо ҳолати умумии рӯз пайдо мешавад.</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="command-center-surface glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+    >
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 border-b border-line">
+        <span className="text-[11px] font-bold text-brand-green-dark dark:text-emerald-400 uppercase tracking-wider">
+          Маркази амалиёт
+        </span>
+        <span className="text-sm font-semibold text-ink">{dateLabel}</span>
+        <span className="text-xs text-ink-muted">{summary.totalTransfers} гузариш</span>
+        <span
+          className={cn(
+            'text-[10px] px-2 py-0.5 rounded-full font-semibold',
+            unresolvedTotal === 0
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+          )}
+        >
+          {unresolvedTotal === 0 ? 'Ҳама анҷом ёфт' : `${unresolvedTotal} боқимонда`}
+        </span>
+        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-ink-muted" aria-live="polite">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          {lastSyncedAt
+            ? `Навсозӣ шуд: ${format(lastSyncedAt, 'HH:mm')}`
+            : 'Дар ҳоли боркунӣ…'}
+        </span>
+      </div>
+
+      {/* ── 1. Needs Attention — highest visual priority ── */}
+      {unresolvedTotal > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-5 pb-4">
+          <AttentionTile
+            icon={Send}
+            label="Ба бонк фиристода нашуд"
+            count={summary.unresolved.notSent}
+            onClick={() => jumpToFirstWith('notSent')}
+          />
+          <AttentionTile
+            icon={Receipt}
+            label="Фактура нарасидааст"
+            count={summary.unresolved.missingInvoice}
+            onClick={() => jumpToFirstWith('missingInvoice')}
+          />
+          <AttentionTile
+            icon={AlertTriangle}
+            label="SWIFT нарасидааст"
+            count={summary.unresolved.missingSwift}
+            onClick={() => jumpToFirstWith('missingSwift')}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 px-5 py-4">
+          <CheckCircle2 className="w-8 h-8 text-emerald-500 shrink-0" />
+          <div>
+            <p className="font-semibold text-ink text-sm">Ҳама гузаришҳои имрӯза анҷом ёфтаанд</p>
+            <p className="text-xs text-ink-muted mt-0.5">Ҳеҷ амалиёти боқимонда нест — ба бонк фиристода, фактура ва SWIFT гирифта шудаанд.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. Currency summary — net-first, currencies never combined ── */}
+      {summary.activeCurrencies.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-4">
+          {summary.activeCurrencies.map((cur) => (
+            <div key={cur} className="rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className={cn('text-sm font-bold', CURRENCY_COLOR_MAP[cur].text)}>{currencySymbol(cur)} {cur}</span>
+                {summary.incompleteByCurrency[cur] > 0 && (
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{summary.incompleteByCurrency[cur]} боқӣ</span>
+                )}
+              </div>
+              <div className={cn('money text-xl font-extrabold font-mono mt-1', CURRENCY_COLOR_MAP[cur].text)}>
+                {formatCurrency(summary.netByCurrency[cur], cur)}
+              </div>
+              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-ink-muted">
+                <span className="money">Гузариш: {formatCurrency(summary.totalsByCurrency[cur], cur)}</span>
+                {summary.returnsByCurrency[cur] > 0 && (
+                  <span className="money text-red-500 dark:text-red-400">Баргашт: {formatCurrency(summary.returnsByCurrency[cur], cur)}</span>
+                )}
+                <span className="money ml-auto">{summary.countByCurrency[cur]} гузариш</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 3. Operational pipeline ── */}
+      <div className="px-5 pb-4">
+        <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Ҷараёни коркард</div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {pipelineSteps.map((step) => {
+            const pct = summary.pipeline.total > 0 ? Math.round((step.count / summary.pipeline.total) * 100) : 0;
+            return (
+              <div key={step.key} className="flex-1 min-w-0">
+                <div className="flex items-center justify-between text-[10px] text-ink-muted mb-1">
+                  <span className="truncate">{step.label}</span>
+                  <span className="money font-mono shrink-0 ml-1">{step.count}/{summary.pipeline.total} · {pct}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-brand-green dark:bg-emerald-400 transition-all duration-200"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── 4 & 5. Bank workload + company attention, side by side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-5 pb-4">
+        <div>
+          <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Бори кории бонкҳо</div>
+          <div className="space-y-2">
+            {summary.bankWorkload.map((b) => (
+              <div key={b.bankId} className="flex items-center gap-2">
+                <div className="w-24 shrink-0 text-xs font-medium text-ink truncate" title={b.bankName}>{b.bankName}</div>
+                <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-brand-green dark:bg-emerald-400 transition-all duration-200"
+                    style={{ width: `${(b.count / maxBankCount) * 100}%` }}
+                  />
+                </div>
+                <span className="money text-[11px] text-ink-muted w-6 text-right shrink-0">{b.count}</span>
+                {b.incompleteCount > 0 && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 shrink-0">
+                    {b.incompleteCount}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Ширкатҳои ниёзманд</div>
+          {summary.companyAttention.length > 0 ? (
+            <div className="space-y-1.5">
+              {summary.companyAttention.map((c) => (
+                <button
+                  key={c.companyId}
+                  type="button"
+                  onClick={() => onJumpToCompany(c.companyId, c.bankId)}
+                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                >
+                  <span className="text-xs font-semibold text-ink truncate shrink-0 max-w-[35%]">{c.companyName}</span>
+                  <div className="flex items-center gap-1 flex-wrap min-w-0">
+                    {c.notSent > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        Нафиристода {c.notSent}
+                      </span>
+                    )}
+                    {c.missingInvoice > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        Бе фактура {c.missingInvoice}
+                      </span>
+                    )}
+                    {c.missingSwift > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        Бе SWIFT {c.missingSwift}
+                      </span>
+                    )}
+                    {c.hasReturnIssue && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400">
+                        Баргашт
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-ink-muted py-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              Ҳама ширкатҳо дар ҳолати хуб
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 6. Activity pulse — real timestamps grouped by hour ── */}
+      {summary.activityByHour.length > 1 && (
+        <div className="px-5 pb-5">
+          <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Фаъолият аз рӯйи соат</div>
+          <div className="flex items-end gap-1 h-12">
+            {summary.activityByHour.map((h) => (
+              <div key={h.label} className="flex-1 min-w-0 h-full flex items-end" title={`${h.label} — ${h.value} гузариш`}>
+                <div
+                  className="w-full bg-brand-green/70 dark:bg-emerald-500/60 rounded-t transition-all duration-200"
+                  style={{ height: `${Math.max((h.value / maxHourCount) * 100, 8)}%` }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-[9px] text-ink-muted mt-1">
+            <span>{summary.activityByHour[0]?.label}</span>
+            <span>{summary.activityByHour[summary.activityByHour.length - 1]?.label}</span>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function App() {
   const [data, setData] = useState<AppData>({ banks: [], companies: [], transfers: [], returns: {} });
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -539,6 +1036,10 @@ export default function App() {
   const [newCompanyName, setNewCompanyName] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // Timestamp of the last successful Supabase load — shown honestly in the
+  // Command Center as "last updated", never as a claim of live/real-time
+  // connectivity (there is none; this app is REST-poll based).
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => getStoredString('saadi_theme', 'light') === 'dark');
 
   useEffect(() => {
@@ -740,6 +1241,7 @@ const loadAllFromSupabase = async () => {
   }
 
   setWsConnected(true);
+  setLastSyncedAt(new Date());
   return freshData;
 };
 
@@ -1169,6 +1671,28 @@ const updateTransferConfirmation = async (
   );
   const canEditDailyFields = dateFilterMode === 'day';
 
+  // Single derived operational summary for the Command Center — one pass
+  // over data.transfers (filtered to selectedDate) per (data, selectedDate)
+  // change, independent of the tracker's own bank/company selection or its
+  // Рӯз/Ҳафта/Моҳ/Ҳама filter, so it always reads as "today" regardless of
+  // what the operator is currently drilling into below it.
+  const commandCenterSummary = useMemo(
+    () => buildCommandCenterSummary(data, selectedDate),
+    [data, selectedDate]
+  );
+
+  const jumpToCompany = (companyId: string, bankId: string) => {
+    if (bankId !== selectedBankId) setSelectedBankId(bankId);
+    setSelectedCompanyId(companyId);
+    if (viewMode !== 'tracker') setViewMode('tracker');
+    const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`company-pill-${companyId}`)
+        ?.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'nearest' });
+    });
+  };
+
   const handleDeleteCompany = (company: Company) => {
     const confirmDelete = window.confirm(
       `Ширкати "${company.name}" нест карда шавад?\n\nҲамаи гузаришҳо ва маблағҳои баргаштӣ ҳам нест мешаванд.`
@@ -1466,6 +1990,15 @@ const updateTransferConfirmation = async (
         </div>
       </header>
 
+      {viewMode === 'tracker' && !isInitialLoading && (
+        <CommandCenter
+          summary={commandCenterSummary}
+          dateLabel={format(parseISO(`${selectedDate}T00:00:00`), 'dd.MM.yyyy')}
+          lastSyncedAt={lastSyncedAt}
+          onJumpToCompany={jumpToCompany}
+        />
+      )}
+
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-2">
           {data.banks.map((bank) => (
@@ -1596,6 +2129,7 @@ const updateTransferConfirmation = async (
                     return (
                       <button
                         key={company.id}
+                        id={`company-pill-${company.id}`}
                         type="button"
                         onClick={() => setSelectedCompanyId(company.id)}
                         className={cn(

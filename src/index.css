@@ -239,6 +239,23 @@ input[type="number"]::-webkit-outer-spin-button {
   transform: translateY(0);
 }
 
+/* Command Center surface — restrained ambient glow + a faint financial
+   grid texture, both intentionally subtle. No 3D, no animation. */
+.command-center-surface {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+    repeating-linear-gradient(0deg, rgba(16, 185, 129, 0.05) 0px, rgba(16, 185, 129, 0.05) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0px, rgba(16, 185, 129, 0.05) 1px, transparent 1px, transparent 28px);
+}
+
+.dark .command-center-surface {
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+    repeating-linear-gradient(0deg, rgba(52, 211, 153, 0.05) 0px, rgba(52, 211, 153, 0.05) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(52, 211, 153, 0.05) 0px, rgba(52, 211, 153, 0.05) 1px, transparent 1px, transparent 28px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .coin-spin,
   .character-float,
