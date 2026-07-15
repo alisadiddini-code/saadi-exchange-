@@ -93,6 +93,30 @@ function currencySymbol(currency: Currency) {
   return '$';
 }
 
+// Pure display derivation from the existing confirmation booleans — no new
+// data, nothing persisted. Consistent status color semantics used across
+// the app: green = done, amber = waiting, blue = in progress.
+type TransferStatus = 'complete' | 'in-progress' | 'waiting';
+
+function getTransferStatus(t: Pick<Transfer, 'preparedConfirmed' | 'invoiceConfirmed' | 'swiftConfirmed'>): TransferStatus {
+  const confirmedCount = [t.preparedConfirmed, t.invoiceConfirmed, t.swiftConfirmed].filter(Boolean).length;
+  if (confirmedCount === 3) return 'complete';
+  if (confirmedCount === 0) return 'waiting';
+  return 'in-progress';
+}
+
+const TRANSFER_STATUS_LABEL: Record<TransferStatus, string> = {
+  complete: 'Анҷом ёфт',
+  'in-progress': 'Дар ҷараён',
+  waiting: 'Дар интизор',
+};
+
+const TRANSFER_STATUS_CLASS: Record<TransferStatus, string> = {
+  complete: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+  'in-progress': 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+  waiting: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+};
+
 function transferMatchesSearch(transfer: Transfer, searchQuery: string, companyName?: string) {
   const query = searchQuery.trim().toLowerCase();
   if (!query) return true;
@@ -345,6 +369,7 @@ function DonutChart({
 }) {
   const filtered = data.filter((d) => d.value > 0).slice(0, 8);
   const total = filtered.reduce((sum, d) => sum + d.value, 0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (!filtered.length || total <= 0) {
     return null;
@@ -366,6 +391,8 @@ function DonutChart({
             const gap = circumference - dash;
             const dashoffset = -offsetAcc;
             offsetAcc += dash;
+            const isHovered = hoveredIndex === i;
+            const isDimmed = hoveredIndex !== null && !isHovered;
             return (
               <circle
                 key={item.label}
@@ -374,28 +401,44 @@ function DonutChart({
                 r={radius}
                 fill="none"
                 stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
-                strokeWidth="14"
+                strokeWidth={isHovered ? 17 : 14}
+                strokeOpacity={isDimmed ? 0.35 : 1}
                 strokeDasharray={`${dash} ${gap}`}
                 strokeDashoffset={dashoffset}
                 className="donut-segment"
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
               >
                 <title>{`${item.label}: ${numberFormat(item.value)} (${Math.round(fraction * 100)}%)`}</title>
               </circle>
             );
           })}
         </svg>
-        <div className="flex-1 min-w-0 w-full space-y-1.5">
-          {filtered.map((item, i) => (
-            <div key={item.label} className="flex items-center gap-2 text-sm">
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
-              />
-              <span className="text-ink truncate flex-1">{item.label}</span>
-              <span className="text-ink-muted text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
-              <span className="money font-mono font-semibold text-ink text-xs shrink-0">{numberFormat(item.value)}</span>
-            </div>
-          ))}
+        <div className="flex-1 min-w-0 w-full space-y-1">
+          {filtered.map((item, i) => {
+            const isHovered = hoveredIndex === i;
+            const isDimmed = hoveredIndex !== null && !isHovered;
+            return (
+              <div
+                key={item.label}
+                className={cn(
+                  'flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 -mx-2 transition-all cursor-default',
+                  isHovered ? 'bg-black/[0.04] dark:bg-white/[0.06]' : 'bg-transparent',
+                  isDimmed && 'opacity-50'
+                )}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                />
+                <span className="text-ink truncate flex-1">{item.label}</span>
+                <span className="text-ink-muted text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
+                <span className="money font-mono font-semibold text-ink text-xs shrink-0">{numberFormat(item.value)}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1651,19 +1694,23 @@ const updateTransferConfirmation = async (
                     />
                   </AnimatePresence>
                 ) : (
-                  <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                    <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Ширкат вуҷуд надорад</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Аввал ширкат илова кунед</p>
+                  <div className="text-center py-20 glass-panel rounded-3xl border border-line shadow-sm">
+                    <div className="w-16 h-16 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                      <Building2 className="w-8 h-8 text-brand-green dark:text-emerald-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-ink">Ширкат вуҷуд надорад</h3>
+                    <p className="text-ink-muted mt-2">Аввал ширкат илова кунед</p>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Бонк вуҷуд надорад</h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-2">Аввал бонк илова кунед</p>
+            <div className="text-center py-20 glass-panel rounded-3xl border border-line shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-8 h-8 text-brand-green dark:text-emerald-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-ink">Бонк вуҷуд надорад</h3>
+              <p className="text-ink-muted mt-2">Аввал бонк илова кунед</p>
             </div>
           )
         ) : (
@@ -1775,6 +1822,7 @@ const updateTransferConfirmation = async (
               initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: -20, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className={cn(
                 'pointer-events-auto rounded-xl shadow-lg border px-4 py-3 text-sm font-medium flex items-start gap-2',
                 t.type === 'error'
@@ -1941,6 +1989,7 @@ function CompanyCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className="rounded-2xl"
     >
       <div
@@ -1950,19 +1999,19 @@ function CompanyCard({
         style={prefersReducedMotion ? undefined : { transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
         className="tilt-card glass-panel rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col min-h-[720px]"
       >
-      <div className="p-5 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between bg-gray-50/30 dark:bg-transparent">
+      <div className="p-5 border-b border-line flex items-center justify-between bg-black/[0.015] dark:bg-white/[0.02]">
         <div>
-          <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{company.name}</h3>
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Намоиш: {filterLabel}</div>
+          <h3 className="font-bold text-ink text-lg">{company.name}</h3>
+          <div className="text-xs text-ink-muted mt-1">Намоиш: {filterLabel}</div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <div className="flex flex-col gap-0.5">
             <button
               type="button"
               onClick={onMoveUp}
               disabled={!canMoveUp}
-              className="p-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 disabled:opacity-30"
+              className="p-1 rounded text-ink-muted hover:text-ink hover:bg-black/[0.05] dark:hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
               title="Боло"
               aria-label="Ба боло гузарондан"
             >
@@ -1972,7 +2021,7 @@ function CompanyCard({
               type="button"
               onClick={onMoveDown}
               disabled={!canMoveDown}
-              className="p-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 disabled:opacity-30"
+              className="p-1 rounded text-ink-muted hover:text-ink hover:bg-black/[0.05] dark:hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
               title="Поён"
               aria-label="Ба поён гузарондан"
             >
@@ -1990,13 +2039,13 @@ function CompanyCard({
             ↑ Ба боло
           </button>
 
-          <div className="text-xs font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400">
-            ID: {company.id.slice(0, 4)}
+          <div className="text-[10px] font-mono px-1.5 py-1 text-ink-muted opacity-70" title={company.id}>
+            #{company.id.slice(0, 4)}
           </div>
           <button
             type="button"
             onClick={onDeleteCompany}
-            className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+            className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             title="Нести ширкат"
             aria-label="Нести ширкат"
           >
@@ -2072,29 +2121,41 @@ function CompanyCard({
           </div>
         )}
 
-        <div className="space-y-2 pr-2 border border-gray-100 dark:border-gray-800 rounded-xl p-3 bg-white dark:bg-gray-900">
+        <div className="space-y-2 pr-2 border border-line rounded-xl p-3 bg-black/[0.01] dark:bg-white/[0.015]">
           {visibleTransfers.length === 0 ? (
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-10 italic">
-              {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
-            </p>
+            <div className="text-center py-10">
+              <Receipt className="w-6 h-6 text-ink-muted opacity-40 mx-auto mb-2" />
+              <p className="text-xs text-ink-muted italic">
+                {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
+              </p>
+            </div>
           ) : (
             visibleTransfers.map((t, index) => {
               const isEditing = editingTransferId === t.id;
 
+              const status = getTransferStatus(t);
+
               return (
-                <div key={t.id} className="border-b border-gray-50 pb-2 last:border-b-0">
+                <div
+                  key={t.id}
+                  className={cn(
+                    'border-b border-line pb-2 last:border-b-0 px-2 -mx-2 rounded-lg transition-colors',
+                    index % 2 === 1 && 'bg-black/[0.015] dark:bg-white/[0.02]',
+                    'hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
+                  )}
+                >
                   {!isEditing ? (
                     <div className="flex items-start justify-between gap-2 flex-wrap group">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="text-[10px] text-white bg-gray-400 rounded-full w-5 h-5 flex items-center justify-center font-bold mt-0.5 shrink-0">
                           {index + 1}
                         </div>
-                        <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono pt-1 min-w-[34px] shrink-0">
+                        <div className="money text-[10px] text-ink-muted font-mono pt-1 min-w-[34px] shrink-0">
                           {format(parseISO(t.timestamp), 'HH:mm')}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <div className="text-sm font-bold text-gray-700 dark:text-white break-all">
+                            <div className="money text-sm font-bold text-gray-700 dark:text-white break-all">
                               {formatCurrency(t.amount, t.currency)}
                             </div>
                             <span className={cn(
@@ -2107,42 +2168,45 @@ function CompanyCard({
                             )}>
                               {t.currency}
                             </span>
+                            <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-semibold', TRANSFER_STATUS_CLASS[status])}>
+                              {TRANSFER_STATUS_LABEL[status]}
+                            </span>
                           </div>
                           {t.note && (
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 break-all">{t.note}</div>
+                            <div className="text-[10px] text-ink-muted mt-0.5 break-all">{t.note}</div>
                           )}
                           <div className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">{t.date}</div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap justify-end ml-auto shrink-0">
-                        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Омода / Ба бонк фиристода шуд">
+                        <div className="flex flex-wrap items-center justify-end gap-x-1 gap-y-1">
+                          <motion.label whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }} className="flex items-center gap-1 cursor-pointer select-none rounded-md px-1 py-1 -my-1 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" title="Омода / Ба бонк фиристода шуд">
                             <input
                               type="checkbox"
                               checked={t.preparedConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'prepared', e.target.checked)}
                               className="confirm-check"
                             />
-                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Омода</span>
+                            <span className="text-[9px] font-semibold text-ink-muted whitespace-nowrap">Омода</span>
                           </motion.label>
-                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Фактура гирифта шуд">
+                          <motion.label whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }} className="flex items-center gap-1 cursor-pointer select-none rounded-md px-1 py-1 -my-1 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" title="Фактура гирифта шуд">
                             <input
                               type="checkbox"
                               checked={t.invoiceConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'invoice', e.target.checked)}
                               className="confirm-check"
                             />
-                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Фактура</span>
+                            <span className="text-[9px] font-semibold text-ink-muted whitespace-nowrap">Фактура</span>
                           </motion.label>
-                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="SWIFT гирифта шуд">
+                          <motion.label whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }} className="flex items-center gap-1 cursor-pointer select-none rounded-md px-1 py-1 -my-1 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" title="SWIFT гирифта шуд">
                             <input
                               type="checkbox"
                               checked={t.swiftConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'swift', e.target.checked)}
                               className="confirm-check"
                             />
-                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">SWIFT</span>
+                            <span className="text-[9px] font-semibold text-ink-muted whitespace-nowrap">SWIFT</span>
                           </motion.label>
                         </div>
 
@@ -2536,10 +2600,12 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
 
   if (!selectedBank) {
     return (
-      <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-        <BarChart3 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Бонк интихоб нашудааст</h3>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
+      <div className="text-center py-20 glass-panel rounded-3xl border border-line shadow-sm">
+        <div className="w-16 h-16 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+          <BarChart3 className="w-8 h-8 text-brand-green dark:text-emerald-400" />
+        </div>
+        <h3 className="text-xl font-semibold text-ink">Бонк интихоб нашудааст</h3>
+        <p className="text-ink-muted mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
       </div>
     );
   }
@@ -2733,7 +2799,9 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                 <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
                   {currencySymbol(cur)} {cur}
                 </span>
-                <span className="text-xs text-ink-muted ml-auto">{cnt} гузариш</span>
+                <span className={cn('text-[10px] px-2 py-1 rounded-full font-semibold ml-auto', TRANSFER_STATUS_CLASS[cnt > 0 ? 'complete' : 'waiting'])}>
+                  {cnt} гузариш
+                </span>
               </div>
               {/* metric columns — net figure leads, count/avg step back */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-line">
@@ -2771,9 +2839,11 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         })}
 
         {!hasAnyData && (
-          <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 dark:text-gray-500 font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
+          <div className="text-center py-16 glass-panel rounded-2xl border border-line shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+              <BarChart3 className="w-6 h-6 text-brand-green dark:text-emerald-400" />
+            </div>
+            <p className="text-ink-muted font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
           </div>
         )}
       </div>
@@ -2953,6 +3023,7 @@ function Modal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         className="glass-panel rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
       >
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
