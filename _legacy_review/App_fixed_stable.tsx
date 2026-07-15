@@ -35,9 +35,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { AppData, Bank, ClientMessage, Company, Currency, ServerMessage, Transfer } from './types';
-import { cn } from './lib/utils';
-import { supabase } from './lib/supabase';
+import { AppData, Bank, ClientMessage, Company, Currency, ServerMessage, Transfer } from '../src/types';
+import { cn } from '../src/lib/utils';
+import { supabase } from '../src/lib/supabase';
 
 type ViewMode = 'tracker' | 'analytics';
 type DateFilterMode = 'day' | 'week' | 'month' | 'all';

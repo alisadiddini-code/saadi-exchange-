@@ -871,7 +871,14 @@ const sendMessage = async (msg: ClientMessage) => {
     );
   };
 
-  const bankTotals = calculateBankTotals();
+  // calculateBankTotals reads filteredCompanies directly, plus data.transfers/
+  // data.returns/activeRange/dateFilterMode/selectedDate via the two helper
+  // closures above — all six are listed below so this only recomputes when
+  // one of them actually changes.
+  const bankTotals = useMemo(
+    () => calculateBankTotals(),
+    [filteredCompanies, data.transfers, data.returns, activeRange, dateFilterMode, selectedDate]
+  );
   const canEditDailyFields = dateFilterMode === 'day';
 
   const handleDeleteCompany = (company: Company) => {
@@ -1071,6 +1078,7 @@ const sendMessage = async (msg: ClientMessage) => {
                 setSelectedDate(format(d, 'yyyy-MM-dd'));
               }}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Рӯзи гузашта"
             >
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
@@ -1093,6 +1101,7 @@ const sendMessage = async (msg: ClientMessage) => {
                 setSelectedDate(format(d, 'yyyy-MM-dd'));
               }}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Рӯзи оянда"
             >
               <ChevronRight className="w-5 h-5 text-gray-600" />
             </button>
@@ -1176,6 +1185,7 @@ const sendMessage = async (msg: ClientMessage) => {
             type="button"
             onClick={() => setIsAddingBank(true)}
             className="p-2 rounded-full bg-white border border-dashed border-gray-300 text-gray-400 hover:text-brand-green hover:border-brand-green transition-colors"
+            aria-label="Иловаи бонк"
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -1493,10 +1503,20 @@ function CompanyCard({
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const [returnInput, setReturnInput] = useState('');
   const [returnCurrency, setReturnCurrency] = useState<Currency>('USD');
+  const [returnError, setReturnError] = useState<string | null>(null);
+  const isReturnFieldFocused = useRef(false);
 
   useEffect(() => {
+    // Any unrelated data reload elsewhere in the app (another company's
+    // transfer being added/edited/deleted, etc.) re-renders this component
+    // with a brand-new `returnedAmounts` object. Skipping the resync while
+    // the operator has this field focused stops that reload from wiping out
+    // an unsaved keystroke; the field still syncs normally on mount, on
+    // currency switch, and after this field loses focus.
+    if (isReturnFieldFocused.current) return;
     const val = returnedAmounts[returnCurrency];
     setReturnInput(val ? String(val) : '');
+    setReturnError(null);
   }, [returnedAmounts, returnCurrency]);
 
   const totals = summarizeByCurrency(transfers);
@@ -1575,6 +1595,7 @@ function CompanyCard({
               disabled={!canMoveUp}
               className="p-1 rounded bg-white border border-gray-200 disabled:opacity-30"
               title="Боло"
+              aria-label="Ба боло гузарондан"
             >
               <ChevronUp className="w-3 h-3" />
             </button>
@@ -1584,6 +1605,7 @@ function CompanyCard({
               disabled={!canMoveDown}
               className="p-1 rounded bg-white border border-gray-200 disabled:opacity-30"
               title="Поён"
+              aria-label="Ба поён гузарондан"
             >
               <ChevronDown className="w-3 h-3" />
             </button>
@@ -1607,6 +1629,7 @@ function CompanyCard({
             onClick={onDeleteCompany}
             className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
             title="Нести ширкат"
+            aria-label="Нести ширкат"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -1728,6 +1751,7 @@ function CompanyCard({
                           type="button"
                           onClick={() => startEdit(t)}
                           className="p-1 text-gray-300 hover:text-blue-500 transition-all"
+                          aria-label="Таҳрири гузариш"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
@@ -1735,6 +1759,7 @@ function CompanyCard({
                           type="button"
                           onClick={() => onDeleteTransfer(t.id)}
                           className="p-1 text-gray-300 hover:text-red-500 transition-all"
+                          aria-label="Нест кардани гузариш"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -1765,6 +1790,7 @@ function CompanyCard({
                           type="button"
                           onClick={saveEdit}
                           className="p-2 rounded-lg bg-brand-green text-white hover:bg-brand-green-dark transition-colors"
+                          aria-label="Захира кардан"
                         >
                           <Save className="w-4 h-4" />
                         </button>
@@ -1772,6 +1798,7 @@ function CompanyCard({
                           type="button"
                           onClick={cancelEdit}
                           className="p-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                          aria-label="Бекор кардан"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1821,50 +1848,85 @@ function CompanyCard({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-red-500 font-medium">
-            <ArrowDownCircle className="w-4 h-4" />
-            <span>Баргашт</span>
-          </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-red-500 font-medium">
+              <ArrowDownCircle className="w-4 h-4" />
+              <span>Баргашт</span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <select
-              value={returnCurrency}
-              onChange={(e) => setReturnCurrency(e.target.value as Currency)}
-              disabled={!canEditReturn}
-              className={cn(
-                'p-1 rounded border text-xs outline-none',
-                canEditReturn ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-100 text-gray-400'
-              )}
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="CNY">CNY</option>
-            </select>
-            <input
-              type="number"
-              disabled={!canEditReturn}
-              className={cn(
-                'w-28 border rounded-lg px-3 py-2 text-sm font-mono text-right outline-none',
-                canEditReturn
-                  ? 'bg-white border-gray-200 focus:ring-1 focus:ring-red-400'
-                  : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-              )}
-              value={returnInput}
-              onChange={(e) => setReturnInput(e.target.value)}
-              onBlur={() => {
-                if (!canEditReturn) return;
-                onUpdateReturn(parseFloat(returnInput) || 0, returnCurrency);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.currentTarget.blur();
-                }
-              }}
-              placeholder="0.00"
-              step="0.01"
-            />
+            <div className="flex items-center gap-2">
+              <select
+                value={returnCurrency}
+                onChange={(e) => setReturnCurrency(e.target.value as Currency)}
+                disabled={!canEditReturn}
+                className={cn(
+                  'p-1 rounded border text-xs outline-none',
+                  canEditReturn ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-100 text-gray-400'
+                )}
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="CNY">CNY</option>
+              </select>
+              <input
+                type="number"
+                disabled={!canEditReturn}
+                className={cn(
+                  'w-28 border rounded-lg px-3 py-2 text-sm font-mono text-right outline-none',
+                  canEditReturn
+                    ? returnError
+                      ? 'bg-white border-red-400 focus:ring-1 focus:ring-red-500'
+                      : 'bg-white border-gray-200 focus:ring-1 focus:ring-red-400'
+                    : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                )}
+                value={returnInput}
+                onFocus={() => {
+                  isReturnFieldFocused.current = true;
+                }}
+                onChange={(e) => {
+                  setReturnInput(e.target.value);
+                  if (returnError) setReturnError(null);
+                }}
+                onBlur={() => {
+                  isReturnFieldFocused.current = false;
+                  if (!canEditReturn) return;
+
+                  const trimmed = returnInput.trim();
+                  if (trimmed === '') {
+                    setReturnError('Маблағро ворид кунед ё "0" нависед');
+                    return;
+                  }
+                  const parsed = Number(trimmed);
+                  if (!Number.isFinite(parsed)) {
+                    setReturnError('Рақами дуруст ворид кунед');
+                    return;
+                  }
+                  if (parsed < 0) {
+                    setReturnError('Маблағ наметавонад манфӣ бошад');
+                    return;
+                  }
+
+                  setReturnError(null);
+                  onUpdateReturn(parsed, returnCurrency);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
+                placeholder="0.00"
+                step="0.01"
+                aria-invalid={returnError ? true : undefined}
+                aria-describedby={returnError ? `return-error-${company.id}` : undefined}
+              />
+            </div>
           </div>
+          {returnError && (
+            <p id={`return-error-${company.id}`} className="text-xs text-red-500 text-right">
+              {returnError}
+            </p>
+          )}
         </div>
 
         <div className="pt-3 border-t border-gray-200 space-y-2">
@@ -2443,7 +2505,7 @@ function Modal({
       >
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Пӯшидан">
             <Plus className="w-6 h-6 rotate-45 text-gray-400" />
           </button>
         </div>
