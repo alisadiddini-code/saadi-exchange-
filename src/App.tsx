@@ -10,7 +10,6 @@ import {
   TrendingUp,
   ArrowDownCircle,
   Trash2,
-  Banknote,
   BarChart3,
   Pencil,
   Save,
@@ -20,7 +19,12 @@ import {
   FileSpreadsheet,
   FileText,
   ArrowUpDown,
-  Printer
+  Printer,
+  Check,
+  Receipt,
+  Send,
+  Sun,
+  Moon
 } from 'lucide-react';
 import {
   format,
@@ -179,6 +183,9 @@ function mapSupabaseTransfer(row: any, fallbackDate: string): Transfer {
     note: row?.note && row.note !== 'EMPTY' ? String(row.note) : '',
     date,
     timestamp,
+    preparedConfirmed: Boolean(row?.prepared_confirmed),
+    invoiceConfirmed: Boolean(row?.invoice_confirmed),
+    swiftConfirmed: Boolean(row?.swift_confirmed),
   };
 }
 
@@ -289,8 +296,8 @@ function SmallBarChart({
   const maxValue = Math.max(...data.map((item) => item.value), 1);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-gray-800 mb-4">{title}</div>
+    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
+      <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
 
       <div className="h-64 flex items-end gap-3">
         {data.map((item) => {
@@ -298,7 +305,7 @@ function SmallBarChart({
 
           return (
             <div key={item.label} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-2">
-              <div className="text-[10px] text-gray-400 font-mono truncate max-w-full">
+              <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate max-w-full">
                 {item.value > 0 ? numberFormat(item.value) : ''}
               </div>
               <div className="w-full h-44 flex items-end">
@@ -308,10 +315,156 @@ function SmallBarChart({
                   title={`${item.label}: ${numberFormat(item.value)}`}
                 />
               </div>
-              <div className="text-[11px] text-gray-500">{item.label}</div>
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">{item.label}</div>
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+const DONUT_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+
+function DonutChart({
+  title,
+  data,
+}: {
+  title: string;
+  data: { label: string; value: number }[];
+}) {
+  const filtered = data.filter((d) => d.value > 0).slice(0, 8);
+  const total = filtered.reduce((sum, d) => sum + d.value, 0);
+
+  if (!filtered.length || total <= 0) {
+    return null;
+  }
+
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  let offsetAcc = 0;
+
+  return (
+    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
+      <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
+      <div className="flex flex-col sm:flex-row items-center gap-6">
+        <svg viewBox="0 0 100 100" className="w-40 h-40 shrink-0 -rotate-90">
+          <circle cx="50" cy="50" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="14" />
+          {filtered.map((item, i) => {
+            const fraction = item.value / total;
+            const dash = fraction * circumference;
+            const gap = circumference - dash;
+            const dashoffset = -offsetAcc;
+            offsetAcc += dash;
+            return (
+              <circle
+                key={item.label}
+                cx="50"
+                cy="50"
+                r={radius}
+                fill="none"
+                stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
+                strokeWidth="14"
+                strokeDasharray={`${dash} ${gap}`}
+                strokeDashoffset={dashoffset}
+              >
+                <title>{`${item.label}: ${numberFormat(item.value)} (${Math.round(fraction * 100)}%)`}</title>
+              </circle>
+            );
+          })}
+        </svg>
+        <div className="flex-1 min-w-0 w-full space-y-1.5">
+          {filtered.map((item, i) => (
+            <div key={item.label} className="flex items-center gap-2 text-sm">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+              />
+              <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{item.label}</span>
+              <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
+              <span className="font-mono font-semibold text-gray-800 dark:text-gray-100 text-xs shrink-0">{numberFormat(item.value)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const AVATAR_COLORS = [
+  'bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'bg-violet-500',
+  'bg-pink-500', 'bg-cyan-500', 'bg-orange-500', 'bg-teal-500',
+];
+
+function avatarColorFor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function CompanyAvatar({ name, selected }: { name: string; selected?: boolean }) {
+  const initial = name.trim().charAt(0).toUpperCase() || '?';
+  return (
+    <div
+      className={cn(
+        'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-sm',
+        selected ? 'bg-white/25 ring-1 ring-white/40' : avatarColorFor(name)
+      )}
+    >
+      {initial}
+    </div>
+  );
+}
+
+function SkeletonBlock() {
+  return (
+    <div className="flex flex-col md:flex-row gap-6 items-start">
+      <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 space-y-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-12 rounded-xl shimmer" />
+        ))}
+      </div>
+      <div className="flex-1 min-w-0 w-full glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 space-y-3">
+        <div className="h-6 w-40 rounded-lg shimmer" />
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-10 rounded-lg shimmer" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RotatingShowcase() {
+  return (
+    <div className="hidden 2xl:block fixed left-2 top-1/2 -translate-y-1/2 z-30 w-[26rem] pointer-events-none select-none character-float">
+      <video
+        src="/character-rotate-v2.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="w-full h-auto block drop-shadow-2xl"
+      />
+    </div>
+  );
+}
+
+function CoinLogo() {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  return (
+    <div className="coin-spin-wrap shrink-0">
+      <div className="coin-spin w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-lg overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center">
+        {!imgFailed ? (
+          <img
+            src="/coin-logo.png"
+            alt="Saadi Exchange"
+            className="w-full h-full object-cover"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <span className="text-white font-bold text-lg">S</span>
+        )}
       </div>
     </div>
   );
@@ -331,6 +484,22 @@ export default function App() {
   const [newBankName, setNewBankName] = useState('');
   const [newCompanyName, setNewCompanyName] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => getStoredString('saadi_theme', 'light') === 'dark');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    try {
+      window.localStorage.setItem('saadi_theme', isDarkMode ? 'dark' : 'light');
+    } catch {
+      // ignore storage errors
+    }
+  }, [isDarkMode]);
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     getStoredString('saadi_view_mode', 'tracker') as ViewMode
   );
@@ -343,6 +512,11 @@ export default function App() {
   const [companySortMode, setCompanySortMode] = useState<CompanySortMode>(() =>
     getStoredString('saadi_company_sort_mode', 'manual') as CompanySortMode
   );
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
+    const stored = getStoredString('saadi_selected_company_id', '');
+    return stored || null;
+  });
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'error' | 'success' }[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -364,6 +538,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('saadi_company_sort_mode', companySortMode);
   }, [companySortMode]);
+
+  useEffect(() => {
+    if (selectedCompanyId) {
+      localStorage.setItem('saadi_selected_company_id', selectedCompanyId);
+    }
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     if (selectedBankId) {
@@ -510,16 +690,24 @@ const loadAllFromSupabase = async () => {
 };
 
 useEffect(() => {
-  loadAllFromSupabase();
+  loadAllFromSupabase().finally(() => setIsInitialLoading(false));
 }, []);
 
+let toastIdCounter = 0;
+const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+  const id = ++toastIdCounter;
+  setToasts((prev) => [...prev, { id, message, type }]);
+  window.setTimeout(() => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, 4500);
+};
 
 const sendMessage = async (msg: ClientMessage) => {
   console.log('Supabase action:', msg);
 
   if (msg.type === 'ADD_BANK') {
     const { error } = await supabase.from('banks').insert({ name: msg.name });
-    if (error) return alert('خطا در افزودن بانک: ' + error.message);
+    if (error) return showToast('خطا در افزودن بانک: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
@@ -530,7 +718,7 @@ const sendMessage = async (msg: ClientMessage) => {
       bank_id: msg.bankId,
       sort_order: data.companies.filter((c) => c.bankId === msg.bankId).length,
     });
-    if (error) return alert('خطا در افزودن شرکت: ' + error.message);
+    if (error) return showToast('خطا در افزودن شرکت: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
@@ -554,7 +742,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error || !savedTransfer) {
       console.error('ADD_TRANSFER ERROR:', error);
-      alert('Хато дар иловаи интиқол: ' + (error?.message || 'Маълумот сабт нашуд'));
+      showToast('Хато дар иловаи интиқол: ' + (error?.message || 'Маълумот сабт нашуд'));
       return;
     }
 
@@ -601,7 +789,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error || !updatedTransfer) {
       console.error('UPDATE_TRANSFER ERROR:', error);
-      alert('خطا дар вироиши гузариш: ' + (error?.message || 'Маълумот нав нашуд'));
+      showToast('خطا дар вироиши гузариш: ' + (error?.message || 'Маълумот нав нашуд'));
       return;
     }
 
@@ -624,7 +812,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error) {
       console.error('DELETE_TRANSFER ERROR:', error);
-      alert('خطا дар حذف انتقال: ' + error.message);
+      showToast('خطا дар حذف انتقال: ' + error.message);
       return;
     }
 
@@ -661,7 +849,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     if (error) {
       console.error('UPDATE_RETURN ERROR:', error);
-      alert('خطа дар ثبت برگашт: ' + error.message);
+      showToast('خطа дар ثبت برگашт: ' + error.message);
       return;
     }
 
@@ -710,7 +898,7 @@ const sendMessage = async (msg: ClientMessage) => {
       supabase.from('companies').update({ sort_order: currentOrder }).eq('id', target.id),
     ]);
 
-    if (e1 || e2) return alert('Хато дар иваз кардани ҷой: ' + (e1?.message || e2?.message));
+    if (e1 || e2) return showToast('Хато дар иваз кардани ҷой: ' + (e1?.message || e2?.message));
     await loadAllFromSupabase();
     return;
   }
@@ -730,23 +918,55 @@ const sendMessage = async (msg: ClientMessage) => {
       .update({ sort_order: minOrder - 1 })
       .eq('id', msg.companyId);
 
-    if (error) return alert('Хато: ' + error.message);
+    if (error) return showToast('Хато: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
 
   if (msg.type === 'DELETE_COMPANY') {
     const { error } = await supabase.from('companies').delete().eq('id', msg.id);
-    if (error) return alert('خطا дар حذف ширкат: ' + error.message);
+    if (error) return showToast('خطا дар حذف ширкат: ' + error.message);
     await loadAllFromSupabase();
     return;
   }
 
   if (msg.type === 'DELETE_BANK') {
     const { error } = await supabase.from('banks').delete().eq('id', msg.id);
-    if (error) return alert('خطا дар حذف бонк: ' + error.message);
+    if (error) return showToast('خطا дар حذف бонк: ' + error.message);
     await loadAllFromSupabase();
     return;
+  }
+};
+
+const updateTransferConfirmation = async (
+  id: string,
+  field: 'prepared' | 'invoice' | 'swift',
+  value: boolean
+) => {
+  const column =
+    field === 'prepared' ? 'prepared_confirmed' : field === 'invoice' ? 'invoice_confirmed' : 'swift_confirmed';
+  const key =
+    field === 'prepared' ? 'preparedConfirmed' : field === 'invoice' ? 'invoiceConfirmed' : 'swiftConfirmed';
+
+  // Танҳо ҳамин майдон тағйир меёбад — тартиби гузаришҳо ва дигар маълумот дахл намекунад
+  setData((prev) => ({
+    ...prev,
+    transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
+  }));
+
+  const { error } = await supabase
+    .from('transfers')
+    .update({ [column]: value })
+    .eq('id', id);
+
+  if (error) {
+    console.error('updateTransferConfirmation ERROR:', error);
+    showToast('Хато дар сабти тасдиқ: ' + error.message);
+    // Бозгашт ба ҳолати қаблӣ дар сурати хато
+    setData((prev) => ({
+      ...prev,
+      transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
+    }));
   }
 };
 
@@ -842,6 +1062,20 @@ const sendMessage = async (msg: ClientMessage) => {
 
     return base;
   }, [filteredCompanies, companySortMode, data.transfers, data.returns, selectedDate, dateFilterMode]);
+
+  useEffect(() => {
+    if (sortedCompanies.length === 0) {
+      if (selectedCompanyId !== null) setSelectedCompanyId(null);
+      return;
+    }
+    const stillExists = selectedCompanyId && sortedCompanies.some((c) => c.id === selectedCompanyId);
+    if (!stillExists) setSelectedCompanyId(sortedCompanies[0].id);
+  }, [sortedCompanies, selectedCompanyId]);
+
+  const selectedCompany = useMemo(
+    () => filteredCompanies.find((c) => c.id === selectedCompanyId) || null,
+    [filteredCompanies, selectedCompanyId]
+  );
 
   const visibleCompanies = useMemo(() => {
     if (!searchQuery.trim()) return sortedCompanies;
@@ -1058,18 +1292,20 @@ const sendMessage = async (msg: ClientMessage) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6">
-      <header className="flex flex-col gap-4 mb-8">
+    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-transparent transition-colors">
+      <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-brand-green-dark flex items-center gap-2">
-              <Banknote className="w-8 h-8" />
-              Saadi Exchange
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">Системаи назорати гузаришҳои рӯзона</p>
+          <div className="flex items-center gap-3">
+            <CoinLogo />
+            <div>
+              <h1 className="text-3xl font-bold text-brand-green-dark">
+                Saadi Exchange
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Системаи назорати гузаришҳои рӯзона</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 glass-panel p-2 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
             <button
               type="button"
               onClick={() => {
@@ -1077,13 +1313,13 @@ const sendMessage = async (msg: ClientMessage) => {
                 d.setDate(d.getDate() - 1);
                 setSelectedDate(format(d, 'yyyy-MM-dd'));
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               aria-label="Рӯзи гузашта"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
 
-            <div className="flex items-center gap-2 px-2 font-medium text-gray-700">
+            <div className="flex items-center gap-2 px-2 font-medium text-gray-700 dark:text-gray-200">
               <CalendarIcon className="w-4 h-4 text-brand-green" />
               <input
                 type="date"
@@ -1100,12 +1336,25 @@ const sendMessage = async (msg: ClientMessage) => {
                 d.setDate(d.getDate() + 1);
                 setSelectedDate(format(d, 'yyyy-MM-dd'));
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               aria-label="Рӯзи оянда"
             >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+              <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            title={isDarkMode ? 'Гузариш ба ҳолати равшан' : 'Гузариш ба ҳолати торик'}
+            className="p-2.5 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hover:border-brand-green/50 transition-colors shrink-0"
+          >
+            {isDarkMode ? (
+              <Sun className="w-5 h-5 text-yellow-400" />
+            ) : (
+              <Moon className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
         </div>
 
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
@@ -1116,8 +1365,8 @@ const sendMessage = async (msg: ClientMessage) => {
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors',
                 viewMode === 'tracker'
-                  ? 'bg-brand-green text-white border-brand-green'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-brand-green/50'
+                  ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)]'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
               Сабт
@@ -1129,8 +1378,8 @@ const sendMessage = async (msg: ClientMessage) => {
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors flex items-center gap-2',
                 viewMode === 'analytics'
-                  ? 'bg-brand-green text-white border-brand-green'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-brand-green/50'
+                  ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)]'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
               <BarChart3 className="w-4 h-4" />
@@ -1139,7 +1388,7 @@ const sendMessage = async (msg: ClientMessage) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <Filter className="w-4 h-4" />
               <span className="font-medium">Давра:</span>
             </div>
@@ -1152,8 +1401,8 @@ const sendMessage = async (msg: ClientMessage) => {
                 className={cn(
                   'px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
                   dateFilterMode === mode
-                    ? 'bg-brand-green text-white border-brand-green'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-green/50'
+                    ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)]'
+                    : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
                 )}
               >
                 {tajikRangeLabel(mode)}
@@ -1173,8 +1422,8 @@ const sendMessage = async (msg: ClientMessage) => {
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-medium transition-all border',
                 selectedBankId === bank.id
-                  ? 'bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-brand-green/50'
+                  ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-md shadow-brand-green/20'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
               {bank.name}
@@ -1184,7 +1433,7 @@ const sendMessage = async (msg: ClientMessage) => {
           <button
             type="button"
             onClick={() => setIsAddingBank(true)}
-            className="p-2 rounded-full bg-white border border-dashed border-gray-300 text-gray-400 hover:text-brand-green hover:border-brand-green transition-colors"
+            className="p-2 rounded-full bg-white dark:bg-gray-900 border border-dashed border-gray-300 text-gray-400 dark:text-gray-500 hover:text-brand-green hover:border-brand-green transition-colors"
             aria-label="Иловаи бонк"
           >
             <Plus className="w-5 h-5" />
@@ -1203,32 +1452,32 @@ const sendMessage = async (msg: ClientMessage) => {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_auto_auto] gap-3">
-          <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
-            <Search className="w-4 h-4 text-gray-400" />
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
+            <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Ҷустуҷӯ аз рӯйи маблағ, асъор, рақами ҳисоб, соат, сана ё ширкат..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent outline-none text-sm text-gray-700 placeholder:text-gray-400"
+              className="w-full bg-transparent outline-none text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
+                className="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
               >
                 Пок
               </button>
             )}
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
-            <ArrowUpDown className="w-4 h-4 text-gray-400" />
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
+            <ArrowUpDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             <select
               value={companySortMode}
               onChange={(e) => setCompanySortMode(e.target.value as CompanySortMode)}
-              className="bg-transparent outline-none text-sm text-gray-700"
+              className="bg-transparent outline-none text-sm text-gray-700 dark:text-gray-200"
             >
               <option value="manual">Ҷойи дастӣ</option>
               <option value="name-asc">Ном A-Я</option>
@@ -1244,7 +1493,7 @@ const sendMessage = async (msg: ClientMessage) => {
             type="button"
             onClick={exportAnalyticsExcel}
             disabled={!selectedBank}
-            className="px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             Excel
@@ -1255,7 +1504,7 @@ const sendMessage = async (msg: ClientMessage) => {
               type="button"
               onClick={exportAnalyticsPDF}
               disabled={!selectedBank}
-              className="px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
             >
               <FileText className="w-4 h-4 text-red-500" />
               PDF
@@ -1265,7 +1514,7 @@ const sendMessage = async (msg: ClientMessage) => {
               type="button"
               onClick={printProfessionalReport}
               disabled={!selectedBank}
-              className="px-4 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
             >
               <Printer className="w-4 h-4 text-blue-500" />
               Чоп
@@ -1275,77 +1524,135 @@ const sendMessage = async (msg: ClientMessage) => {
       </div>
 
       <main className="flex-1">
-        {viewMode === 'tracker' ? (
+        {isInitialLoading ? (
+          <SkeletonBlock />
+        ) : viewMode === 'tracker' ? (
           selectedBank ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AnimatePresence mode="popLayout">
-                {visibleCompanies.map((company, index) => (
-                  <CompanyCard
-                    key={company.id}
-                    company={company}
-                    transfers={getCompanyTransfersForCurrentFilter(company.id)}
-                    visibleTransfers={getVisibleCompanyTransfers(company.id, company.name)}
-                    returnedAmounts={getCompanyReturnForCurrentFilter(company.id)}
-                    canAddTransfers={canEditDailyFields}
-                    canEditReturn={canEditDailyFields}
-                    filterLabel={tajikRangeLabel(dateFilterMode)}
-                    isIbt={selectedBank.name.toUpperCase() === 'IBT'}
-                    canMoveUp={companySortMode === 'manual' && index > 0}
-                    canMoveDown={companySortMode === 'manual' && index < visibleCompanies.length - 1}
-                    onMoveUp={() => sendMessage({ type: 'MOVE_COMPANY', companyId: company.id, direction: 'up' })}
-                    onMoveDown={() => sendMessage({ type: 'MOVE_COMPANY', companyId: company.id, direction: 'down' })}
-                    onMoveToTop={() => sendMessage({ type: 'MOVE_TO_TOP', companyId: company.id })}
-                    onAddTransfer={(amount, note, currency) =>
-                      sendMessage({
-                        type: 'ADD_TRANSFER',
-                        companyId: company.id,
-                        bankId: selectedBank.id,
-                        amount,
-                        note,
-                        date: selectedDate,
-                        currency
-                      })
-                    }
-                    onUpdateTransfer={(id, amount, note, currency) =>
-                      sendMessage({
-                        type: 'UPDATE_TRANSFER',
-                        id,
-                        amount,
-                        note,
-                        currency
-                      })
-                    }
-                    onUpdateReturn={(amount, currency) =>
-                      sendMessage({
-                        type: 'UPDATE_RETURN',
-                        companyId: company.id,
-                        amount,
-                        date: selectedDate,
-                        currency
-                      })
-                    }
-                    onDeleteTransfer={(id) => sendMessage({ type: 'DELETE_TRANSFER', id })}
-                    onDeleteCompany={() => handleDeleteCompany(company)}
-                  />
-                ))}
-              </AnimatePresence>
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 md:sticky md:top-4">
+                <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
+                  {visibleCompanies.map((company) => {
+                    const isSelected = company.id === selectedCompanyId;
+                    const companyTransfersForBadge = getCompanyTransfersForCurrentFilter(company.id);
+                    const companyTotals = summarizeByCurrency(companyTransfersForBadge);
+                    const unconfirmedCount = companyTransfersForBadge.filter(
+                      (t) => !t.preparedConfirmed || !t.invoiceConfirmed || !t.swiftConfirmed
+                    ).length;
 
-              <button
-                type="button"
-                onClick={() => setIsAddingCompany(true)}
-                className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-gray-400 hover:text-brand-green hover:border-brand-green transition-all group min-h-[220px]"
-              >
-                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3 group-hover:bg-brand-green-light transition-colors">
-                  <Plus className="w-6 h-6" />
+                    return (
+                      <button
+                        key={company.id}
+                        type="button"
+                        onClick={() => setSelectedCompanyId(company.id)}
+                        className={cn(
+                          'relative text-left px-3 py-2.5 rounded-xl border transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
+                          isSelected
+                            ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-sm'
+                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-800 hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
+                        )}
+                      >
+                        {unconfirmedCount > 0 && (
+                          <span
+                            title={`${unconfirmedCount} гузариши тасдиқнашуда`}
+                            className={cn(
+                              'absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center shadow',
+                              isSelected ? 'bg-white dark:bg-gray-900 text-red-500' : 'bg-red-500 text-white'
+                            )}
+                          >
+                            {unconfirmedCount}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <CompanyAvatar name={company.name} selected={isSelected} />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm truncate">{company.name}</div>
+                            <div className={cn('text-[10px] mt-0.5 font-mono', isSelected ? 'text-white/80' : 'text-gray-400 dark:text-gray-500')}>
+                              {formatCurrency(companyTotals.USD, 'USD')}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <span className="font-medium">Иловаи ширкат</span>
-              </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCompany(true)}
+                  className="mt-2 w-full border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl py-2.5 flex items-center justify-center gap-2 text-gray-400 dark:text-gray-500 hover:text-brand-green hover:border-brand-green transition-all text-sm font-medium shrink-0"
+                >
+                  <Plus className="w-4 h-4" /> Иловаи ширкат
+                </button>
+              </div>
+
+              <div className="flex-1 min-w-0 w-full">
+                {selectedCompany ? (
+                  <AnimatePresence mode="popLayout">
+                    <CompanyCard
+                      key={selectedCompany.id}
+                      company={selectedCompany}
+                      transfers={getCompanyTransfersForCurrentFilter(selectedCompany.id)}
+                      visibleTransfers={getVisibleCompanyTransfers(selectedCompany.id, selectedCompany.name)}
+                      returnedAmounts={getCompanyReturnForCurrentFilter(selectedCompany.id)}
+                      canAddTransfers={canEditDailyFields}
+                      canEditReturn={canEditDailyFields}
+                      filterLabel={tajikRangeLabel(dateFilterMode)}
+                      isIbt={selectedBank.name.toUpperCase() === 'IBT'}
+                      canMoveUp={companySortMode === 'manual' && sortedCompanies.findIndex((c) => c.id === selectedCompany.id) > 0}
+                      canMoveDown={companySortMode === 'manual' && sortedCompanies.findIndex((c) => c.id === selectedCompany.id) < sortedCompanies.length - 1}
+                      onMoveUp={() => sendMessage({ type: 'MOVE_COMPANY', companyId: selectedCompany.id, direction: 'up' })}
+                      onMoveDown={() => sendMessage({ type: 'MOVE_COMPANY', companyId: selectedCompany.id, direction: 'down' })}
+                      onMoveToTop={() => sendMessage({ type: 'MOVE_TO_TOP', companyId: selectedCompany.id })}
+                      onAddTransfer={(amount, note, currency) =>
+                        sendMessage({
+                          type: 'ADD_TRANSFER',
+                          companyId: selectedCompany.id,
+                          bankId: selectedBank.id,
+                          amount,
+                          note,
+                          date: selectedDate,
+                          currency
+                        })
+                      }
+                      onUpdateTransfer={(id, amount, note, currency) =>
+                        sendMessage({
+                          type: 'UPDATE_TRANSFER',
+                          id,
+                          amount,
+                          note,
+                          currency
+                        })
+                      }
+                      onUpdateConfirmation={(id, field, value) =>
+                        updateTransferConfirmation(id, field, value)
+                      }
+                      onUpdateReturn={(amount, currency) =>
+                        sendMessage({
+                          type: 'UPDATE_RETURN',
+                          companyId: selectedCompany.id,
+                          amount,
+                          date: selectedDate,
+                          currency
+                        })
+                      }
+                      onDeleteTransfer={(id) => sendMessage({ type: 'DELETE_TRANSFER', id })}
+                      onDeleteCompany={() => handleDeleteCompany(selectedCompany)}
+                    />
+                  </AnimatePresence>
+                ) : (
+                  <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Ширкат вуҷуд надорад</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Аввал ширкат илова кунед</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
+            <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
               <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700">Бонк вуҷуд надорад</h3>
-              <p className="text-gray-500 mt-2">Аввал бонк илова кунед</p>
+              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Бонк вуҷуд надорад</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">Аввал бонк илова кунед</p>
             </div>
           )
         ) : (
@@ -1359,7 +1666,7 @@ const sendMessage = async (msg: ClientMessage) => {
       </main>
 
       {selectedBank && viewMode === 'tracker' && (
-        <div className="mt-10 bg-brand-green-dark text-white p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="mt-10 bg-brand-green-dark dark:bg-gradient-to-br dark:from-emerald-950 dark:via-emerald-900 dark:to-gray-950 dark:border dark:border-emerald-500/25 dark:backdrop-blur-xl text-white p-6 rounded-3xl shadow-xl dark:shadow-emerald-500/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
               <TrendingUp className="w-6 h-6" />
@@ -1389,7 +1696,7 @@ const sendMessage = async (msg: ClientMessage) => {
           <input
             type="text"
             placeholder="Номи бонк"
-            className="w-full p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
+            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
             value={newBankName}
             onChange={(e) => setNewBankName(e.target.value)}
             autoFocus
@@ -1418,7 +1725,7 @@ const sendMessage = async (msg: ClientMessage) => {
           <input
             type="text"
             placeholder="Номи ширкат"
-            className="w-full p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
+            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
             value={newCompanyName}
             onChange={(e) => setNewCompanyName(e.target.value)}
             autoFocus
@@ -1448,6 +1755,34 @@ const sendMessage = async (msg: ClientMessage) => {
       >
         {wsConnected ? 'Пайваст шуд' : 'Пайвастшавӣ...'}
       </div>
+
+      <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2 w-full max-w-xs pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -20, scale: 0.95 }}
+              className={cn(
+                'pointer-events-auto rounded-xl shadow-lg border px-4 py-3 text-sm font-medium flex items-start gap-2',
+                t.type === 'error'
+                  ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                  : 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+              )}
+            >
+              <span className="flex-1 break-words">{t.message}</span>
+              <button
+                type="button"
+                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+                className="opacity-50 hover:opacity-100 shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -1468,6 +1803,7 @@ type CompanyCardProps = {
   onMoveToTop: () => void;
   onAddTransfer: (amount: number, note: string, currency: Currency) => void;
   onUpdateTransfer: (id: string, amount: number, note: string, currency: Currency) => void;
+  onUpdateConfirmation: (id: string, field: 'prepared' | 'invoice' | 'swift', value: boolean) => void;
   onUpdateReturn: (amount: number, currency: Currency) => void;
   onDeleteTransfer: (id: string) => void;
   onDeleteCompany: () => void;
@@ -1488,6 +1824,7 @@ function CompanyCard({
   onMoveToTop,
   onAddTransfer,
   onUpdateTransfer,
+  onUpdateConfirmation,
   onUpdateReturn,
   onDeleteTransfer,
   onDeleteCompany
@@ -1505,6 +1842,19 @@ function CompanyCard({
   const [returnCurrency, setReturnCurrency] = useState<Currency>('USD');
   const [returnError, setReturnError] = useState<string | null>(null);
   const isReturnFieldFocused = useRef(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const tiltCardRef = useRef<HTMLDivElement | null>(null);
+
+  const handleTiltMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = tiltCardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: py * -3, y: px * 3 });
+  };
+
+  const handleTiltLeave = () => setTilt({ x: 0, y: 0 });
 
   useEffect(() => {
     // Any unrelated data reload elsewhere in the app (another company's
@@ -1579,12 +1929,19 @@ function CompanyCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+      className="rounded-2xl"
     >
-      <div className="p-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+      <div
+        ref={tiltCardRef}
+        onMouseMove={handleTiltMove}
+        onMouseLeave={handleTiltLeave}
+        style={{ transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+        className="tilt-card glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+      >
+      <div className="p-5 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between bg-gray-50/30 dark:bg-transparent">
         <div>
-          <h3 className="font-bold text-gray-800 text-lg">{company.name}</h3>
-          <div className="text-xs text-gray-400 mt-1">Намоиш: {filterLabel}</div>
+          <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{company.name}</h3>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Намоиш: {filterLabel}</div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1593,7 +1950,7 @@ function CompanyCard({
               type="button"
               onClick={onMoveUp}
               disabled={!canMoveUp}
-              className="p-1 rounded bg-white border border-gray-200 disabled:opacity-30"
+              className="p-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 disabled:opacity-30"
               title="Боло"
               aria-label="Ба боло гузарондан"
             >
@@ -1603,7 +1960,7 @@ function CompanyCard({
               type="button"
               onClick={onMoveDown}
               disabled={!canMoveDown}
-              className="p-1 rounded bg-white border border-gray-200 disabled:opacity-30"
+              className="p-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 disabled:opacity-30"
               title="Поён"
               aria-label="Ба поён гузарондан"
             >
@@ -1621,7 +1978,7 @@ function CompanyCard({
             ↑ Ба боло
           </button>
 
-          <div className="text-xs font-mono bg-white px-2 py-1 rounded border border-gray-100 text-gray-500">
+          <div className="text-xs font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400">
             ID: {company.id.slice(0, 4)}
           </div>
           <button
@@ -1642,18 +1999,18 @@ function CompanyCard({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="w-full py-3 px-4 border border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-brand-green hover:text-brand-green transition-colors flex items-center justify-center gap-2 shrink-0"
+              className="w-full py-3 px-4 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:border-brand-green hover:text-brand-green transition-colors flex items-center justify-center gap-2 shrink-0"
             >
               <Plus className="w-4 h-4" /> Иловаи гузариш
             </button>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 shrink-0">
+            <form onSubmit={handleSubmit} className="space-y-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800 shrink-0">
               <div className="flex gap-2">
                 <input
                   ref={amountInputRef}
                   type="number"
                   placeholder={`Маблағ (${currency})`}
-                  className="flex-1 p-2 rounded-lg border border-gray-200 text-sm focus:ring-1 focus:ring-brand-green outline-none"
+                  className="flex-1 p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm focus:ring-1 focus:ring-brand-green outline-none"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   step="0.01"
@@ -1662,7 +2019,7 @@ function CompanyCard({
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value as Currency)}
-                  className="p-2 rounded-lg border border-gray-200 text-sm outline-none"
+                  className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm outline-none"
                 >
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
@@ -1680,17 +2037,17 @@ function CompanyCard({
               <input
                 type="text"
                 placeholder="Рақами ҳисоб / Эзоҳ"
-                className="w-full p-2 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-brand-green outline-none"
+                className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-xs focus:ring-1 focus:ring-brand-green outline-none"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
 
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-gray-400 uppercase font-bold">Enter барои сабт</span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold">Enter барои сабт</span>
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className="text-[10px] text-gray-400 hover:text-gray-600 uppercase font-bold"
+                  className="text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 uppercase font-bold"
                 >
                   Бекор
                 </button>
@@ -1703,9 +2060,9 @@ function CompanyCard({
           </div>
         )}
 
-        <div className="space-y-2 h-96 overflow-y-auto pr-2 border border-gray-100 rounded-xl p-3 bg-white">
+        <div className="space-y-2 pr-2 border border-gray-100 dark:border-gray-800 rounded-xl p-3 bg-white dark:bg-gray-900">
           {visibleTransfers.length === 0 ? (
-            <p className="text-center text-xs text-gray-400 py-10 italic">
+            <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-10 italic">
               {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
             </p>
           ) : (
@@ -1715,17 +2072,17 @@ function CompanyCard({
               return (
                 <div key={t.id} className="border-b border-gray-50 pb-2 last:border-b-0">
                   {!isEditing ? (
-                    <div className="flex items-start justify-between group">
+                    <div className="flex items-start justify-between gap-2 flex-wrap group">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="text-[10px] text-white bg-gray-400 rounded-full w-5 h-5 flex items-center justify-center font-bold mt-0.5 shrink-0">
                           {index + 1}
                         </div>
-                        <div className="text-[10px] text-gray-400 font-mono pt-1 min-w-[34px] shrink-0">
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono pt-1 min-w-[34px] shrink-0">
                           {format(parseISO(t.timestamp), 'HH:mm')}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <div className="text-sm font-bold text-gray-700 break-all">
+                            <div className="text-sm font-bold text-gray-700 dark:text-white break-all">
                               {formatCurrency(t.amount, t.currency)}
                             </div>
                             <span className={cn(
@@ -1740,46 +2097,78 @@ function CompanyCard({
                             </span>
                           </div>
                           {t.note && (
-                            <div className="text-[10px] text-gray-500 mt-0.5 break-all">{t.note}</div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 break-all">{t.note}</div>
                           )}
-                          <div className="text-[10px] text-gray-300 mt-0.5">{t.date}</div>
+                          <div className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">{t.date}</div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(t)}
-                          className="p-1 text-gray-300 hover:text-blue-500 transition-all"
-                          aria-label="Таҳрири гузариш"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteTransfer(t.id)}
-                          className="p-1 text-gray-300 hover:text-red-500 transition-all"
-                          aria-label="Нест кардани гузариш"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                      <div className="flex items-center gap-2 flex-wrap justify-end ml-auto shrink-0">
+                        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Омода / Ба бонк фиристода шуд">
+                            <input
+                              type="checkbox"
+                              checked={t.preparedConfirmed}
+                              onChange={(e) => onUpdateConfirmation(t.id, 'prepared', e.target.checked)}
+                              className="confirm-check"
+                            />
+                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Омода</span>
+                          </motion.label>
+                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Фактура гирифта шуд">
+                            <input
+                              type="checkbox"
+                              checked={t.invoiceConfirmed}
+                              onChange={(e) => onUpdateConfirmation(t.id, 'invoice', e.target.checked)}
+                              className="confirm-check"
+                            />
+                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Фактура</span>
+                          </motion.label>
+                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="SWIFT гирифта шуд">
+                            <input
+                              type="checkbox"
+                              checked={t.swiftConfirmed}
+                              onChange={(e) => onUpdateConfirmation(t.id, 'swift', e.target.checked)}
+                              className="confirm-check"
+                            />
+                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">SWIFT</span>
+                          </motion.label>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(t)}
+                            className="p-1 text-gray-300 dark:text-gray-600 hover:text-blue-500 transition-all"
+                            aria-label="Таҳрири гузариш"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteTransfer(t.id)}
+                            className="p-1 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-all"
+                            aria-label="Нест кардани гузариш"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2">
+                    <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-3 space-y-2">
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
                           value={editAmount}
                           onChange={(e) => setEditAmount(e.target.value)}
-                          className="flex-1 p-2 rounded-lg border border-gray-200 text-sm focus:ring-1 focus:ring-brand-green outline-none"
+                          className="flex-1 p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm focus:ring-1 focus:ring-brand-green outline-none"
                           step="0.01"
                         />
 
                         <select
                           value={editCurrency}
                           onChange={(e) => setEditCurrency(e.target.value as Currency)}
-                          className="p-2 rounded-lg border border-gray-200 text-sm outline-none"
+                          className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm outline-none"
                         >
                           <option value="USD">USD</option>
                           <option value="EUR">EUR</option>
@@ -1797,7 +2186,7 @@ function CompanyCard({
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="p-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                          className="p-2 rounded-lg bg-gray-200 text-gray-700 dark:text-gray-200 hover:bg-gray-300 transition-colors"
                           aria-label="Бекор кардан"
                         >
                           <X className="w-4 h-4" />
@@ -1809,7 +2198,7 @@ function CompanyCard({
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
                         placeholder="Рақами ҳисоб / Эзоҳ..."
-                        className="w-full p-2 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-brand-green outline-none"
+                        className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-xs focus:ring-1 focus:ring-brand-green outline-none"
                       />
                     </div>
                   )}
@@ -1820,11 +2209,11 @@ function CompanyCard({
         </div>
       </div>
 
-      <div className="p-5 bg-gray-50/50 border-t border-gray-100 space-y-4">
-        <div className="space-y-2 text-sm text-gray-500">
+      <div className="p-5 bg-gray-50/50 border-t border-gray-100 dark:border-gray-800 space-y-4">
+        <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between gap-3">
             <span>Ҳамагӣ USD</span>
-            <span className="font-mono font-medium text-gray-700 text-right break-all">
+            <span className="font-mono font-medium text-gray-700 dark:text-gray-200 text-right break-all">
               {formatCurrency(totals.USD, 'USD')}
             </span>
           </div>
@@ -1841,7 +2230,7 @@ function CompanyCard({
           {totals.CNY > 0 && (
             <div className="flex items-center justify-between gap-3">
               <span>Ҳамагӣ CNY</span>
-              <span className="font-mono font-medium text-gray-700 text-right break-all">
+              <span className="font-mono font-medium text-gray-700 dark:text-gray-200 text-right break-all">
                 {formatCurrency(totals.CNY, 'CNY')}
               </span>
             </div>
@@ -1862,7 +2251,7 @@ function CompanyCard({
                 disabled={!canEditReturn}
                 className={cn(
                   'p-1 rounded border text-xs outline-none',
-                  canEditReturn ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-100 text-gray-400'
+                  canEditReturn ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900' : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
                 )}
               >
                 <option value="USD">USD</option>
@@ -1876,9 +2265,9 @@ function CompanyCard({
                   'w-28 border rounded-lg px-3 py-2 text-sm font-mono text-right outline-none',
                   canEditReturn
                     ? returnError
-                      ? 'bg-white border-red-400 focus:ring-1 focus:ring-red-500'
-                      : 'bg-white border-gray-200 focus:ring-1 focus:ring-red-400'
-                    : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                      ? 'bg-white dark:bg-gray-900 border-red-400 focus:ring-1 focus:ring-red-500'
+                      : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-red-400'
+                    : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                 )}
                 value={returnInput}
                 onFocus={() => {
@@ -1929,13 +2318,13 @@ function CompanyCard({
           )}
         </div>
 
-        <div className="pt-3 border-t border-gray-200 space-y-2">
+        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-base font-bold text-gray-800">Софӣ USD</span>
+            <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ USD</span>
             <span
               className={cn(
                 'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
-                netUsd >= 0 ? 'text-brand-green-dark' : 'text-red-600'
+                netUsd >= 0 ? 'text-brand-green-dark dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
             >
               {formatCurrency(netUsd, 'USD')}
@@ -1944,11 +2333,11 @@ function CompanyCard({
 
           {(totals.EUR > 0 || returnedEur > 0) && (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-base font-bold text-gray-800">Софӣ EUR</span>
+              <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ EUR</span>
               <span
                 className={cn(
                   'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
-                  netEur >= 0 ? 'text-blue-700' : 'text-red-600'
+                  netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                 )}
               >
                 {formatCurrency(netEur, 'EUR')}
@@ -1958,11 +2347,11 @@ function CompanyCard({
 
           {(totals.CNY > 0 || returnedCny > 0) && (
             <div className="flex items-center justify-between gap-3">
-              <span className="text-base font-bold text-gray-800">Софӣ CNY</span>
+              <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ CNY</span>
               <span
                 className={cn(
                   'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
-                  netCny >= 0 ? 'text-yellow-700' : 'text-red-600'
+                  netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                 )}
               >
                 {formatCurrency(netCny, 'CNY')}
@@ -1970,6 +2359,7 @@ function CompanyCard({
             </div>
           )}
         </div>
+      </div>
       </div>
     </motion.div>
   );
@@ -2037,7 +2427,39 @@ function buildAnalyticsTrend(
   period: AnalyticsPeriod,
   selectedDate: string
 ): TrendPoint[] {
-  if (period === 'day') return [];
+  if (period === 'day') {
+    const dayTransfers = transfers.filter((t) => t.date === selectedDate);
+    if (!dayTransfers.length) return [];
+    const buckets = new Map<number, Transfer[]>();
+    dayTransfers.forEach((t) => {
+      let hour = 0;
+      const parsed = new Date(t.timestamp);
+      if (!Number.isNaN(parsed.getTime())) hour = parsed.getHours();
+      const arr = buckets.get(hour) ?? [];
+      arr.push(t);
+      buckets.set(hour, arr);
+    });
+    const usedHours = [...buckets.keys()].sort((a, b) => a - b);
+    const dayD = parseISO(`${selectedDate}T00:00:00`);
+    const ret = sumReturnsByCurrencyInRange(returnsMap, companyIds, dayD, dayD);
+    const totalCount = dayTransfers.length;
+    return usedHours.map((hour) => {
+      const ht = buckets.get(hour) ?? [];
+      const totals = summarizeByCurrency(ht);
+      const share = totalCount > 0 ? ht.length / totalCount : 0;
+      return {
+        label: `${String(hour).padStart(2, '0')}:00`,
+        key: `h${hour}`,
+        netUsd: totals.USD - ret.USD * share,
+        netEur: totals.EUR - ret.EUR * share,
+        netCny: totals.CNY - ret.CNY * share,
+        totalUsd: totals.USD,
+        totalEur: totals.EUR,
+        totalCny: totals.CNY,
+        count: ht.length,
+      };
+    });
+  }
 
   if (period === 'all') {
     if (!transfers.length) return [];
@@ -2102,10 +2524,10 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
 
   if (!selectedBank) {
     return (
-      <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
+      <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
         <BarChart3 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700">Бонк интихоб нашудааст</h3>
-        <p className="text-gray-500 mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
+        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Бонк интихоб нашудааст</h3>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
       </div>
     );
   }
@@ -2189,11 +2611,12 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
   const hasAnyData = periodTransfers.length > 0;
   const hasEur = transferTotals.EUR > 0 || periodReturns.EUR > 0;
   const hasCny = transferTotals.CNY > 0 || periodReturns.CNY > 0;
-  const showChart = period !== 'day' && trendData.length > 0;
+  const showChart = trendData.length > 0;
 
   const chartPeriodLabel =
     period === 'all' ? 'Тренди моҳона' :
-    period === 'month' ? 'Рӯзона дар моҳ' : 'Рӯзона дар ҳафта';
+    period === 'month' ? 'Рӯзона дар моҳ' :
+    period === 'week' ? 'Рӯзона дар ҳафта' : 'Соатона имрӯз';
 
   const usdTrend = useMemo(
     () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netUsd, 0) })),
@@ -2209,9 +2632,9 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
   );
 
   const colorMap: Record<Currency, { text: string; bg: string; btnActive: string }> = {
-    USD: { text: 'text-emerald-700', bg: 'bg-emerald-50', btnActive: 'bg-emerald-500 text-white' },
-    EUR: { text: 'text-blue-700',    bg: 'bg-blue-50',    btnActive: 'bg-blue-500 text-white'    },
-    CNY: { text: 'text-yellow-700',  bg: 'bg-yellow-50',  btnActive: 'bg-yellow-500 text-white'  },
+    USD: { text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', btnActive: 'bg-emerald-500 text-white' },
+    EUR: { text: 'text-blue-700 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-950/40',    btnActive: 'bg-blue-500 text-white'    },
+    CNY: { text: 'text-yellow-700 dark:text-yellow-400',  bg: 'bg-yellow-50 dark:bg-yellow-950/40',  btnActive: 'bg-yellow-500 text-white'  },
   };
 
   const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
@@ -2227,7 +2650,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
       {/* ── Controls ── */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Period tabs */}
-        <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
+        <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 shadow-sm">
           {(['day', 'week', 'month', 'all'] as AnalyticsPeriod[]).map((p) => (
             <button
               key={p}
@@ -2235,7 +2658,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
               onClick={() => setPeriod(p)}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors',
-                period === p ? 'bg-brand-green text-white' : 'text-gray-500 hover:bg-gray-100'
+                period === p ? 'bg-brand-green text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               )}
             >
               {PERIOD_LABELS[p]}
@@ -2244,7 +2667,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         </div>
 
         {/* Currency filter */}
-        <div className="flex gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
+        <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 shadow-sm">
           {(['ALL', 'USD', 'EUR', 'CNY'] as AnalyticsCurrencyFilter[]).map((c) => (
             <button
               key={c}
@@ -2257,7 +2680,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
                     : c === 'EUR' ? 'bg-blue-500 text-white'
                     : c === 'CNY' ? 'bg-yellow-500 text-white'
                     : 'bg-brand-green text-white'
-                  : 'text-gray-500 hover:bg-gray-100'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               )}
             >
               {c === 'ALL' ? 'Ҳама' : c}
@@ -2265,20 +2688,20 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
           ))}
         </div>
 
-        <span className="text-sm font-medium text-gray-600 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2 shadow-sm">
           {selectedBank.name} · {periodLabel}
         </span>
 
         {period === 'all' && bankTransfers.length > 0 && (
-          <span className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+          <span className="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2 shadow-sm">
             Ҳамагӣ {bankTransfers.length} гузариш
           </span>
         )}
       </div>
 
-      {/* ── Per-currency summary blocks ── */}
-      <div className="grid grid-cols-1 gap-4">
-        {activeCurrencies.map((cur) => {
+      {/* ── Per-currency summary blocks (bento grid) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {activeCurrencies.map((cur, curIdx) => {
           const gross = transferTotals[cur];
           const ret = periodReturns[cur];
           const net = netTotals[cur];
@@ -2286,42 +2709,48 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
           const avg = avgByCurrency[cur];
           if (currencyFilter === 'ALL' && gross === 0 && ret === 0) return null;
           return (
-            <div key={cur} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div
+              key={cur}
+              className={cn(
+                'glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden',
+                curIdx === 0 ? 'lg:col-span-2' : 'lg:col-span-1'
+              )}
+            >
               {/* currency header */}
-              <div className={cn('px-5 py-3 border-b border-gray-100 flex items-center gap-3', colorMap[cur].bg)}>
+              <div className={cn('px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3', colorMap[cur].bg)}>
                 <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
                   {currencySymbol(cur)} {cur}
                 </span>
-                <span className="text-xs text-gray-400 ml-auto">{cnt} гузариш</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{cnt} гузариш</span>
               </div>
               {/* metric columns */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-gray-50">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-gray-50 dark:divide-gray-800">
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Гузариш</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Гузариш</p>
                   <p className={cn('text-xl font-bold font-mono mt-2', colorMap[cur].text)}>
                     {formatCurrency(gross, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Баргашт</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-red-500">
-                    {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300">—</span>}
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Баргашт</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-red-500 dark:text-red-400">
+                    {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Соф</p>
-                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600')}>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Соф</p>
+                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
                     {formatCurrency(net, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Шумора</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-700">{cnt}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Шумора</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-gray-700 dark:text-white">{cnt}</p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Миёна</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-500">
-                    {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300">—</span>}
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Миёна</p>
+                  <p className="text-xl font-bold font-mono mt-2 text-gray-500 dark:text-gray-200">
+                    {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
               </div>
@@ -2330,9 +2759,9 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         })}
 
         {!hasAnyData && (
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
+            <p className="text-gray-400 dark:text-gray-500 font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
           </div>
         )}
       </div>
@@ -2373,83 +2802,94 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         </div>
       )}
 
+      {/* ── Company share donut ── */}
+      {companyBreakdown.length > 1 && (
+        <DonutChart
+          title={`Ҳиссаи ширкатҳо · ${currencyFilter === 'ALL' ? 'USD' : currencyFilter}`}
+          data={companyBreakdown.map((row) => ({
+            label: row.name,
+            value: currencyFilter === 'EUR' ? row.eur : currencyFilter === 'CNY' ? row.cny : row.usd,
+          }))}
+        />
+      )}
+
       {/* ── Company breakdown table ── */}
       {companyBreakdown.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-            <h3 className="font-bold text-gray-800">Таҳлил аз рӯйи ширкат</h3>
-            <span className="text-xs text-gray-400 ml-auto">{companyBreakdown.length} ширкат</span>
+        <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+            <h3 className="font-bold text-gray-800 dark:text-gray-100">Таҳлил аз рӯйи ширкат</h3>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{companyBreakdown.length} ширкат</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-max">
               <thead>
-                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wider">
-                  <th className="text-left px-4 py-3 font-semibold sticky left-0 bg-gray-50">Ширкат</th>
+                <tr className="bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 text-[10px] uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-semibold sticky left-0 bg-gray-50 dark:bg-gray-900">Ширкат</th>
                   <th className="text-right px-4 py-3 font-semibold">Шум.</th>
                   {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
                     <>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-600">USD</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.$</th>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-700">Соф$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">USD</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.$</th>
+                      <th className="text-right px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-400">Соф$</th>
                     </>
                   )}
                   {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
                     <>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-600">EUR</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.€</th>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-700">Соф€</th>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-600 dark:text-blue-400">EUR</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.€</th>
+                      <th className="text-right px-4 py-3 font-semibold text-blue-700 dark:text-blue-400">Соф€</th>
                     </>
                   )}
                   {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
                     <>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-600">CNY</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400">Барг.¥</th>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-700">Соф¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-600 dark:text-yellow-400">CNY</th>
+                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.¥</th>
+                      <th className="text-right px-4 py-3 font-semibold text-yellow-700 dark:text-yellow-400">Соф¥</th>
                     </>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {companyBreakdown.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-gray-800 sticky left-0 bg-white">{row.name}</td>
-                    <td className="text-right px-4 py-3 font-mono text-gray-500">{row.count}</td>
+                  <tr key={i} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/70 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-white sticky left-0 bg-white dark:bg-gray-900">{row.name}</td>
+                    <td className="text-right px-4 py-3 font-mono text-gray-500 dark:text-gray-300">{row.count}</td>
                     {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
                       <>
-                        <td className="text-right px-4 py-3 font-mono text-emerald-700">
-                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-emerald-700 dark:text-emerald-400">
+                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
+                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700' : 'text-red-600')}>
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
                           {formatCurrency(row.netUsd, 'USD')}
                         </td>
                       </>
                     )}
                     {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
                       <>
-                        <td className="text-right px-4 py-3 font-mono text-blue-700">
-                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-blue-700 dark:text-blue-400">
+                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
+                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700' : 'text-red-600')}>
-                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200">—</span>}
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400')}>
+                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
                       </>
                     )}
                     {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
                       <>
-                        <td className="text-right px-4 py-3 font-mono text-yellow-700">
-                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-yellow-700 dark:text-yellow-400">
+                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400">
-                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200">—</span>}
+                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
+                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700' : 'text-red-600')}>
-                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200">—</span>}
+                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400')}>
+                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
                         </td>
                       </>
                     )}
@@ -2472,13 +2912,13 @@ type MetricCardProps = {
 
 function MetricCard({ title, subtitle, value, extra }: MetricCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 min-w-0 overflow-hidden">
-      <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</p>
-      <p className="text-xs text-gray-400 mt-1 break-words">{subtitle}</p>
-      <div className="mt-4 font-bold font-mono text-brand-green-dark leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
+    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 min-w-0 overflow-hidden">
+      <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 break-words">{subtitle}</p>
+      <div className="mt-4 font-bold font-mono text-brand-green-dark dark:text-emerald-400 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
         <span className="tracking-tight">{value}</span>
       </div>
-      <div className="mt-3 text-xs text-gray-500 break-words">{extra}</div>
+      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 break-words">{extra}</div>
     </div>
   );
 }
@@ -2501,12 +2941,12 @@ function Modal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="glass-panel rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
       >
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Пӯшидан">
-            <Plus className="w-6 h-6 rotate-45 text-gray-400" />
+        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>
+          <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" aria-label="Пӯшидан">
+            <Plus className="w-6 h-6 rotate-45 text-gray-400 dark:text-gray-500" />
           </button>
         </div>
         <div className="p-6">{children}</div>

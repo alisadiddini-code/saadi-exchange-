@@ -22,6 +22,9 @@ export interface Transfer {
   timestamp: string;
   date: string;
   currency: Currency;
+  preparedConfirmed: boolean;
+  invoiceConfirmed: boolean;
+  swiftConfirmed: boolean;
 }
 
 export type ReturnsByCurrency = Partial<Record<Currency, number>>;
