@@ -2221,7 +2221,7 @@ function CompanyCard({
         </div>
       </div>
 
-      <div className="p-5 bg-gray-50/50 border-t border-gray-100 dark:border-gray-800 space-y-4">
+      <div className="p-5 bg-black/[0.02] dark:bg-white/[0.03] border-t border-line space-y-4">
         <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between gap-3">
             <span>Ҳамагӣ USD</span>
