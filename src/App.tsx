@@ -529,7 +529,7 @@ function SmallBarChart({
                   <div className="border-t border-line" />
                 </div>
                 <div
-                  className={cn('relative w-full rounded-t-xl transition-all', colorClass)}
+                  className={cn('bar-reveal relative w-full rounded-t-xl transition-all', colorClass)}
                   style={{ height: `${height}%` }}
                   title={`${item.label}: ${numberFormat(item.value)}`}
                 />
@@ -693,10 +693,32 @@ function RotatingShowcase() {
 
 function CoinLogo() {
   const [imgFailed, setImgFailed] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const prefersReducedMotion = useReducedMotion();
+  const logoRef = useRef<HTMLDivElement | null>(null);
+
+  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = logoRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: py * -10, y: px * 10 });
+  };
+  const handleLeave = () => setTilt({ x: 0, y: 0 });
 
   return (
     <div className="coin-spin-wrap shrink-0">
-      <div className="coin-spin w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-[var(--shadow-glow)] overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center">
+      <div
+        ref={logoRef}
+        onMouseMove={prefersReducedMotion ? undefined : handleMove}
+        onMouseLeave={prefersReducedMotion ? undefined : handleLeave}
+        style={prefersReducedMotion ? undefined : { transform: `perspective(300px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+        className={cn(
+          'logo-tilt w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-[var(--shadow-glow)] overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center',
+          !prefersReducedMotion && 'logo-idle'
+        )}
+      >
         {!imgFailed ? (
           <img
             src="/coin-logo.png"
@@ -735,10 +757,10 @@ function AttentionTile({
       onClick={onClick}
       disabled={isClear}
       className={cn(
-        'flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors card-hover',
+        'elevation-2 flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors card-hover',
         isClear
           ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 cursor-default'
-          : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 hover:bg-amber-100 dark:hover:bg-amber-500/15 cursor-pointer'
+          : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/35 hover:bg-amber-100 dark:hover:bg-amber-500/15 cursor-pointer shadow-[0_0_0_1px_rgba(245,158,11,0.12),0_0_18px_-8px_rgba(245,158,11,0.5)]'
       )}
     >
       <div
@@ -752,7 +774,7 @@ function AttentionTile({
       <div className="min-w-0">
         <div
           className={cn(
-            'money text-xl font-extrabold font-mono leading-none',
+            'status-chip money text-xl font-extrabold font-mono leading-none',
             isClear ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
           )}
         >
@@ -769,11 +791,13 @@ function CommandCenter({
   dateLabel,
   lastSyncedAt,
   onJumpToCompany,
+  entryDelay = 0,
 }: {
   summary: CommandCenterSummary;
   dateLabel: string;
   lastSyncedAt: Date | null;
   onJumpToCompany: (companyId: string, bankId: string) => void;
+  entryDelay?: number;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const unresolvedTotal = summary.unresolved.notSent + summary.unresolved.missingInvoice + summary.unresolved.missingSwift;
@@ -798,7 +822,7 @@ function CommandCenter({
       <motion.div
         initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
+        transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
         className="command-center-surface glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
       >
         <div className="text-center py-10 px-5">
@@ -816,7 +840,7 @@ function CommandCenter({
     <motion.div
       initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
       className="command-center-surface glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
     >
       {/* ── Header ── */}
@@ -824,11 +848,11 @@ function CommandCenter({
         <span className="text-[11px] font-bold text-brand-green-dark dark:text-emerald-400 uppercase tracking-wider">
           Маркази амалиёт
         </span>
-        <span className="text-sm font-semibold text-ink">{dateLabel}</span>
+        <span className="text-base font-extrabold text-ink tracking-tight">{dateLabel}</span>
         <span className="text-xs text-ink-muted">{summary.totalTransfers} гузариш</span>
         <span
           className={cn(
-            'text-[10px] px-2 py-0.5 rounded-full font-semibold',
+            'status-chip text-[10px] px-2 py-0.5 rounded-full font-semibold',
             unresolvedTotal === 0
               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
               : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
@@ -836,7 +860,10 @@ function CommandCenter({
         >
           {unresolvedTotal === 0 ? 'Ҳама анҷом ёфт' : `${unresolvedTotal} боқимонда`}
         </span>
-        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-ink-muted" aria-live="polite">
+        <span
+          className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-ink-muted bg-black/[0.02] dark:bg-white/[0.04] px-2.5 py-1 rounded-full"
+          aria-live="polite"
+        >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
           {lastSyncedAt
             ? `Навсозӣ шуд: ${format(lastSyncedAt, 'HH:mm')}`
@@ -880,14 +907,17 @@ function CommandCenter({
       {summary.activeCurrencies.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-4">
           {summary.activeCurrencies.map((cur) => (
-            <div key={cur} className="rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-4 py-3">
+            <div key={cur} className="elevation-2 rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className={cn('text-sm font-bold', CURRENCY_COLOR_MAP[cur].text)}>{currencySymbol(cur)} {cur}</span>
                 {summary.incompleteByCurrency[cur] > 0 && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{summary.incompleteByCurrency[cur]} боқӣ</span>
+                  <span className="status-chip text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{summary.incompleteByCurrency[cur]} боқӣ</span>
                 )}
               </div>
-              <div className={cn('money text-xl font-extrabold font-mono mt-1', CURRENCY_COLOR_MAP[cur].text)}>
+              <div
+                className={cn('money text-2xl font-extrabold font-mono mt-1 tracking-tight', CURRENCY_COLOR_MAP[cur].text)}
+                style={{ textShadow: `0 0 24px ${cur === 'USD' ? 'rgba(16,185,129,0.25)' : cur === 'EUR' ? 'rgba(59,130,246,0.2)' : 'rgba(234,179,8,0.2)'}` }}
+              >
                 {formatCurrency(summary.netByCurrency[cur], cur)}
               </div>
               <div className="flex items-center gap-3 mt-1.5 text-[10px] text-ink-muted">
@@ -916,7 +946,7 @@ function CommandCenter({
                 </div>
                 <div className="h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-brand-green dark:bg-emerald-400 transition-all duration-200"
+                    className="progress-fill h-full rounded-full transition-all duration-200"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -936,7 +966,7 @@ function CommandCenter({
                 <div className="w-24 shrink-0 text-xs font-medium text-ink truncate" title={b.bankName}>{b.bankName}</div>
                 <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-brand-green dark:bg-emerald-400 transition-all duration-200"
+                    className="progress-fill h-full rounded-full transition-all duration-200"
                     style={{ width: `${(b.count / maxBankCount) * 100}%` }}
                   />
                 </div>
@@ -1022,6 +1052,10 @@ function CommandCenter({
 }
 
 export default function App() {
+  // Gates the disciplined page-entry stagger below (header -> command
+  // center -> controls row) — App() only renders once per page load, so
+  // this fires on first mount only, never replaying on a data refresh.
+  const prefersReducedMotionEntry = useReducedMotion();
   const [data, setData] = useState<AppData>({ banks: [], companies: [], transfers: [], returns: {} });
   const [selectedDate, setSelectedDate] = useState(() =>
     getStoredString('saadi_selected_date', format(new Date(), 'yyyy-MM-dd'))
@@ -1871,7 +1905,11 @@ const updateTransferConfirmation = async (
 
   return (
     <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-surface-0 dark:bg-transparent transition-colors">
-      <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
+      <motion.header
+        initial={prefersReducedMotionEntry ? undefined : { opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <CoinLogo />
@@ -1988,7 +2026,7 @@ const updateTransferConfirmation = async (
             ))}
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {viewMode === 'tracker' && !isInitialLoading && (
         <CommandCenter
@@ -1996,10 +2034,16 @@ const updateTransferConfirmation = async (
           dateLabel={format(parseISO(`${selectedDate}T00:00:00`), 'dd.MM.yyyy')}
           lastSyncedAt={lastSyncedAt}
           onJumpToCompany={jumpToCompany}
+          entryDelay={prefersReducedMotionEntry ? 0 : 0.05}
         />
       )}
 
-      <div className="flex flex-col gap-4 mb-6">
+      <motion.div
+        initial={prefersReducedMotionEntry ? undefined : { opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut', delay: prefersReducedMotionEntry ? 0 : 0.1 }}
+        className="flex flex-col gap-4 mb-6"
+      >
         <div className="flex flex-wrap items-center gap-2">
           {data.banks.map((bank) => (
             <button
@@ -2108,7 +2152,7 @@ const updateTransferConfirmation = async (
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <main className="flex-1">
         {isInitialLoading ? (
@@ -2435,19 +2479,6 @@ function CompanyCard({
   const [returnCurrency, setReturnCurrency] = useState<Currency>('USD');
   const [returnError, setReturnError] = useState<string | null>(null);
   const isReturnFieldFocused = useRef(false);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const tiltCardRef = useRef<HTMLDivElement | null>(null);
-
-  const handleTiltMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = tiltCardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: py * -3, y: px * 3 });
-  };
-
-  const handleTiltLeave = () => setTilt({ x: 0, y: 0 });
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -2519,19 +2550,15 @@ function CompanyCard({
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
+      layout={!prefersReducedMotion}
+      initial={prefersReducedMotion ? undefined : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
       className="rounded-2xl"
     >
       <div
-        ref={tiltCardRef}
-        onMouseMove={prefersReducedMotion ? undefined : handleTiltMove}
-        onMouseLeave={prefersReducedMotion ? undefined : handleTiltLeave}
-        style={prefersReducedMotion ? undefined : { transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
-        className="tilt-card glass-panel rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+        className="glass-panel card-hover rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col min-h-[720px]"
       >
       <div className="p-5 border-b border-line flex items-center justify-between bg-black/[0.015] dark:bg-white/[0.02]">
         <div>
@@ -2702,7 +2729,7 @@ function CompanyCard({
                             )}>
                               {t.currency}
                             </span>
-                            <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-semibold', TRANSFER_STATUS_CLASS[status])}>
+                            <span className={cn('status-chip text-[9px] px-1.5 py-0.5 rounded-full font-semibold', TRANSFER_STATUS_CLASS[status])}>
                               {TRANSFER_STATUS_LABEL[status]}
                             </span>
                           </div>
@@ -2933,9 +2960,10 @@ function CompanyCard({
             <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ USD</span>
             <span
               className={cn(
-                'money text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
+                'money text-[clamp(1.5rem,2.2vw,2rem)] font-extrabold font-mono leading-none text-right break-all max-w-[60%] tracking-tight',
                 netUsd >= 0 ? 'text-brand-green-dark dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
+              style={{ textShadow: netUsd >= 0 ? '0 0 26px rgba(16,185,129,0.25)' : '0 0 26px rgba(239,68,68,0.22)' }}
             >
               {formatCurrency(netUsd, 'USD')}
             </span>
@@ -2946,9 +2974,10 @@ function CompanyCard({
               <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ EUR</span>
               <span
                 className={cn(
-                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-extrabold font-mono text-right break-all max-w-[60%] tracking-tight',
                   netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                 )}
+                style={{ textShadow: netEur >= 0 ? '0 0 24px rgba(59,130,246,0.22)' : '0 0 24px rgba(239,68,68,0.2)' }}
               >
                 {formatCurrency(netEur, 'EUR')}
               </span>
@@ -2960,9 +2989,10 @@ function CompanyCard({
               <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ CNY</span>
               <span
                 className={cn(
-                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-extrabold font-mono text-right break-all max-w-[60%] tracking-tight',
                   netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                 )}
+                style={{ textShadow: netCny >= 0 ? '0 0 24px rgba(234,179,8,0.2)' : '0 0 24px rgba(239,68,68,0.2)' }}
               >
                 {formatCurrency(netCny, 'CNY')}
               </span>
@@ -3558,7 +3588,7 @@ function Modal({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="glass-panel rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="glass-panel elevation-3 rounded-3xl w-full max-w-md overflow-hidden"
       >
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>
