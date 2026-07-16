@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -7,13 +7,263 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-brand-green: #10b981;
-  --color-brand-green-dark: #059669;
-  --color-brand-green-light: #d1fae5;
+  /*
+   * ── Stage 4.5 — Saadi signature emerald scale ──────────────────────────
+   * The primary hue is kept close to the emerald already approved across
+   * four stages of screenshots (deliberately — "the current green is good"
+   * per Stage 1.5's own brief) but deepened slightly for a more considered,
+   * less "default Tailwind" feel. What's new here is the *scale*: the full
+   * 950->100 range plus glow/muted steps didn't formally exist before this
+   * stage — components referenced raw emerald-500/600 Tailwind values or
+   * this token inconsistently. See docs/saadi-brand-system.md for the full
+   * rationale and a role-by-role breakdown of every step.
+   */
+  --color-saadi-950: #041912;
+  --color-saadi-800: #0a3a29;
+  --color-saadi-700: #0b7a4f;
+  --color-saadi-600: #0ea968;
+  --color-saadi-500: #34d399;
+  --color-saadi-300: #8fe6c0;
+  --color-saadi-100: #dff7ec;
+
+  /* brand-green-* kept as the compatibility alias every existing
+     bg-brand-green / text-brand-green-dark utility already resolves
+     through — refining the alias's value refines the whole app without a
+     project-wide class rewrite. */
+  --color-brand-green: var(--color-saadi-600);
+  --color-brand-green-dark: var(--color-saadi-700);
+  --color-brand-green-light: var(--color-saadi-100);
+
+  /*
+   * Stage 1.5 — centralized visual-identity tokens.
+   * Light-mode values live here; .dark overrides the same custom
+   * properties below so every `bg-surface-1` / `text-ink` / `border-line`
+   * utility automatically resolves per-theme without touching components.
+   */
+  --color-surface-0: #f6faf8;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #ffffff;
+  --color-ink: #0f1a16;
+  --color-ink-muted: #4b5d55;
+  --color-line: #dbe8e2;
+
+  /* Financial semantics — distinct from status semantics below. A value
+     being "positive" vs a workflow item being "complete" are different
+     ideas that happen to often share a color; keeping separate tokens
+     means they can diverge later without a search-and-replace. */
+  --color-financial-positive: #0b7a4f;
+  --color-financial-negative: #dc2626;
+  --color-financial-return: #dc2626;
+  --color-financial-neutral: #64748b;
+  --color-financial-pending: #d97706;
+
+  /* Status semantics — workflow state, not raw financial sign. */
+  --color-status-success: #0b7a4f;
+  --color-status-warning: #d97706;
+  --color-status-danger: #dc2626;
+  --color-status-info: #2563eb;
+}
+
+:root {
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgba(15, 26, 22, 0.05), 0 1px 1px rgba(15, 26, 22, 0.03);
+  --shadow-card-hover: 0 16px 36px -16px rgba(15, 26, 22, 0.18), 0 4px 12px -4px rgba(15, 26, 22, 0.08);
+  --shadow-glow: 0 0 0 1px rgba(16, 185, 129, 0.18), 0 0 22px -6px rgba(16, 185, 129, 0.4);
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* Saadi brand-role tokens (section 1 of the brief) — additional to the
+     scale above, these name *roles*, not raw hues, so a future palette
+     tweak only ever touches the seven --color-saadi-* steps. */
+  --saadi-primary: var(--color-saadi-600);
+  --saadi-primary-hover: var(--color-saadi-500);
+  --saadi-primary-active: var(--color-saadi-700);
+  --saadi-primary-muted: var(--color-saadi-300);
+  --saadi-primary-surface: var(--color-saadi-100);
+  --saadi-primary-border: rgba(14, 169, 104, 0.32);
+  --saadi-primary-glow: rgba(14, 169, 104, 0.4);
+
+  --bg-page: var(--color-surface-0);
+  --bg-elevated: var(--color-surface-1);
+  --bg-inset: rgba(15, 26, 22, 0.02);
+  --bg-command-center: var(--color-surface-1);
+  --bg-modal: var(--color-surface-1);
+
+  --surface-base: var(--color-surface-1);
+  --surface-soft: var(--color-surface-2);
+  --surface-raised: var(--color-surface-1);
+  --surface-overlay: rgba(255, 255, 255, 0.86);
+  --surface-active: var(--color-saadi-100);
+
+  --border-subtle: var(--color-line);
+  --border-default: var(--color-line);
+  --border-strong: rgba(15, 26, 22, 0.18);
+  --border-active: var(--saadi-primary-border);
+  --border-danger: rgba(220, 38, 38, 0.35);
+
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-ink-muted);
+  --text-muted: #8b978f;
+  --text-disabled: #b7c1bc;
+  --text-inverse: #ffffff;
+
+  /*
+   * Stage 4 depth system. Four levels, centralized:
+   *   0 — page background (body, handled above)
+   *   1 — standard glass panels (.glass-panel already covers this)
+   *   2 — important KPI/command panels (.elevation-2)
+   *   3 — modals, floating controls, active overlays (.elevation-3)
+   * Each level only adds shadow/glow weight — never height/padding — so
+   * applying one never changes a component's layout.
+   */
+  --elevation-0-shadow: none;
+  --elevation-1-shadow: var(--shadow-card);
+  --elevation-2-shadow: var(--shadow-card), 0 0 0 1px rgba(16, 185, 129, 0.05), 0 10px 28px -14px rgba(15, 26, 22, 0.16);
+  --elevation-3-shadow: 0 30px 70px -20px rgba(15, 26, 22, 0.32), 0 10px 30px -8px rgba(15, 26, 22, 0.16), 0 0 0 1px rgba(16, 185, 129, 0.08);
+  --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --ambient-glow: 0 0 60px -18px var(--saadi-primary-glow);
+}
+
+.dark {
+  --color-surface-0: #08121a;
+  --color-surface-1: #0e1b24;
+  --color-surface-2: #142530;
+  --color-ink: #eef5f1;
+  --color-ink-muted: #93a8a0;
+  --color-line: rgba(16, 185, 129, 0.14);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 22px 48px -18px rgba(0, 0, 0, 0.6), 0 6px 18px -6px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 0 1px rgba(52, 211, 153, 0.24), 0 0 26px -6px rgba(52, 211, 153, 0.45);
+  --elevation-1-shadow: var(--shadow-card);
+  --elevation-2-shadow: var(--shadow-card), 0 0 0 1px rgba(52, 211, 153, 0.08), 0 14px 34px -14px rgba(0, 0, 0, 0.55);
+  --elevation-3-shadow: 0 36px 90px -20px rgba(0, 0, 0, 0.75), 0 12px 36px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(52, 211, 153, 0.12);
+  --inner-highlight: inset 0 1px 0 rgba(16, 185, 129, 0.06);
+  --ambient-glow: 0 0 70px -16px rgba(52, 211, 153, 0.45);
+
+  --saadi-primary: var(--color-saadi-500);
+  --saadi-primary-hover: #58e0a8;
+  --saadi-primary-active: var(--color-saadi-600);
+  --saadi-primary-muted: var(--color-saadi-800);
+  --saadi-primary-surface: rgba(16, 185, 129, 0.1);
+  --saadi-primary-border: rgba(52, 211, 153, 0.24);
+  --saadi-primary-glow: rgba(52, 211, 153, 0.45);
+
+  --bg-page: var(--color-surface-0);
+  --bg-elevated: var(--color-surface-1);
+  --bg-inset: rgba(255, 255, 255, 0.015);
+  --bg-command-center: var(--color-surface-1);
+  --bg-modal: var(--color-surface-1);
+
+  --surface-base: var(--color-surface-1);
+  --surface-soft: var(--color-surface-2);
+  --surface-raised: var(--color-surface-1);
+  --surface-overlay: rgba(10, 22, 18, 0.92);
+  --surface-active: rgba(16, 185, 129, 0.12);
+
+  --border-subtle: var(--color-line);
+  --border-default: var(--color-line);
+  --border-strong: rgba(52, 211, 153, 0.3);
+  --border-active: var(--saadi-primary-border);
+  --border-danger: rgba(248, 113, 113, 0.35);
+
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-ink-muted);
+  --text-muted: #66766d;
+  --text-disabled: #445048;
+  --text-inverse: #08121a;
+
+  --color-financial-positive: #34d399;
+  --color-financial-negative: #f87171;
+  --color-financial-return: #f87171;
+  --color-financial-neutral: #94a3b8;
+  --color-financial-pending: #fbbf24;
+
+  --color-status-success: #34d399;
+  --color-status-warning: #fbbf24;
+  --color-status-danger: #f87171;
+  --color-status-info: #60a5fa;
+}
+
+.elevation-2 {
+  box-shadow: var(--elevation-2-shadow);
+}
+
+.elevation-3 {
+  box-shadow: var(--elevation-3-shadow);
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 font-sans antialiased dark:bg-gray-950 dark:text-gray-100;
+  @apply bg-gray-50 text-gray-900 font-sans antialiased dark:text-gray-100;
+}
+
+/*
+ * Stage 4 — cinematic application background, felt more than seen.
+ * body's own background-color is the literal #08121A base (not Tailwind's
+ * gray-950, which is a different, colder near-black); the layered glow/
+ * grid/noise/vignette live on a fixed ::before/::after pair so they never
+ * participate in normal document flow or get clipped by any component's
+ * overflow:hidden. All static — no animated background per the brief.
+ */
+.dark body {
+  background-color: var(--color-surface-0);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(16, 185, 129, 0.035) 0px, rgba(16, 185, 129, 0.035) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(90deg, rgba(16, 185, 129, 0.035) 0px, rgba(16, 185, 129, 0.035) 1px, transparent 1px, transparent 32px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 130% 90% at 50% 8%, transparent 60%, rgba(15, 26, 22, 0.03) 100%);
+}
+
+.dark body::before {
+  opacity: 0.6;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -6%, rgba(16, 185, 129, 0.10), transparent 65%),
+    repeating-linear-gradient(0deg, rgba(52, 211, 153, 0.035) 0px, rgba(52, 211, 153, 0.035) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(90deg, rgba(52, 211, 153, 0.035) 0px, rgba(52, 211, 153, 0.035) 1px, transparent 1px, transparent 32px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+}
+
+.dark body::after {
+  background: radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* App content sits in its own stacking context above the fixed layers. */
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  /* Same idea, quieter — this is felt, not decorative, and shouldn't cost
+     mobile scroll performance. */
+  body::before {
+    opacity: 0.3;
+    background-image: none;
+  }
+  .dark body::before {
+    opacity: 0.35;
+    background-image: radial-gradient(ellipse 70% 40% at 50% -6%, rgba(16, 185, 129, 0.08), transparent 65%);
+  }
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -24,6 +274,78 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .card-shadow {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Financial figures: tabular numerals so columns of amounts line up,
+   slightly tightened tracking so large mono numbers don't feel loose. */
+.money {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Typography roles (section 4). Most interface text already has a
+ * correct, consistent size/weight via plain Tailwind utilities — adding a
+ * parallel class for every named role in the brief would just be a second
+ * way to spell the same thing. These two are new because they compose
+ * with .money for the roles that didn't have a settled pattern yet: the
+ * label above a KPI number, and the single most important figure on a
+ * panel (Command Center net totals, CompanyCard Софӣ). See
+ * docs/saadi-brand-system.md for how every other role (page title,
+ * button label, reference/SWIFT text, etc.) maps to existing utilities.
+ */
+.text-kpi-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.text-hero-financial {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  font-weight: 800;
+}
+
+/*
+ * Saadi Beam — the one signature motif (section 13), a thin illuminated
+ * emerald edge. Two orientations: a left-edge bar for active/selected
+ * list items, and a top-edge line for panel headers. Deliberately not
+ * used everywhere — only on the surfaces the brief names as brand-
+ * defining (active company, header, Command Center, important KPI
+ * panels), so it keeps meaning "this is active / this matters".
+ */
+.saadi-beam-left {
+  position: relative;
+}
+
+.saadi-beam-left::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--saadi-primary-hover), var(--saadi-primary));
+  box-shadow: 0 0 10px 0 var(--saadi-primary-glow);
+}
+
+.saadi-beam-top {
+  position: relative;
+}
+
+.saadi-beam-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14%;
+  right: 14%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--saadi-primary-hover) 35%, var(--saadi-primary) 50%, var(--saadi-primary-hover) 65%, transparent);
+  box-shadow: 0 0 16px 0 var(--saadi-primary-glow);
 }
 
 @keyframes coin-spin {
@@ -64,23 +386,45 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(16, 185, 129, 0.08);
 }
 
+/*
+ * Glass system — deeper and less transparent than before ("premium" per
+ * the brief, not "see-through"). Owns its own box-shadow so every card
+ * using .glass-panel (header toolbar, sidebar, KPI/bento cards, company
+ * cards, charts, modals) gets the same elevation for free, with no
+ * per-component changes needed. This rule is unlayered CSS, so it takes
+ * precedence over any Tailwind `shadow-*`/`border-*` utility a component
+ * still carries alongside it — no need to strip those utilities out.
+ */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: var(--color-line);
+  /* subtle internal reflection: a hairline highlight along the top inner
+     edge, the dark-mode half of this already existed — this is the
+     light-mode counterpart, added for symmetry. */
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .dark .glass-panel {
-  background: linear-gradient(165deg, rgba(6, 20, 16, 0.75) 0%, rgba(10, 14, 20, 0.7) 100%);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.06), 0 4px 24px -8px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(165deg, rgba(10, 22, 18, 0.92) 0%, rgba(12, 18, 26, 0.9) 100%);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.06), var(--shadow-card);
 }
 
-.dark body {
-  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(5, 46, 34, 0.35), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(5, 46, 34, 0.15), transparent),
-    #060a0d;
+/* Opt-in hover elevation for genuinely interactive cards (buttons, tabs).
+   Static display-only cards (MetricCard, chart cards) don't get this. */
+.card-hover {
+  transition: transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .tilt-card {
@@ -133,6 +477,11 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25), 0 0 10px 1px rgba(16, 185, 129, 0.55);
 }
 
+@keyframes check-draw {
+  from { transform: scale(0) rotate(45deg); opacity: 0; }
+  to { transform: scale(1) rotate(45deg); opacity: 1; }
+}
+
 .confirm-check:checked::after {
   content: '';
   position: absolute;
@@ -143,6 +492,8 @@ input[type="number"]::-webkit-outer-spin-button {
   border: solid white;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
+  transform-origin: center;
+  animation: check-draw 160ms var(--ease-standard);
 }
 
 @keyframes character-float {
@@ -154,4 +505,186 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .character-float {
   animation: character-float 6s ease-in-out infinite;
+}
+
+/* Chart hover affordances — CSS-only, no component logic needed. */
+.donut-segment {
+  transition: stroke-width var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
+}
+
+.donut-segment:hover {
+  stroke-width: 17;
+}
+
+.bar-tooltip {
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+  pointer-events: none;
+}
+
+.bar-tooltip-anchor:hover .bar-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Command Center surface — restrained ambient glow + a faint financial
+   grid texture, both intentionally subtle. No 3D, no animation. */
+.command-center-surface {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+    repeating-linear-gradient(0deg, rgba(16, 185, 129, 0.05) 0px, rgba(16, 185, 129, 0.05) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0px, rgba(16, 185, 129, 0.05) 1px, transparent 1px, transparent 28px);
+}
+
+.dark .command-center-surface {
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+    repeating-linear-gradient(0deg, rgba(52, 211, 153, 0.05) 0px, rgba(52, 211, 153, 0.05) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(52, 211, 153, 0.05) 0px, rgba(52, 211, 153, 0.05) 1px, transparent 1px, transparent 28px);
+}
+
+/* Extremely subtle radial highlight behind the Command Center specifically
+   (item 1's "optional radial highlight"). box-shadow paints outside the
+   element's own border-box even though the element itself is
+   overflow-hidden, so this never gets clipped or adds height. Combined
+   selector (higher specificity than either single class) so it augments
+   .glass-panel's box-shadow instead of one silently overriding the other. */
+.command-center-surface.glass-panel {
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 60px -18px rgba(16, 185, 129, 0.14);
+}
+
+.dark .command-center-surface.glass-panel {
+  box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.06), var(--shadow-card), 0 0 70px -16px rgba(52, 211, 153, 0.16);
+}
+
+@media (max-width: 768px) {
+  /* Ambient glow is a desktop nicety — on mobile it costs paint for
+     something scrolled past in a second, so drop back to the plain card
+     shadow. */
+  .command-center-surface.glass-panel,
+  .dark .command-center-surface.glass-panel {
+    box-shadow: var(--shadow-card);
+  }
+}
+
+/* Richer progress-bar fill (Command Center pipeline / bank workload) —
+   a two-stop gradient plus a soft top highlight instead of a flat color.
+   Same width-driven fill logic in the component, purely a fill treatment. */
+.progress-fill {
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(90deg, var(--color-brand-green) 0%, #34d399 100%);
+}
+
+.dark .progress-fill {
+  background-image: linear-gradient(90deg, #10b981 0%, #6ee7b7 100%);
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 65%);
+}
+
+/* Status chips (transfer status / needs-attention counts) recolor when
+   their underlying value changes — give that a quick, deliberate
+   transition instead of an instant color snap. */
+.status-chip {
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+/* Visible keyboard focus, app-wide. Was previously left to inconsistent
+   browser defaults — this is a plain outline, so it never affects layout
+   or box-shadow-driven elevation. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-green);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* One-time entrance for a freshly-mounted chart bar — plays once because
+   React keeps the same DOM node across data/filter updates (stable
+   `key`), so this never replays on a routine refresh. */
+@keyframes bar-reveal {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.bar-reveal {
+  transform-origin: bottom;
+  animation: bar-reveal 260ms var(--ease-standard);
+}
+
+/*
+ * Logo motion — replaces the previous continuous 7s spin with the
+ * restrained pattern this stage asks for: mostly still, one small pulse
+ * every ~8s, plus a small pointer-reactive tilt (JS-driven, gated behind
+ * useReducedMotion in the component — this class only defines the CSS
+ * transition it animates through).
+ */
+@keyframes logo-breathe {
+  0%, 90%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(16, 185, 129, 0)); }
+  95% { transform: scale(1.035); filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.45)); }
+}
+
+.logo-idle {
+  animation: logo-breathe 8s ease-in-out infinite;
+}
+
+.logo-tilt {
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@media (hover: none) {
+  /* No pointer on touch — nothing to tilt toward, and the JS handlers are
+     mouse-only anyway, but this also guards the resting transform. */
+  .logo-tilt {
+    transform: none !important;
+  }
+
+  .card-hover:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-spin,
+  .character-float,
+  .header-gradient,
+  .dark .header-gradient,
+  .shimmer,
+  .dark .shimmer,
+  .logo-idle {
+    animation: none !important;
+  }
+
+  .tilt-card,
+  .logo-tilt {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .glass-panel,
+  .card-hover {
+    transition: none !important;
+  }
+
+  .card-hover:hover {
+    transform: none !important;
+  }
+
+  .bar-reveal {
+    animation: none !important;
+  }
+
+  .confirm-check:checked::after {
+    animation: none !important;
+  }
 }

@@ -24,7 +24,11 @@ import {
   Receipt,
   Send,
   Sun,
-  Moon
+  Moon,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Landmark
 } from 'lucide-react';
 import {
   format,
@@ -36,7 +40,7 @@ import {
   eachDayOfInterval,
   eachMonthOfInterval
 } from 'date-fns';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -91,6 +95,236 @@ function currencySymbol(currency: Currency) {
   if (currency === 'CNY') return '¥';
   if (currency === 'EUR') return '€';
   return '$';
+}
+
+// Pure display derivation from the existing confirmation booleans — no new
+// data, nothing persisted. Consistent status color semantics used across
+// the app: green = done, amber = waiting, blue = in progress.
+type TransferStatus = 'complete' | 'in-progress' | 'waiting';
+
+function getTransferStatus(t: Pick<Transfer, 'preparedConfirmed' | 'invoiceConfirmed' | 'swiftConfirmed'>): TransferStatus {
+  const confirmedCount = [t.preparedConfirmed, t.invoiceConfirmed, t.swiftConfirmed].filter(Boolean).length;
+  if (confirmedCount === 3) return 'complete';
+  if (confirmedCount === 0) return 'waiting';
+  return 'in-progress';
+}
+
+const TRANSFER_STATUS_LABEL: Record<TransferStatus, string> = {
+  complete: 'Анҷом ёфт',
+  'in-progress': 'Дар ҷараён',
+  waiting: 'Дар интизор',
+};
+
+const TRANSFER_STATUS_CLASS: Record<TransferStatus, string> = {
+  complete: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+  'in-progress': 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+  waiting: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+};
+
+// ── Currency identity (section 5) ──────────────────────────────────────
+// Single source of truth for USD/EUR/CNY color roles — previously this
+// existed as three near-identical-but-independent definitions (this
+// constant, AnalyticsView's local `colorMap`, and an inline ternary on
+// the transfer-row currency badge that had no dark-mode variants at all).
+// All three now read from here, so a future palette change is one edit.
+// Emerald is reserved as the *brand* color; USD deliberately also reads
+// emerald since it's this operation's primary currency, not because
+// "USD = brand" — EUR/CNY get their own distinct, professional hues so
+// currencies stay visually separable without turning the page multicolor.
+const CURRENCY_COLOR_MAP: Record<Currency, { text: string; bg: string; badge: string; btnActive: string }> = {
+  USD: {
+    text: 'text-emerald-700 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+    btnActive: 'bg-emerald-500 text-white',
+  },
+  EUR: {
+    text: 'text-blue-700 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/40',
+    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+    btnActive: 'bg-blue-500 text-white',
+  },
+  CNY: {
+    text: 'text-yellow-700 dark:text-yellow-400',
+    bg: 'bg-yellow-50 dark:bg-yellow-950/40',
+    badge: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400',
+    btnActive: 'bg-yellow-500 text-white',
+  },
+};
+
+// ── Command Center: a single derived operational summary ──────────────────
+// Pure read-only aggregation over already-loaded data (data.transfers,
+// data.banks, data.companies, data.returns) for the currently selected day.
+// Nothing here is persisted, nothing here is new stored state, and this
+// function does not call Supabase — it is exactly one pass over that day's
+// transfers, computed once per (data, selectedDate) change via useMemo at
+// the call site.
+type CommandCenterBankRow = {
+  bankId: string;
+  bankName: string;
+  count: number;
+  totalsByCurrency: Record<Currency, number>;
+  incompleteCount: number;
+  completionPct: number;
+};
+
+type CommandCenterCompanyRow = {
+  companyId: string;
+  companyName: string;
+  bankId: string;
+  bankName: string;
+  pendingCount: number;
+  missingSwift: number;
+  missingInvoice: number;
+  notSent: number;
+  hasReturnIssue: boolean;
+};
+
+type CommandCenterSummary = {
+  date: string;
+  totalTransfers: number;
+  totalsByCurrency: Record<Currency, number>;
+  returnsByCurrency: Record<Currency, number>;
+  netByCurrency: Record<Currency, number>;
+  countByCurrency: Record<Currency, number>;
+  incompleteByCurrency: Record<Currency, number>;
+  activeCurrencies: Currency[];
+  pipeline: { total: number; sentToBank: number; invoiceReceived: number; swiftReceived: number; complete: number };
+  unresolved: { notSent: number; missingInvoice: number; missingSwift: number };
+  bankWorkload: CommandCenterBankRow[];
+  companyAttention: CommandCenterCompanyRow[];
+  activityByHour: { label: string; value: number }[];
+};
+
+function buildCommandCenterSummary(data: AppData, selectedDate: string): CommandCenterSummary {
+  const todayTransfers = data.transfers.filter((t) => t.date === selectedDate);
+
+  const totalsByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  const countByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  const incompleteByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+
+  let sentToBank = 0;
+  let invoiceReceived = 0;
+  let swiftReceived = 0;
+  let complete = 0;
+  let notSent = 0;
+  let missingInvoice = 0;
+  let missingSwift = 0;
+
+  const byHour = new Map<string, number>();
+  const bankMap = new Map<string, CommandCenterBankRow>();
+  const companyMap = new Map<string, CommandCenterCompanyRow>();
+
+  for (const t of todayTransfers) {
+    totalsByCurrency[t.currency] += t.amount;
+    countByCurrency[t.currency] += 1;
+
+    const isComplete = t.preparedConfirmed && t.invoiceConfirmed && t.swiftConfirmed;
+    if (t.preparedConfirmed) sentToBank += 1; else notSent += 1;
+    if (t.invoiceConfirmed) invoiceReceived += 1; else missingInvoice += 1;
+    if (t.swiftConfirmed) swiftReceived += 1; else missingSwift += 1;
+    if (isComplete) complete += 1; else incompleteByCurrency[t.currency] += 1;
+
+    let hourLabel = '—';
+    try {
+      hourLabel = format(parseISO(t.timestamp), 'HH:00');
+    } catch {
+      // malformed timestamp on old data — skip bucketing this one, don't crash the summary
+    }
+    if (hourLabel !== '—') {
+      byHour.set(hourLabel, (byHour.get(hourLabel) ?? 0) + 1);
+    }
+
+    const bank = data.banks.find((b) => b.id === t.bankId);
+    if (!bankMap.has(t.bankId)) {
+      bankMap.set(t.bankId, {
+        bankId: t.bankId,
+        bankName: bank?.name ?? '—',
+        count: 0,
+        totalsByCurrency: { USD: 0, EUR: 0, CNY: 0 },
+        incompleteCount: 0,
+        completionPct: 100,
+      });
+    }
+    const bankRow = bankMap.get(t.bankId)!;
+    bankRow.count += 1;
+    bankRow.totalsByCurrency[t.currency] += t.amount;
+    if (!isComplete) bankRow.incompleteCount += 1;
+
+    const company = data.companies.find((c) => c.id === t.companyId);
+    if (!companyMap.has(t.companyId)) {
+      companyMap.set(t.companyId, {
+        companyId: t.companyId,
+        companyName: company?.name ?? '—',
+        bankId: t.bankId,
+        bankName: bank?.name ?? '—',
+        pendingCount: 0,
+        missingSwift: 0,
+        missingInvoice: 0,
+        notSent: 0,
+        hasReturnIssue: false,
+      });
+    }
+    const companyRow = companyMap.get(t.companyId)!;
+    if (!isComplete) companyRow.pendingCount += 1;
+    if (!t.swiftConfirmed) companyRow.missingSwift += 1;
+    if (!t.invoiceConfirmed) companyRow.missingInvoice += 1;
+    if (!t.preparedConfirmed) companyRow.notSent += 1;
+  }
+
+  const returnsByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
+  const dayReturns = data.returns[selectedDate] || {};
+  Object.entries(dayReturns).forEach(([companyId, currencyMap]) => {
+    (Object.keys(currencyMap) as Currency[]).forEach((cur) => {
+      returnsByCurrency[cur] += currencyMap[cur] ?? 0;
+    });
+    const companyRow = companyMap.get(companyId);
+    if (companyRow && Object.values(currencyMap).some((v) => (v ?? 0) > 0)) {
+      companyRow.hasReturnIssue = true;
+    }
+  });
+
+  const netByCurrency: Record<Currency, number> = {
+    USD: totalsByCurrency.USD - returnsByCurrency.USD,
+    EUR: totalsByCurrency.EUR - returnsByCurrency.EUR,
+    CNY: totalsByCurrency.CNY - returnsByCurrency.CNY,
+  };
+
+  const activeCurrencies = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
+    (cur) => totalsByCurrency[cur] > 0 || returnsByCurrency[cur] > 0
+  );
+
+  const bankWorkload = Array.from(bankMap.values())
+    .map((b) => ({
+      ...b,
+      completionPct: b.count > 0 ? Math.round(((b.count - b.incompleteCount) / b.count) * 100) : 100,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const companyAttention = Array.from(companyMap.values())
+    .filter((c) => c.pendingCount > 0 || c.hasReturnIssue)
+    .sort((a, b) => (b.missingSwift + b.missingInvoice + b.notSent) - (a.missingSwift + a.missingInvoice + a.notSent))
+    .slice(0, 6);
+
+  const activityByHour = Array.from(byHour.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([label, value]) => ({ label, value }));
+
+  return {
+    date: selectedDate,
+    totalTransfers: todayTransfers.length,
+    totalsByCurrency,
+    returnsByCurrency,
+    netByCurrency,
+    countByCurrency,
+    incompleteByCurrency,
+    activeCurrencies,
+    pipeline: { total: todayTransfers.length, sentToBank, invoiceReceived, swiftReceived, complete },
+    unresolved: { notSent, missingInvoice, missingSwift },
+    bankWorkload,
+    companyAttention,
+    activityByHour,
+  };
 }
 
 function transferMatchesSearch(transfer: Transfer, searchQuery: string, companyName?: string) {
@@ -296,26 +530,36 @@ function SmallBarChart({
   const maxValue = Math.max(...data.map((item) => item.value), 1);
 
   return (
-    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 overflow-hidden">
+      <div className="text-lg font-bold text-ink mb-4">{title}</div>
 
       <div className="h-64 flex items-end gap-3">
         {data.map((item) => {
           const height = Math.max((item.value / maxValue) * 100, item.value > 0 ? 6 : 0);
 
           return (
-            <div key={item.label} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-2">
-              <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate max-w-full">
+            <div key={item.label} className="bar-tooltip-anchor flex-1 min-w-0 flex flex-col items-center justify-end gap-2">
+              <div className="money text-[10px] text-ink-muted font-mono truncate max-w-full">
                 {item.value > 0 ? numberFormat(item.value) : ''}
               </div>
-              <div className="w-full h-44 flex items-end">
+              <div className="relative w-full h-44 flex items-end">
+                {/* faint reference gridlines at 25/50/75% */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+                  <div className="border-t border-line" />
+                  <div className="border-t border-line" />
+                  <div className="border-t border-line" />
+                  <div className="border-t border-line" />
+                </div>
                 <div
-                  className={cn('w-full rounded-t-xl transition-all', colorClass)}
+                  className={cn('bar-reveal relative w-full rounded-t-xl transition-all', colorClass)}
                   style={{ height: `${height}%` }}
                   title={`${item.label}: ${numberFormat(item.value)}`}
                 />
+                <div className="bar-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink text-surface-1 text-[10px] font-mono px-2 py-1 shadow-lg z-10">
+                  {item.label}: {numberFormat(item.value)}
+                </div>
               </div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">{item.label}</div>
+              <div className="text-[11px] text-ink-muted">{item.label}</div>
             </div>
           );
         })}
@@ -324,7 +568,7 @@ function SmallBarChart({
   );
 }
 
-const DONUT_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+const DONUT_COLORS = ['#10b981', '#38bdf8', '#f59e0b', '#94a3b8', '#fb7185', '#2dd4bf', '#c4b5fd', '#facc15'];
 
 function DonutChart({
   title,
@@ -335,6 +579,7 @@ function DonutChart({
 }) {
   const filtered = data.filter((d) => d.value > 0).slice(0, 8);
   const total = filtered.reduce((sum, d) => sum + d.value, 0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (!filtered.length || total <= 0) {
     return null;
@@ -345,17 +590,19 @@ function DonutChart({
   let offsetAcc = 0;
 
   return (
-    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{title}</div>
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 overflow-hidden">
+      <div className="text-lg font-bold text-ink mb-4">{title}</div>
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <svg viewBox="0 0 100 100" className="w-40 h-40 shrink-0 -rotate-90">
-          <circle cx="50" cy="50" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="14" />
+          <circle cx="50" cy="50" r={radius} fill="none" className="stroke-line" strokeWidth="14" />
           {filtered.map((item, i) => {
             const fraction = item.value / total;
             const dash = fraction * circumference;
             const gap = circumference - dash;
             const dashoffset = -offsetAcc;
             offsetAcc += dash;
+            const isHovered = hoveredIndex === i;
+            const isDimmed = hoveredIndex !== null && !isHovered;
             return (
               <circle
                 key={item.label}
@@ -364,27 +611,44 @@ function DonutChart({
                 r={radius}
                 fill="none"
                 stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
-                strokeWidth="14"
+                strokeWidth={isHovered ? 17 : 14}
+                strokeOpacity={isDimmed ? 0.35 : 1}
                 strokeDasharray={`${dash} ${gap}`}
                 strokeDashoffset={dashoffset}
+                className="donut-segment"
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
               >
                 <title>{`${item.label}: ${numberFormat(item.value)} (${Math.round(fraction * 100)}%)`}</title>
               </circle>
             );
           })}
         </svg>
-        <div className="flex-1 min-w-0 w-full space-y-1.5">
-          {filtered.map((item, i) => (
-            <div key={item.label} className="flex items-center gap-2 text-sm">
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
-              />
-              <span className="text-gray-600 dark:text-gray-300 truncate flex-1">{item.label}</span>
-              <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
-              <span className="font-mono font-semibold text-gray-800 dark:text-gray-100 text-xs shrink-0">{numberFormat(item.value)}</span>
-            </div>
-          ))}
+        <div className="flex-1 min-w-0 w-full space-y-1">
+          {filtered.map((item, i) => {
+            const isHovered = hoveredIndex === i;
+            const isDimmed = hoveredIndex !== null && !isHovered;
+            return (
+              <div
+                key={item.label}
+                className={cn(
+                  'flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 -mx-2 transition-all cursor-default',
+                  isHovered ? 'bg-black/[0.04] dark:bg-white/[0.06]' : 'bg-transparent',
+                  isDimmed && 'opacity-50'
+                )}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                />
+                <span className="text-ink truncate flex-1">{item.label}</span>
+                <span className="text-ink-muted text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
+                <span className="money font-mono font-semibold text-ink text-xs shrink-0">{numberFormat(item.value)}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -451,10 +715,32 @@ function RotatingShowcase() {
 
 function CoinLogo() {
   const [imgFailed, setImgFailed] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const prefersReducedMotion = useReducedMotion();
+  const logoRef = useRef<HTMLDivElement | null>(null);
+
+  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = logoRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: py * -10, y: px * 10 });
+  };
+  const handleLeave = () => setTilt({ x: 0, y: 0 });
 
   return (
     <div className="coin-spin-wrap shrink-0">
-      <div className="coin-spin w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-lg overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center">
+      <div
+        ref={logoRef}
+        onMouseMove={prefersReducedMotion ? undefined : handleMove}
+        onMouseLeave={prefersReducedMotion ? undefined : handleLeave}
+        style={prefersReducedMotion ? undefined : { transform: `perspective(300px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+        className={cn(
+          'logo-tilt w-11 h-11 rounded-full ring-2 ring-brand-green/40 shadow-[var(--shadow-glow)] overflow-hidden bg-gradient-to-br from-brand-green to-brand-green-dark flex items-center justify-center',
+          !prefersReducedMotion && 'logo-idle'
+        )}
+      >
         {!imgFailed ? (
           <img
             src="/coin-logo.png"
@@ -470,7 +756,328 @@ function CoinLogo() {
   );
 }
 
+// ── Command Center ─────────────────────────────────────────────────────────
+// The compact operational-overview strip shown above the tracker's bank
+// tabs. Everything here is read-only presentation over `summary`
+// (buildCommandCenterSummary output) — no Supabase calls, no new stored
+// state, no changes to the confirmation/return/filter logic it summarizes.
+function AttentionTile({
+  icon: Icon,
+  label,
+  count,
+  onClick,
+}: {
+  icon: typeof Send;
+  label: string;
+  count: number;
+  onClick: () => void;
+}) {
+  const isClear = count === 0;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isClear}
+      className={cn(
+        'elevation-2 flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors card-hover',
+        isClear
+          ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 cursor-default'
+          : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/35 hover:bg-amber-100 dark:hover:bg-amber-500/15 cursor-pointer shadow-[0_0_0_1px_rgba(245,158,11,0.12),0_0_18px_-8px_rgba(245,158,11,0.5)]'
+      )}
+    >
+      <div
+        className={cn(
+          'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+          isClear ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400'
+        )}
+      >
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <div
+          className={cn(
+            'status-chip money text-xl font-extrabold font-mono leading-none',
+            isClear ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
+          )}
+        >
+          {count}
+        </div>
+        <div className="text-[11px] text-ink-muted mt-1 truncate">{label}</div>
+      </div>
+    </button>
+  );
+}
+
+function CommandCenter({
+  summary,
+  dateLabel,
+  lastSyncedAt,
+  onJumpToCompany,
+  entryDelay = 0,
+}: {
+  summary: CommandCenterSummary;
+  dateLabel: string;
+  lastSyncedAt: Date | null;
+  onJumpToCompany: (companyId: string, bankId: string) => void;
+  entryDelay?: number;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const unresolvedTotal = summary.unresolved.notSent + summary.unresolved.missingInvoice + summary.unresolved.missingSwift;
+  const maxBankCount = Math.max(...summary.bankWorkload.map((b) => b.count), 1);
+  const maxHourCount = Math.max(...summary.activityByHour.map((h) => h.value), 1);
+
+  const jumpToFirstWith = (key: 'notSent' | 'missingInvoice' | 'missingSwift') => {
+    const target = summary.companyAttention.find((c) => c[key] > 0);
+    if (target) onJumpToCompany(target.companyId, target.bankId);
+  };
+
+  const pipelineSteps: { key: string; label: string; count: number }[] = [
+    { key: 'total', label: 'Ҳамагӣ', count: summary.pipeline.total },
+    { key: 'sent', label: 'Ба бонк фиристода шуд', count: summary.pipeline.sentToBank },
+    { key: 'invoice', label: 'Фактура гирифта шуд', count: summary.pipeline.invoiceReceived },
+    { key: 'swift', label: 'SWIFT гирифта шуд', count: summary.pipeline.swiftReceived },
+    { key: 'complete', label: 'Анҷом ёфт', count: summary.pipeline.complete },
+  ];
+
+  if (summary.totalTransfers === 0) {
+    return (
+      <motion.div
+        initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
+        className="command-center-surface saadi-beam-top glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+      >
+        <div className="text-center py-10 px-5">
+          <div className="w-14 h-14 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+            <Clock className="w-7 h-7 text-brand-green dark:text-emerald-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-ink">Барои {dateLabel} гузариш нест</h3>
+          <p className="text-ink-muted text-sm mt-1">Ҳамин ки гузаришҳо сабт шаванд, ин ҷо ҳолати умумии рӯз пайдо мешавад.</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
+      className="command-center-surface saadi-beam-top glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+    >
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 border-b border-line">
+        <span className="text-[11px] font-bold text-brand-green-dark dark:text-emerald-400 uppercase tracking-wider">
+          Маркази амалиёт
+        </span>
+        <span className="text-base font-extrabold text-ink tracking-tight">{dateLabel}</span>
+        <span className="text-xs text-ink-muted">{summary.totalTransfers} гузариш</span>
+        <span
+          className={cn(
+            'status-chip text-[10px] px-2 py-0.5 rounded-full font-semibold',
+            unresolvedTotal === 0
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+          )}
+        >
+          {unresolvedTotal === 0 ? 'Ҳама анҷом ёфт' : `${unresolvedTotal} боқимонда`}
+        </span>
+        <span
+          className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-ink-muted bg-black/[0.02] dark:bg-white/[0.04] px-2.5 py-1 rounded-full"
+          aria-live="polite"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          {lastSyncedAt
+            ? `Навсозӣ шуд: ${format(lastSyncedAt, 'HH:mm')}`
+            : 'Дар ҳоли боркунӣ…'}
+        </span>
+      </div>
+
+      {/* ── 1. Needs Attention — highest visual priority ── */}
+      {unresolvedTotal > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-5 pb-4">
+          <AttentionTile
+            icon={Send}
+            label="Ба бонк фиристода нашуд"
+            count={summary.unresolved.notSent}
+            onClick={() => jumpToFirstWith('notSent')}
+          />
+          <AttentionTile
+            icon={Receipt}
+            label="Фактура нарасидааст"
+            count={summary.unresolved.missingInvoice}
+            onClick={() => jumpToFirstWith('missingInvoice')}
+          />
+          <AttentionTile
+            icon={AlertTriangle}
+            label="SWIFT нарасидааст"
+            count={summary.unresolved.missingSwift}
+            onClick={() => jumpToFirstWith('missingSwift')}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 px-5 py-4">
+          <CheckCircle2 className="w-8 h-8 text-emerald-500 shrink-0" />
+          <div>
+            <p className="font-semibold text-ink text-sm">Ҳама гузаришҳои имрӯза анҷом ёфтаанд</p>
+            <p className="text-xs text-ink-muted mt-0.5">Ҳеҷ амалиёти боқимонда нест — ба бонк фиристода, фактура ва SWIFT гирифта шудаанд.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. Currency summary — net-first, currencies never combined ── */}
+      {summary.activeCurrencies.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-4">
+          {summary.activeCurrencies.map((cur) => (
+            <div key={cur} className="elevation-2 rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className={cn('text-sm font-bold', CURRENCY_COLOR_MAP[cur].text)}>{currencySymbol(cur)} {cur}</span>
+                {summary.incompleteByCurrency[cur] > 0 && (
+                  <span className="status-chip text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{summary.incompleteByCurrency[cur]} боқӣ</span>
+                )}
+              </div>
+              <div
+                className={cn('money text-2xl font-extrabold font-mono mt-1 tracking-tight', CURRENCY_COLOR_MAP[cur].text)}
+                style={{ textShadow: `0 0 24px ${cur === 'USD' ? 'rgba(16,185,129,0.25)' : cur === 'EUR' ? 'rgba(59,130,246,0.2)' : 'rgba(234,179,8,0.2)'}` }}
+              >
+                {formatCurrency(summary.netByCurrency[cur], cur)}
+              </div>
+              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-ink-muted">
+                <span className="money">Гузариш: {formatCurrency(summary.totalsByCurrency[cur], cur)}</span>
+                {summary.returnsByCurrency[cur] > 0 && (
+                  <span className="money text-red-500 dark:text-red-400">Баргашт: {formatCurrency(summary.returnsByCurrency[cur], cur)}</span>
+                )}
+                <span className="money ml-auto">{summary.countByCurrency[cur]} гузариш</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 3. Operational pipeline ── */}
+      <div className="px-5 pb-4">
+        <div className="text-kpi-label mb-2">Ҷараёни коркард</div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {pipelineSteps.map((step) => {
+            const pct = summary.pipeline.total > 0 ? Math.round((step.count / summary.pipeline.total) * 100) : 0;
+            return (
+              <div key={step.key} className="flex-1 min-w-0">
+                <div className="flex items-center justify-between text-[10px] text-ink-muted mb-1">
+                  <span className="truncate">{step.label}</span>
+                  <span className="money font-mono shrink-0 ml-1">{step.count}/{summary.pipeline.total} · {pct}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                  <div
+                    className="progress-fill h-full rounded-full transition-all duration-200"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── 4 & 5. Bank workload + company attention, side by side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-5 pb-4">
+        <div>
+          <div className="text-kpi-label mb-2">Бори кории бонкҳо</div>
+          <div className="space-y-2">
+            {summary.bankWorkload.map((b) => (
+              <div key={b.bankId} className="flex items-center gap-2">
+                <div className="w-24 shrink-0 text-xs font-medium text-ink truncate" title={b.bankName}>{b.bankName}</div>
+                <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                  <div
+                    className="progress-fill h-full rounded-full transition-all duration-200"
+                    style={{ width: `${(b.count / maxBankCount) * 100}%` }}
+                  />
+                </div>
+                <span className="money text-[11px] text-ink-muted w-6 text-right shrink-0">{b.count}</span>
+                {b.incompleteCount > 0 && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 shrink-0">
+                    {b.incompleteCount}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-kpi-label mb-2">Ширкатҳои ниёзманд</div>
+          {summary.companyAttention.length > 0 ? (
+            <div className="space-y-1.5">
+              {summary.companyAttention.map((c) => (
+                <button
+                  key={c.companyId}
+                  type="button"
+                  onClick={() => onJumpToCompany(c.companyId, c.bankId)}
+                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                >
+                  <span className="text-xs font-semibold text-ink truncate shrink-0 max-w-[35%]">{c.companyName}</span>
+                  <div className="flex items-center gap-1 flex-wrap min-w-0">
+                    {c.notSent > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        Нафиристода {c.notSent}
+                      </span>
+                    )}
+                    {c.missingInvoice > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        Бе фактура {c.missingInvoice}
+                      </span>
+                    )}
+                    {c.missingSwift > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        Бе SWIFT {c.missingSwift}
+                      </span>
+                    )}
+                    {c.hasReturnIssue && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400">
+                        Баргашт
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-ink-muted py-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              Ҳама ширкатҳо дар ҳолати хуб
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 6. Activity pulse — real timestamps grouped by hour ── */}
+      {summary.activityByHour.length > 1 && (
+        <div className="px-5 pb-5">
+          <div className="text-kpi-label mb-2">Фаъолият аз рӯйи соат</div>
+          <div className="flex items-end gap-1 h-12">
+            {summary.activityByHour.map((h) => (
+              <div key={h.label} className="flex-1 min-w-0 h-full flex items-end" title={`${h.label} — ${h.value} гузариш`}>
+                <div
+                  className="w-full bg-brand-green/70 dark:bg-emerald-500/60 rounded-t transition-all duration-200"
+                  style={{ height: `${Math.max((h.value / maxHourCount) * 100, 8)}%` }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-[9px] text-ink-muted mt-1">
+            <span>{summary.activityByHour[0]?.label}</span>
+            <span>{summary.activityByHour[summary.activityByHour.length - 1]?.label}</span>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function App() {
+  // Gates the disciplined page-entry stagger below (header -> command
+  // center -> controls row) — App() only renders once per page load, so
+  // this fires on first mount only, never replaying on a data refresh.
+  const prefersReducedMotionEntry = useReducedMotion();
   const [data, setData] = useState<AppData>({ banks: [], companies: [], transfers: [], returns: {} });
   const [selectedDate, setSelectedDate] = useState(() =>
     getStoredString('saadi_selected_date', format(new Date(), 'yyyy-MM-dd'))
@@ -485,6 +1092,10 @@ export default function App() {
   const [newCompanyName, setNewCompanyName] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // Timestamp of the last successful Supabase load — shown honestly in the
+  // Command Center as "last updated", never as a claim of live/real-time
+  // connectivity (there is none; this app is REST-poll based).
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => getStoredString('saadi_theme', 'light') === 'dark');
 
   useEffect(() => {
@@ -686,6 +1297,7 @@ const loadAllFromSupabase = async () => {
   }
 
   setWsConnected(true);
+  setLastSyncedAt(new Date());
   return freshData;
 };
 
@@ -1115,6 +1727,28 @@ const updateTransferConfirmation = async (
   );
   const canEditDailyFields = dateFilterMode === 'day';
 
+  // Single derived operational summary for the Command Center — one pass
+  // over data.transfers (filtered to selectedDate) per (data, selectedDate)
+  // change, independent of the tracker's own bank/company selection or its
+  // Рӯз/Ҳафта/Моҳ/Ҳама filter, so it always reads as "today" regardless of
+  // what the operator is currently drilling into below it.
+  const commandCenterSummary = useMemo(
+    () => buildCommandCenterSummary(data, selectedDate),
+    [data, selectedDate]
+  );
+
+  const jumpToCompany = (companyId: string, bankId: string) => {
+    if (bankId !== selectedBankId) setSelectedBankId(bankId);
+    setSelectedCompanyId(companyId);
+    if (viewMode !== 'tracker') setViewMode('tracker');
+    const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`company-pill-${companyId}`)
+        ?.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'nearest' });
+    });
+  };
+
   const handleDeleteCompany = (company: Company) => {
     const confirmDelete = window.confirm(
       `Ширкати "${company.name}" нест карда шавад?\n\nҲамаи гузаришҳо ва маблағҳои баргаштӣ ҳам нест мешаванд.`
@@ -1292,8 +1926,12 @@ const updateTransferConfirmation = async (
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-gray-50 dark:bg-transparent transition-colors">
-      <header className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
+    <div className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 py-6 bg-surface-0 dark:bg-transparent transition-colors">
+      <motion.header
+        initial={prefersReducedMotionEntry ? undefined : { opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="header-gradient saadi-beam-top flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <CoinLogo />
@@ -1410,9 +2048,24 @@ const updateTransferConfirmation = async (
             ))}
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      <div className="flex flex-col gap-4 mb-6">
+      {viewMode === 'tracker' && !isInitialLoading && (
+        <CommandCenter
+          summary={commandCenterSummary}
+          dateLabel={format(parseISO(`${selectedDate}T00:00:00`), 'dd.MM.yyyy')}
+          lastSyncedAt={lastSyncedAt}
+          onJumpToCompany={jumpToCompany}
+          entryDelay={prefersReducedMotionEntry ? 0 : 0.05}
+        />
+      )}
+
+      <motion.div
+        initial={prefersReducedMotionEntry ? undefined : { opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut', delay: prefersReducedMotionEntry ? 0 : 0.1 }}
+        className="flex flex-col gap-4 mb-6"
+      >
         <div className="flex flex-wrap items-center gap-2">
           {data.banks.map((bank) => (
             <button
@@ -1521,7 +2174,7 @@ const updateTransferConfirmation = async (
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <main className="flex-1">
         {isInitialLoading ? (
@@ -1529,7 +2182,7 @@ const updateTransferConfirmation = async (
         ) : viewMode === 'tracker' ? (
           selectedBank ? (
             <div className="flex flex-col md:flex-row gap-6 items-start">
-              <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 md:sticky md:top-4">
+              <div className="w-full md:w-64 shrink-0 glass-panel rounded-2xl border border-line shadow-sm p-3 md:sticky md:top-4">
                 <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
                   {visibleCompanies.map((company) => {
                     const isSelected = company.id === selectedCompanyId;
@@ -1542,13 +2195,14 @@ const updateTransferConfirmation = async (
                     return (
                       <button
                         key={company.id}
+                        id={`company-pill-${company.id}`}
                         type="button"
                         onClick={() => setSelectedCompanyId(company.id)}
                         className={cn(
-                          'relative text-left px-3 py-2.5 rounded-xl border transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
+                          'relative text-left px-3 py-2.5 rounded-xl border card-hover transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
                           isSelected
-                            ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-sm'
-                            : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-800 hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
+                            ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md shadow-[var(--shadow-glow)]'
+                            : 'bg-surface-1 text-gray-600 dark:text-gray-300 border-line hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
                         )}
                       >
                         {unconfirmedCount > 0 && (
@@ -1640,19 +2294,23 @@ const updateTransferConfirmation = async (
                     />
                   </AnimatePresence>
                 ) : (
-                  <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                    <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Ширкат вуҷуд надорад</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Аввал ширкат илова кунед</p>
+                  <div className="text-center py-20 glass-panel rounded-3xl border border-line shadow-sm">
+                    <div className="w-16 h-16 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                      <Building2 className="w-8 h-8 text-brand-green dark:text-emerald-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-ink">Ширкат вуҷуд надорад</h3>
+                    <p className="text-ink-muted mt-2">Аввал ширкат илова кунед</p>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <Building2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Бонк вуҷуд надорад</h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-2">Аввал бонк илова кунед</p>
+            <div className="text-center py-20 glass-panel rounded-3xl border border-line shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-8 h-8 text-brand-green dark:text-emerald-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-ink">Бонк вуҷуд надорад</h3>
+              <p className="text-ink-muted mt-2">Аввал бонк илова кунед</p>
             </div>
           )
         ) : (
@@ -1764,6 +2422,7 @@ const updateTransferConfirmation = async (
               initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: -20, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className={cn(
                 'pointer-events-auto rounded-xl shadow-lg border px-4 py-3 text-sm font-medium flex items-start gap-2',
                 t.type === 'error'
@@ -1842,19 +2501,7 @@ function CompanyCard({
   const [returnCurrency, setReturnCurrency] = useState<Currency>('USD');
   const [returnError, setReturnError] = useState<string | null>(null);
   const isReturnFieldFocused = useRef(false);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const tiltCardRef = useRef<HTMLDivElement | null>(null);
-
-  const handleTiltMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = tiltCardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: py * -3, y: px * 3 });
-  };
-
-  const handleTiltLeave = () => setTilt({ x: 0, y: 0 });
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     // Any unrelated data reload elsewhere in the app (another company's
@@ -1925,32 +2572,29 @@ function CompanyCard({
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
+      layout={!prefersReducedMotion}
+      initial={prefersReducedMotion ? undefined : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className="rounded-2xl"
     >
       <div
-        ref={tiltCardRef}
-        onMouseMove={handleTiltMove}
-        onMouseLeave={handleTiltLeave}
-        style={{ transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
-        className="tilt-card glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+        className="glass-panel card-hover rounded-2xl border border-line border-t-2 border-t-brand-green/25 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
       >
-      <div className="p-5 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between bg-gray-50/30 dark:bg-transparent">
+      <div className="p-5 border-b border-line flex items-center justify-between bg-black/[0.015] dark:bg-white/[0.02]">
         <div>
-          <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{company.name}</h3>
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Намоиш: {filterLabel}</div>
+          <h3 className="font-bold text-ink text-lg">{company.name}</h3>
+          <div className="text-xs text-ink-muted mt-1">Намоиш: {filterLabel}</div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <div className="flex flex-col gap-0.5">
             <button
               type="button"
               onClick={onMoveUp}
               disabled={!canMoveUp}
-              className="p-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 disabled:opacity-30"
+              className="p-1 rounded text-ink-muted hover:text-ink hover:bg-black/[0.05] dark:hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
               title="Боло"
               aria-label="Ба боло гузарондан"
             >
@@ -1960,7 +2604,7 @@ function CompanyCard({
               type="button"
               onClick={onMoveDown}
               disabled={!canMoveDown}
-              className="p-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 disabled:opacity-30"
+              className="p-1 rounded text-ink-muted hover:text-ink hover:bg-black/[0.05] dark:hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
               title="Поён"
               aria-label="Ба поён гузарондан"
             >
@@ -1978,13 +2622,13 @@ function CompanyCard({
             ↑ Ба боло
           </button>
 
-          <div className="text-xs font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400">
-            ID: {company.id.slice(0, 4)}
+          <div className="text-[10px] font-mono px-1.5 py-1 text-ink-muted opacity-70" title={company.id}>
+            #{company.id.slice(0, 4)}
           </div>
           <button
             type="button"
             onClick={onDeleteCompany}
-            className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+            className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             title="Нести ширкат"
             aria-label="Нести ширкат"
           >
@@ -2060,77 +2704,85 @@ function CompanyCard({
           </div>
         )}
 
-        <div className="space-y-2 pr-2 border border-gray-100 dark:border-gray-800 rounded-xl p-3 bg-white dark:bg-gray-900">
+        <div className="space-y-2 pr-2 border border-line rounded-xl p-3 bg-black/[0.01] dark:bg-white/[0.015]">
           {visibleTransfers.length === 0 ? (
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-10 italic">
-              {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
-            </p>
+            <div className="text-center py-10">
+              <Receipt className="w-6 h-6 text-ink-muted opacity-40 mx-auto mb-2" />
+              <p className="text-xs text-ink-muted italic">
+                {transfers.length === 0 ? 'Дар ин давра гузариш нест' : 'Аз рӯйи ҷустуҷӯ чизе ёфт нашуд'}
+              </p>
+            </div>
           ) : (
             visibleTransfers.map((t, index) => {
               const isEditing = editingTransferId === t.id;
 
+              const status = getTransferStatus(t);
+
               return (
-                <div key={t.id} className="border-b border-gray-50 pb-2 last:border-b-0">
+                <div
+                  key={t.id}
+                  className={cn(
+                    'border-b border-line pb-2 last:border-b-0 px-2 -mx-2 rounded-lg transition-colors',
+                    index % 2 === 1 && 'bg-black/[0.015] dark:bg-white/[0.02]',
+                    'hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
+                  )}
+                >
                   {!isEditing ? (
                     <div className="flex items-start justify-between gap-2 flex-wrap group">
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="text-[10px] text-white bg-gray-400 rounded-full w-5 h-5 flex items-center justify-center font-bold mt-0.5 shrink-0">
                           {index + 1}
                         </div>
-                        <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono pt-1 min-w-[34px] shrink-0">
+                        <div className="money text-[10px] text-ink-muted font-mono pt-1 min-w-[34px] shrink-0">
                           {format(parseISO(t.timestamp), 'HH:mm')}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <div className="text-sm font-bold text-gray-700 dark:text-white break-all">
+                            <div className="money text-sm font-bold text-gray-700 dark:text-white break-all">
                               {formatCurrency(t.amount, t.currency)}
                             </div>
-                            <span className={cn(
-                              'text-[10px] px-2 py-0.5 rounded-full font-semibold',
-                              t.currency === 'USD'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : t.currency === 'EUR'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                            )}>
+                            <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', CURRENCY_COLOR_MAP[t.currency].badge)}>
                               {t.currency}
+                            </span>
+                            <span className={cn('status-chip text-[9px] px-1.5 py-0.5 rounded-full font-semibold', TRANSFER_STATUS_CLASS[status])}>
+                              {TRANSFER_STATUS_LABEL[status]}
                             </span>
                           </div>
                           {t.note && (
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 break-all">{t.note}</div>
+                            <div className="text-[10px] text-ink-muted mt-0.5 break-all">{t.note}</div>
                           )}
                           <div className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">{t.date}</div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap justify-end ml-auto shrink-0">
-                        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Омода / Ба бонк фиристода шуд">
+                        <div className="flex flex-wrap items-center justify-end gap-x-1 gap-y-1">
+                          <motion.label whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }} className="flex items-center gap-1 cursor-pointer select-none rounded-md px-1 py-1 -my-1 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" title="Омода / Ба бонк фиристода шуд">
                             <input
                               type="checkbox"
                               checked={t.preparedConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'prepared', e.target.checked)}
                               className="confirm-check"
                             />
-                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Омода</span>
+                            <span className="text-[9px] font-semibold text-ink-muted whitespace-nowrap">Омода</span>
                           </motion.label>
-                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="Фактура гирифта шуд">
+                          <motion.label whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }} className="flex items-center gap-1 cursor-pointer select-none rounded-md px-1 py-1 -my-1 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" title="Фактура гирифта шуд">
                             <input
                               type="checkbox"
                               checked={t.invoiceConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'invoice', e.target.checked)}
                               className="confirm-check"
                             />
-                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Фактура</span>
+                            <span className="text-[9px] font-semibold text-ink-muted whitespace-nowrap">Фактура</span>
                           </motion.label>
-                          <motion.label whileTap={{ scale: 0.9 }} className="flex items-center gap-1 cursor-pointer select-none" title="SWIFT гирифта шуд">
+                          <motion.label whileTap={{ scale: 0.9 }} transition={{ duration: 0.1 }} className="flex items-center gap-1 cursor-pointer select-none rounded-md px-1 py-1 -my-1 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" title="SWIFT гирифта шуд">
                             <input
                               type="checkbox"
                               checked={t.swiftConfirmed}
                               onChange={(e) => onUpdateConfirmation(t.id, 'swift', e.target.checked)}
                               className="confirm-check"
                             />
-                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">SWIFT</span>
+                            <span className="text-[9px] font-semibold text-ink-muted whitespace-nowrap">SWIFT</span>
                           </motion.label>
                         </div>
 
@@ -2209,7 +2861,7 @@ function CompanyCard({
         </div>
       </div>
 
-      <div className="p-5 bg-gray-50/50 border-t border-gray-100 dark:border-gray-800 space-y-4">
+      <div className="p-5 bg-black/[0.02] dark:bg-white/[0.03] border-t border-line space-y-4">
         <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-between gap-3">
             <span>Ҳамагӣ USD</span>
@@ -2323,9 +2975,10 @@ function CompanyCard({
             <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ USD</span>
             <span
               className={cn(
-                'text-[clamp(1.5rem,2.2vw,2rem)] font-bold font-mono leading-none text-right break-all max-w-[60%]',
+                'money text-[clamp(1.5rem,2.2vw,2rem)] font-extrabold font-mono leading-none text-right break-all max-w-[60%] tracking-tight',
                 netUsd >= 0 ? 'text-brand-green-dark dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
+              style={{ textShadow: netUsd >= 0 ? '0 0 26px rgba(16,185,129,0.25)' : '0 0 26px rgba(239,68,68,0.22)' }}
             >
               {formatCurrency(netUsd, 'USD')}
             </span>
@@ -2336,9 +2989,10 @@ function CompanyCard({
               <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ EUR</span>
               <span
                 className={cn(
-                  'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-extrabold font-mono text-right break-all max-w-[60%] tracking-tight',
                   netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
                 )}
+                style={{ textShadow: netEur >= 0 ? '0 0 24px rgba(59,130,246,0.22)' : '0 0 24px rgba(239,68,68,0.2)' }}
               >
                 {formatCurrency(netEur, 'EUR')}
               </span>
@@ -2350,9 +3004,10 @@ function CompanyCard({
               <span className="text-base font-bold text-gray-800 dark:text-white">Софӣ CNY</span>
               <span
                 className={cn(
-                  'text-[clamp(1.3rem,2vw,1.8rem)] font-bold font-mono text-right break-all max-w-[60%]',
+                  'money text-[clamp(1.3rem,2vw,1.8rem)] font-extrabold font-mono text-right break-all max-w-[60%] tracking-tight',
                   netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                 )}
+                style={{ textShadow: netCny >= 0 ? '0 0 24px rgba(234,179,8,0.2)' : '0 0 24px rgba(239,68,68,0.2)' }}
               >
                 {formatCurrency(netCny, 'CNY')}
               </span>
@@ -2524,10 +3179,12 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
 
   if (!selectedBank) {
     return (
-      <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-        <BarChart3 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Бонк интихоб нашудааст</h3>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
+      <div className="text-center py-20 glass-panel rounded-3xl border border-line shadow-sm">
+        <div className="w-16 h-16 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+          <BarChart3 className="w-8 h-8 text-brand-green dark:text-emerald-400" />
+        </div>
+        <h3 className="text-xl font-semibold text-ink">Бонк интихоб нашудааст</h3>
+        <p className="text-ink-muted mt-2">Барои дидани таҳлил аввал бонкро интихоб кунед.</p>
       </div>
     );
   }
@@ -2631,11 +3288,10 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
     [trendData]
   );
 
-  const colorMap: Record<Currency, { text: string; bg: string; btnActive: string }> = {
-    USD: { text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', btnActive: 'bg-emerald-500 text-white' },
-    EUR: { text: 'text-blue-700 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-950/40',    btnActive: 'bg-blue-500 text-white'    },
-    CNY: { text: 'text-yellow-700 dark:text-yellow-400',  bg: 'bg-yellow-50 dark:bg-yellow-950/40',  btnActive: 'bg-yellow-500 text-white'  },
-  };
+  // Same shared currency identity the Command Center and transfer rows
+  // use — see CURRENCY_COLOR_MAP's own comment for why this used to be a
+  // separate, independently-maintained copy.
+  const colorMap = CURRENCY_COLOR_MAP;
 
   const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
     day: 'Рӯз', week: 'Ҳафта', month: 'Моҳ', all: 'Ҳама',
@@ -2712,44 +3368,46 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
             <div
               key={cur}
               className={cn(
-                'glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden',
+                'glass-panel rounded-2xl border border-line shadow-sm overflow-hidden',
                 curIdx === 0 ? 'lg:col-span-2' : 'lg:col-span-1'
               )}
             >
               {/* currency header */}
-              <div className={cn('px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3', colorMap[cur].bg)}>
+              <div className={cn('px-5 py-3 border-b border-line flex items-center gap-3', colorMap[cur].bg)}>
                 <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
                   {currencySymbol(cur)} {cur}
                 </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{cnt} гузариш</span>
+                <span className={cn('text-[10px] px-2 py-1 rounded-full font-semibold ml-auto', TRANSFER_STATUS_CLASS[cnt > 0 ? 'complete' : 'waiting'])}>
+                  {cnt} гузариш
+                </span>
               </div>
-              {/* metric columns */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-gray-50 dark:divide-gray-800">
+              {/* metric columns — net figure leads, count/avg step back */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-line">
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Гузариш</p>
-                  <p className={cn('text-xl font-bold font-mono mt-2', colorMap[cur].text)}>
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Гузариш</p>
+                  <p className={cn('money text-lg font-semibold font-mono mt-2', colorMap[cur].text)}>
                     {formatCurrency(gross, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Баргашт</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-red-500 dark:text-red-400">
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Баргашт</p>
+                  <p className="money text-lg font-semibold font-mono mt-2 text-red-500 dark:text-red-400">
                     {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
-                <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Соф</p>
-                  <p className={cn('text-xl font-bold font-mono mt-2', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
+                <div className="px-5 py-4 bg-black/[0.015] dark:bg-white/[0.03]">
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-bold">Соф</p>
+                  <p className={cn('money text-2xl font-extrabold font-mono mt-2 tracking-tight', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
                     {formatCurrency(net, cur)}
                   </p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Шумора</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-700 dark:text-white">{cnt}</p>
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Шумора</p>
+                  <p className="money text-sm font-medium font-mono mt-2 text-ink-muted">{cnt}</p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Миёна</p>
-                  <p className="text-xl font-bold font-mono mt-2 text-gray-500 dark:text-gray-200">
+                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Миёна</p>
+                  <p className="money text-sm font-medium font-mono mt-2 text-ink-muted">
                     {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </p>
                 </div>
@@ -2759,9 +3417,11 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
         })}
 
         {!hasAnyData && (
-          <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 dark:text-gray-500 font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
+          <div className="text-center py-16 glass-panel rounded-2xl border border-line shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+              <BarChart3 className="w-6 h-6 text-brand-green dark:text-emerald-400" />
+            </div>
+            <p className="text-ink-muted font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
           </div>
         )}
       </div>
@@ -2941,7 +3601,8 @@ function Modal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="glass-panel rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className="glass-panel elevation-3 rounded-3xl w-full max-w-md overflow-hidden"
       >
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h2>
