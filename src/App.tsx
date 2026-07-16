@@ -121,13 +121,35 @@ const TRANSFER_STATUS_CLASS: Record<TransferStatus, string> = {
   waiting: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
 };
 
-// Same USD/EUR/CNY color identity AnalyticsView's local colorMap already
-// uses — shared here so the Command Center's currency cards match it
-// exactly without duplicating slightly-different values.
-const CURRENCY_COLOR_MAP: Record<Currency, { text: string }> = {
-  USD: { text: 'text-emerald-700 dark:text-emerald-400' },
-  EUR: { text: 'text-blue-700 dark:text-blue-400' },
-  CNY: { text: 'text-yellow-700 dark:text-yellow-400' },
+// ── Currency identity (section 5) ──────────────────────────────────────
+// Single source of truth for USD/EUR/CNY color roles — previously this
+// existed as three near-identical-but-independent definitions (this
+// constant, AnalyticsView's local `colorMap`, and an inline ternary on
+// the transfer-row currency badge that had no dark-mode variants at all).
+// All three now read from here, so a future palette change is one edit.
+// Emerald is reserved as the *brand* color; USD deliberately also reads
+// emerald since it's this operation's primary currency, not because
+// "USD = brand" — EUR/CNY get their own distinct, professional hues so
+// currencies stay visually separable without turning the page multicolor.
+const CURRENCY_COLOR_MAP: Record<Currency, { text: string; bg: string; badge: string; btnActive: string }> = {
+  USD: {
+    text: 'text-emerald-700 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+    btnActive: 'bg-emerald-500 text-white',
+  },
+  EUR: {
+    text: 'text-blue-700 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/40',
+    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+    btnActive: 'bg-blue-500 text-white',
+  },
+  CNY: {
+    text: 'text-yellow-700 dark:text-yellow-400',
+    bg: 'bg-yellow-50 dark:bg-yellow-950/40',
+    badge: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400',
+    btnActive: 'bg-yellow-500 text-white',
+  },
 };
 
 // ── Command Center: a single derived operational summary ──────────────────
@@ -823,7 +845,7 @@ function CommandCenter({
         initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
-        className="command-center-surface glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+        className="command-center-surface saadi-beam-top glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
       >
         <div className="text-center py-10 px-5">
           <div className="w-14 h-14 rounded-2xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
@@ -841,7 +863,7 @@ function CommandCenter({
       initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
-      className="command-center-surface glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+      className="command-center-surface saadi-beam-top glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
     >
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 border-b border-line">
@@ -934,7 +956,7 @@ function CommandCenter({
 
       {/* ── 3. Operational pipeline ── */}
       <div className="px-5 pb-4">
-        <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Ҷараёни коркард</div>
+        <div className="text-kpi-label mb-2">Ҷараёни коркард</div>
         <div className="flex flex-col sm:flex-row gap-3">
           {pipelineSteps.map((step) => {
             const pct = summary.pipeline.total > 0 ? Math.round((step.count / summary.pipeline.total) * 100) : 0;
@@ -959,7 +981,7 @@ function CommandCenter({
       {/* ── 4 & 5. Bank workload + company attention, side by side ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-5 pb-4">
         <div>
-          <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Бори кории бонкҳо</div>
+          <div className="text-kpi-label mb-2">Бори кории бонкҳо</div>
           <div className="space-y-2">
             {summary.bankWorkload.map((b) => (
               <div key={b.bankId} className="flex items-center gap-2">
@@ -982,7 +1004,7 @@ function CommandCenter({
         </div>
 
         <div>
-          <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Ширкатҳои ниёзманд</div>
+          <div className="text-kpi-label mb-2">Ширкатҳои ниёзманд</div>
           {summary.companyAttention.length > 0 ? (
             <div className="space-y-1.5">
               {summary.companyAttention.map((c) => (
@@ -1030,7 +1052,7 @@ function CommandCenter({
       {/* ── 6. Activity pulse — real timestamps grouped by hour ── */}
       {summary.activityByHour.length > 1 && (
         <div className="px-5 pb-5">
-          <div className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider mb-2">Фаъолият аз рӯйи соат</div>
+          <div className="text-kpi-label mb-2">Фаъолият аз рӯйи соат</div>
           <div className="flex items-end gap-1 h-12">
             {summary.activityByHour.map((h) => (
               <div key={h.label} className="flex-1 min-w-0 h-full flex items-end" title={`${h.label} — ${h.value} гузариш`}>
@@ -1909,7 +1931,7 @@ const updateTransferConfirmation = async (
         initial={prefersReducedMotionEntry ? undefined : { opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="header-gradient flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
+        className="header-gradient saadi-beam-top flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <CoinLogo />
@@ -2558,7 +2580,7 @@ function CompanyCard({
       className="rounded-2xl"
     >
       <div
-        className="glass-panel card-hover rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col min-h-[720px]"
+        className="glass-panel card-hover rounded-2xl border border-line border-t-2 border-t-brand-green/25 shadow-sm overflow-hidden flex flex-col min-h-[720px]"
       >
       <div className="p-5 border-b border-line flex items-center justify-between bg-black/[0.015] dark:bg-white/[0.02]">
         <div>
@@ -2719,14 +2741,7 @@ function CompanyCard({
                             <div className="money text-sm font-bold text-gray-700 dark:text-white break-all">
                               {formatCurrency(t.amount, t.currency)}
                             </div>
-                            <span className={cn(
-                              'text-[10px] px-2 py-0.5 rounded-full font-semibold',
-                              t.currency === 'USD'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : t.currency === 'EUR'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                            )}>
+                            <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', CURRENCY_COLOR_MAP[t.currency].badge)}>
                               {t.currency}
                             </span>
                             <span className={cn('status-chip text-[9px] px-1.5 py-0.5 rounded-full font-semibold', TRANSFER_STATUS_CLASS[status])}>
@@ -3273,11 +3288,10 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
     [trendData]
   );
 
-  const colorMap: Record<Currency, { text: string; bg: string; btnActive: string }> = {
-    USD: { text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', btnActive: 'bg-emerald-500 text-white' },
-    EUR: { text: 'text-blue-700 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-950/40',    btnActive: 'bg-blue-500 text-white'    },
-    CNY: { text: 'text-yellow-700 dark:text-yellow-400',  bg: 'bg-yellow-50 dark:bg-yellow-950/40',  btnActive: 'bg-yellow-500 text-white'  },
-  };
+  // Same shared currency identity the Command Center and transfer rows
+  // use — see CURRENCY_COLOR_MAP's own comment for why this used to be a
+  // separate, independently-maintained copy.
+  const colorMap = CURRENCY_COLOR_MAP;
 
   const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
     day: 'Рӯз', week: 'Ҳафта', month: 'Моҳ', all: 'Ҳама',
