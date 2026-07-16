@@ -28,7 +28,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Landmark
+  Landmark,
+  Zap,
+  Lightbulb,
+  RotateCcw,
+  Users
 } from 'lucide-react';
 import {
   format,
@@ -166,6 +170,16 @@ type CommandCenterBankRow = {
   totalsByCurrency: Record<Currency, number>;
   incompleteCount: number;
   completionPct: number;
+  // Stage 5.1 additions — same per-transfer loop, three more counters per
+  // bank instead of one.
+  completeCount: number;
+  notSent: number;
+  missingInvoice: number;
+  missingSwift: number;
+  /** Tajik label naming whichever of notSent/missingInvoice/missingSwift is
+   *  this bank's largest single unresolved reason. Null when the bank has
+   *  no incomplete transfers at all — a fact, not a judgment call. */
+  primaryUnresolvedReason: string | null;
 };
 
 type CommandCenterCompanyRow = {
@@ -173,6 +187,7 @@ type CommandCenterCompanyRow = {
   companyName: string;
   bankId: string;
   bankName: string;
+  transferCount: number;
   pendingCount: number;
   missingSwift: number;
   missingInvoice: number;
@@ -180,17 +195,46 @@ type CommandCenterCompanyRow = {
   hasReturnIssue: boolean;
 };
 
+/** One row per active currency — a reshape of the parallel *ByCurrency
+ *  records above into a single array, so a new currency-summary UI reads
+ *  one list instead of five separate Records. No new scan: same values,
+ *  different shape. */
+type CommandCenterCurrencyRow = {
+  currency: Currency;
+  total: number;
+  returned: number;
+  net: number;
+  count: number;
+  incomplete: number;
+};
+
 type CommandCenterSummary = {
   date: string;
   totalTransfers: number;
+  // Stage 5.1: named explicitly rather than left as "pipeline.complete" /
+  // "totalTransfers - pipeline.complete" at every call site.
+  fullyCompletedTransfers: number;
+  incompleteTransfers: number;
+  completionPercentage: number;
   totalsByCurrency: Record<Currency, number>;
   returnsByCurrency: Record<Currency, number>;
   netByCurrency: Record<Currency, number>;
   countByCurrency: Record<Currency, number>;
   incompleteByCurrency: Record<Currency, number>;
   activeCurrencies: Currency[];
+  currencySummaries: CommandCenterCurrencyRow[];
   pipeline: { total: number; sentToBank: number; invoiceReceived: number; swiftReceived: number; complete: number };
   unresolved: { notSent: number; missingInvoice: number; missingSwift: number };
+  /** Distinct companies with a non-zero returned-money record on this date.
+   *  Named per the brief's "transfersWithReturnsCount", but documented
+   *  precisely here because returns in this data model are per
+   *  (company, date, currency), not per individual transfer — there is no
+   *  transfer-level "hasReturn" field to count against. This counts
+   *  company+currency return records, i.e. how many distinct companies
+   *  have a return the operator should see, which is what the Needs
+   *  Attention / insights UI actually needs. */
+  transfersWithReturnsCount: number;
+  companiesWithMultipleIncomplete: number;
   bankWorkload: CommandCenterBankRow[];
   companyAttention: CommandCenterCompanyRow[];
   activityByHour: { label: string; value: number }[];
@@ -244,12 +288,20 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
         totalsByCurrency: { USD: 0, EUR: 0, CNY: 0 },
         incompleteCount: 0,
         completionPct: 100,
+        completeCount: 0,
+        notSent: 0,
+        missingInvoice: 0,
+        missingSwift: 0,
+        primaryUnresolvedReason: null,
       });
     }
     const bankRow = bankMap.get(t.bankId)!;
     bankRow.count += 1;
     bankRow.totalsByCurrency[t.currency] += t.amount;
-    if (!isComplete) bankRow.incompleteCount += 1;
+    if (isComplete) bankRow.completeCount += 1; else bankRow.incompleteCount += 1;
+    if (!t.preparedConfirmed) bankRow.notSent += 1;
+    if (!t.invoiceConfirmed) bankRow.missingInvoice += 1;
+    if (!t.swiftConfirmed) bankRow.missingSwift += 1;
 
     const company = data.companies.find((c) => c.id === t.companyId);
     if (!companyMap.has(t.companyId)) {
@@ -258,6 +310,7 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
         companyName: company?.name ?? '—',
         bankId: t.bankId,
         bankName: bank?.name ?? '—',
+        transferCount: 0,
         pendingCount: 0,
         missingSwift: 0,
         missingInvoice: 0,
@@ -266,6 +319,7 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
       });
     }
     const companyRow = companyMap.get(t.companyId)!;
+    companyRow.transferCount += 1;
     if (!isComplete) companyRow.pendingCount += 1;
     if (!t.swiftConfirmed) companyRow.missingSwift += 1;
     if (!t.invoiceConfirmed) companyRow.missingInvoice += 1;
@@ -295,16 +349,47 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
   );
 
   const bankWorkload = Array.from(bankMap.values())
-    .map((b) => ({
-      ...b,
-      completionPct: b.count > 0 ? Math.round(((b.count - b.incompleteCount) / b.count) * 100) : 100,
-    }))
+    .map((b) => {
+      // Factual, not judgment-based: whichever unresolved count is
+      // largest for this bank, named directly. No "healthy"/"problematic"
+      // label — section 6 explicitly forbids that.
+      let primaryUnresolvedReason: string | null = null;
+      if (b.incompleteCount > 0) {
+        const reasons: [number, string][] = [
+          [b.notSent, 'Ба бонк фиристода нашуд'],
+          [b.missingInvoice, 'Фактура нарасидааст'],
+          [b.missingSwift, 'SWIFT нарасидааст'],
+        ];
+        reasons.sort((x, y) => y[0] - x[0]);
+        if (reasons[0][0] > 0) primaryUnresolvedReason = reasons[0][1];
+      }
+      return {
+        ...b,
+        completionPct: b.count > 0 ? Math.round((b.completeCount / b.count) * 100) : 100,
+        primaryUnresolvedReason,
+      };
+    })
     .sort((a, b) => b.count - a.count);
 
-  const companyAttention = Array.from(companyMap.values())
+  const allCompanyRows = Array.from(companyMap.values());
+  const companyAttention = allCompanyRows
     .filter((c) => c.pendingCount > 0 || c.hasReturnIssue)
     .sort((a, b) => (b.missingSwift + b.missingInvoice + b.notSent) - (a.missingSwift + a.missingInvoice + a.notSent))
     .slice(0, 6);
+
+  // See CommandCenterSummary.transfersWithReturnsCount doc comment — this
+  // counts companies with a return record, not individual transfers.
+  const transfersWithReturnsCount = allCompanyRows.filter((c) => c.hasReturnIssue).length;
+  const companiesWithMultipleIncomplete = allCompanyRows.filter((c) => c.pendingCount > 1).length;
+
+  const currencySummaries: CommandCenterCurrencyRow[] = activeCurrencies.map((cur) => ({
+    currency: cur,
+    total: totalsByCurrency[cur],
+    returned: returnsByCurrency[cur],
+    net: netByCurrency[cur],
+    count: countByCurrency[cur],
+    incomplete: incompleteByCurrency[cur],
+  }));
 
   const activityByHour = Array.from(byHour.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
@@ -313,18 +398,63 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
   return {
     date: selectedDate,
     totalTransfers: todayTransfers.length,
+    fullyCompletedTransfers: complete,
+    incompleteTransfers: todayTransfers.length - complete,
+    completionPercentage: todayTransfers.length > 0 ? Math.round((complete / todayTransfers.length) * 100) : 100,
     totalsByCurrency,
     returnsByCurrency,
     netByCurrency,
     countByCurrency,
     incompleteByCurrency,
     activeCurrencies,
+    currencySummaries,
     pipeline: { total: todayTransfers.length, sentToBank, invoiceReceived, swiftReceived, complete },
     unresolved: { notSent, missingInvoice, missingSwift },
+    transfersWithReturnsCount,
+    companiesWithMultipleIncomplete,
     bankWorkload,
     companyAttention,
     activityByHour,
   };
+}
+
+// ── Rule-based operational insights (section 7) ────────────────────────
+// Deterministic, inspectable if/else rules over `summary` — not AI, no
+// prediction, no hidden scoring. Every sentence traces to a field already
+// documented on CommandCenterSummary. Capped at 5, ordered so unresolved
+// facts surface before all-clear facts.
+function buildOperationalInsights(summary: CommandCenterSummary): string[] {
+  const insights: string[] = [];
+
+  if (summary.totalTransfers === 0) return insights;
+
+  if (summary.unresolved.notSent > 0) {
+    insights.push(`${summary.unresolved.notSent} гузариш то ҳол ба бонк фиристода нашудааст.`);
+  }
+
+  const bankWithMostMissingInvoice = [...summary.bankWorkload].sort((a, b) => b.missingInvoice - a.missingInvoice)[0];
+  if (bankWithMostMissingInvoice && bankWithMostMissingInvoice.missingInvoice > 0) {
+    insights.push(`«${bankWithMostMissingInvoice.bankName}» ${bankWithMostMissingInvoice.missingInvoice} гузариши интизори фактура дорад.`);
+  }
+
+  const companyWithMostIncomplete = summary.companyAttention[0];
+  if (companyWithMostIncomplete && companyWithMostIncomplete.pendingCount > 0) {
+    insights.push(`«${companyWithMostIncomplete.companyName}» бештарин гузаришҳои нопурраро дорад (${companyWithMostIncomplete.pendingCount}).`);
+  }
+
+  if (summary.transfersWithReturnsCount > 0) {
+    insights.push(`Барои ${summary.transfersWithReturnsCount} ширкат маблағи баргашта сабт шудааст.`);
+  }
+
+  if (summary.unresolved.missingSwift === 0 && summary.totalTransfers > 0) {
+    insights.push('Ҳамаи тасдиқҳои SWIFT гирифта шудаанд.');
+  }
+
+  if (summary.completionPercentage === 100 && insights.length < 5) {
+    insights.push('Ҳамаи амалиёти санаи интихобшуда анҷом ёфтааст.');
+  }
+
+  return insights.slice(0, 5);
 }
 
 function transferMatchesSearch(transfer: Transfer, searchQuery: string, companyName?: string) {
@@ -766,11 +896,13 @@ function AttentionTile({
   label,
   count,
   onClick,
+  isActive = false,
 }: {
   icon: typeof Send;
   label: string;
   count: number;
   onClick: () => void;
+  isActive?: boolean;
 }) {
   const isClear = count === 0;
   return (
@@ -778,11 +910,14 @@ function AttentionTile({
       type="button"
       onClick={onClick}
       disabled={isClear}
+      aria-pressed={isActive}
       className={cn(
         'elevation-2 flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors card-hover',
         isClear
           ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 cursor-default'
-          : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/35 hover:bg-amber-100 dark:hover:bg-amber-500/15 cursor-pointer shadow-[0_0_0_1px_rgba(245,158,11,0.12),0_0_18px_-8px_rgba(245,158,11,0.5)]'
+          : isActive
+            ? 'bg-amber-100 dark:bg-amber-500/20 border border-amber-400 dark:border-amber-500/50 cursor-pointer shadow-[0_0_0_2px_rgba(245,158,11,0.25),0_0_18px_-6px_rgba(245,158,11,0.6)]'
+            : 'bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/35 hover:bg-amber-100 dark:hover:bg-amber-500/15 cursor-pointer shadow-[0_0_0_1px_rgba(245,158,11,0.12),0_0_18px_-8px_rgba(245,158,11,0.5)]'
       )}
     >
       <div
@@ -808,36 +943,107 @@ function AttentionTile({
   );
 }
 
+/** Compact SVG progress ring (section 2). Plays one <=220ms fill reveal on
+ *  mount via Motion's initial/animate (which only fires once per mount —
+ *  App() renders once per page load, so this can't replay on a data
+ *  refresh); subsequent percentage changes interpolate smoothly rather
+ *  than "replaying". No number-counting animation — the percentage text
+ *  itself renders immediately and statically. */
+function WorkflowProgressRing({
+  percentage,
+  prefersReducedMotion,
+}: {
+  percentage: number;
+  prefersReducedMotion: boolean;
+}) {
+  const size = 44;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.max(0, Math.min(100, percentage)) / 100) * circumference;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 shrink-0" role="presentation">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} className="stroke-line" />
+      <motion.circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        strokeWidth={strokeWidth}
+        stroke="var(--saadi-primary)"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        initial={{ strokeDashoffset: prefersReducedMotion ? offset : circumference }}
+        animate={{ strokeDashoffset: offset }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.22, ease: 'easeOut' }}
+      />
+    </svg>
+  );
+}
+
+/** Factual bank status label (section 6) — no "healthy"/"problematic"
+ *  judgment, just what the confirmation data actually shows. */
+function bankStatusLabel(b: CommandCenterBankRow): { text: string; tone: 'success' | 'warning' } {
+  if (b.incompleteCount === 0) return { text: 'Анҷом ёфт', tone: 'success' };
+  return { text: 'Ниёз ба таваҷҷуҳ', tone: 'warning' };
+}
+
+type AttentionKind = 'notSent' | 'missingInvoice' | 'missingSwift' | 'hasReturnIssue' | 'multiIncomplete';
+
 function CommandCenter({
   summary,
   dateLabel,
+  isToday,
   lastSyncedAt,
   onJumpToCompany,
   entryDelay = 0,
+  attentionHighlight,
+  onSetAttentionHighlight,
+  onClearAttentionHighlight,
+  onNavigateDate,
 }: {
   summary: CommandCenterSummary;
   dateLabel: string;
+  isToday: boolean;
   lastSyncedAt: Date | null;
   onJumpToCompany: (companyId: string, bankId: string) => void;
   entryDelay?: number;
+  attentionHighlight: { kind: AttentionKind; label: string; companyIds: string[] } | null;
+  onSetAttentionHighlight: (kind: AttentionKind, label: string, companyIds: string[]) => void;
+  onClearAttentionHighlight: () => void;
+  onNavigateDate: (direction: 'prev' | 'next' | 'today') => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  const [showAllCompanies, setShowAllCompanies] = useState(false);
   const unresolvedTotal = summary.unresolved.notSent + summary.unresolved.missingInvoice + summary.unresolved.missingSwift;
   const maxBankCount = Math.max(...summary.bankWorkload.map((b) => b.count), 1);
   const maxHourCount = Math.max(...summary.activityByHour.map((h) => h.value), 1);
+  const insights = useMemo(() => buildOperationalInsights(summary), [summary]);
 
-  const jumpToFirstWith = (key: 'notSent' | 'missingInvoice' | 'missingSwift') => {
-    const target = summary.companyAttention.find((c) => c[key] > 0);
-    if (target) onJumpToCompany(target.companyId, target.bankId);
+  const jumpToFirstWith = (kind: AttentionKind, label: string) => {
+    const matches = summary.companyAttention.filter((c) => {
+      if (kind === 'hasReturnIssue') return c.hasReturnIssue;
+      if (kind === 'multiIncomplete') return c.pendingCount > 1;
+      return c[kind] > 0;
+    });
+    if (matches.length === 0) return;
+    onSetAttentionHighlight(kind, label, matches.map((c) => c.companyId));
+    onJumpToCompany(matches[0].companyId, matches[0].bankId);
   };
 
-  const pipelineSteps: { key: string; label: string; count: number }[] = [
-    { key: 'total', label: 'Ҳамагӣ', count: summary.pipeline.total },
-    { key: 'sent', label: 'Ба бонк фиристода шуд', count: summary.pipeline.sentToBank },
-    { key: 'invoice', label: 'Фактура гирифта шуд', count: summary.pipeline.invoiceReceived },
-    { key: 'swift', label: 'SWIFT гирифта шуд', count: summary.pipeline.swiftReceived },
-    { key: 'complete', label: 'Анҷом ёфт', count: summary.pipeline.complete },
+  const pipelineSteps: { key: string; label: string; count: number; icon: typeof Send }[] = [
+    { key: 'total', label: 'Ҳамагӣ', count: summary.pipeline.total, icon: BarChart3 },
+    { key: 'sent', label: 'Ба бонк фиристода шуд', count: summary.pipeline.sentToBank, icon: Send },
+    { key: 'invoice', label: 'Фактура гирифта шуд', count: summary.pipeline.invoiceReceived, icon: Receipt },
+    { key: 'swift', label: 'SWIFT гирифта шуд', count: summary.pipeline.swiftReceived, icon: Zap },
+    { key: 'complete', label: 'Анҷом ёфт', count: summary.pipeline.complete, icon: CheckCircle2 },
   ];
+
+  const workflowLabel = isToday ? "Ҷараёни кории имрӯз" : `Ҷараёни кор барои ${dateLabel}`;
+  const completeStateHeading = isToday
+    ? 'Ҳама гузаришҳои имрӯза анҷом ёфтаанд'
+    : `Ҳама гузаришҳои санаи ${dateLabel} анҷом ёфтаанд`;
 
   if (summary.totalTransfers === 0) {
     return (
@@ -853,10 +1059,39 @@ function CommandCenter({
           </div>
           <h3 className="text-lg font-semibold text-ink">Барои {dateLabel} гузариш нест</h3>
           <p className="text-ink-muted text-sm mt-1">Ҳамин ки гузаришҳо сабт шаванд, ин ҷо ҳолати умумии рӯз пайдо мешавад.</p>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <button
+              type="button"
+              onClick={() => onNavigateDate('prev')}
+              className="px-3 py-2 rounded-xl text-sm font-medium border border-line bg-surface-1 hover:border-brand-green/50 transition-colors"
+              aria-label="Рӯзи гузашта"
+            >
+              ← Рӯзи гузашта
+            </button>
+            {!isToday && (
+              <button
+                type="button"
+                onClick={() => onNavigateDate('today')}
+                className="px-3 py-2 rounded-xl text-sm font-medium border border-brand-green/40 bg-brand-green/10 text-brand-green-dark dark:text-emerald-400 hover:bg-brand-green/20 transition-colors"
+              >
+                Имрӯз
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onNavigateDate('next')}
+              className="px-3 py-2 rounded-xl text-sm font-medium border border-line bg-surface-1 hover:border-brand-green/50 transition-colors"
+              aria-label="Рӯзи оянда"
+            >
+              Рӯзи оянда →
+            </button>
+          </div>
         </div>
       </motion.div>
     );
   }
+
+  const visibleCompanyAttention = showAllCompanies ? summary.companyAttention : summary.companyAttention.slice(0, 4);
 
   return (
     <motion.div
@@ -888,83 +1123,135 @@ function CommandCenter({
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
           {lastSyncedAt
-            ? `Навсозӣ шуд: ${format(lastSyncedAt, 'HH:mm')}`
+            ? `Навсозии охирин: ${format(lastSyncedAt, 'HH:mm')}`
             : 'Дар ҳоли боркунӣ…'}
         </span>
       </div>
 
+      {/* ── Workflow progress (section 2) ── */}
+      <div className="flex items-center gap-3 px-5 py-3 border-b border-line">
+        <WorkflowProgressRing percentage={summary.completionPercentage} prefersReducedMotion={!!prefersReducedMotion} />
+        <div className="min-w-0">
+          <div className="text-kpi-label">{workflowLabel}</div>
+          <div className="flex items-baseline gap-2 mt-0.5">
+            <span className="money text-lg font-extrabold text-ink">
+              {summary.fullyCompletedTransfers} аз {summary.totalTransfers} анҷом ёфт
+            </span>
+            <span className="money text-sm font-bold text-brand-green-dark dark:text-emerald-400">{summary.completionPercentage}%</span>
+            {summary.incompleteTransfers > 0 && (
+              <span className="text-[11px] text-ink-muted">· {summary.incompleteTransfers} боқимонда</span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── 1. Needs Attention — highest visual priority ── */}
-      {unresolvedTotal > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-5 pb-4">
-          <AttentionTile
-            icon={Send}
-            label="Ба бонк фиристода нашуд"
-            count={summary.unresolved.notSent}
-            onClick={() => jumpToFirstWith('notSent')}
-          />
-          <AttentionTile
-            icon={Receipt}
-            label="Фактура нарасидааст"
-            count={summary.unresolved.missingInvoice}
-            onClick={() => jumpToFirstWith('missingInvoice')}
-          />
-          <AttentionTile
-            icon={AlertTriangle}
-            label="SWIFT нарасидааст"
-            count={summary.unresolved.missingSwift}
-            onClick={() => jumpToFirstWith('missingSwift')}
-          />
+      {unresolvedTotal > 0 || summary.transfersWithReturnsCount > 0 || summary.companiesWithMultipleIncomplete > 0 ? (
+        <div className="p-5 pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <AttentionTile
+              icon={Send}
+              label="Ба бонк фиристода нашуд"
+              count={summary.unresolved.notSent}
+              isActive={attentionHighlight?.kind === 'notSent'}
+              onClick={() => jumpToFirstWith('notSent', 'Ба бонк фиристода нашуд')}
+            />
+            <AttentionTile
+              icon={Receipt}
+              label="Фактура нарасидааст"
+              count={summary.unresolved.missingInvoice}
+              isActive={attentionHighlight?.kind === 'missingInvoice'}
+              onClick={() => jumpToFirstWith('missingInvoice', 'Фактура нарасидааст')}
+            />
+            <AttentionTile
+              icon={Zap}
+              label="SWIFT нарасидааст"
+              count={summary.unresolved.missingSwift}
+              isActive={attentionHighlight?.kind === 'missingSwift'}
+              onClick={() => jumpToFirstWith('missingSwift', 'SWIFT нарасидааст')}
+            />
+            <AttentionTile
+              icon={ArrowDownCircle}
+              label="Маблағи баргаштаро дорад"
+              count={summary.transfersWithReturnsCount}
+              isActive={attentionHighlight?.kind === 'hasReturnIssue'}
+              onClick={() => jumpToFirstWith('hasReturnIssue', 'Маблағи баргашта')}
+            />
+            <AttentionTile
+              icon={Users}
+              label="Якчанд гузариши нопурра"
+              count={summary.companiesWithMultipleIncomplete}
+              isActive={attentionHighlight?.kind === 'multiIncomplete'}
+              onClick={() => jumpToFirstWith('multiIncomplete', 'Якчанд гузариши нопурра')}
+            />
+          </div>
+          {attentionHighlight && (
+            <button
+              type="button"
+              onClick={onClearAttentionHighlight}
+              className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-muted hover:text-ink bg-black/[0.03] dark:bg-white/[0.05] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] px-2.5 py-1.5 rounded-full transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" aria-hidden="true" />
+              «{attentionHighlight.label}» ҷудо шудааст — Бекор кардани ҷудокунӣ
+            </button>
+          )}
         </div>
       ) : (
-        <div className="flex items-center gap-3 px-5 py-4">
-          <CheckCircle2 className="w-8 h-8 text-emerald-500 shrink-0" />
-          <div>
-            <p className="font-semibold text-ink text-sm">Ҳама гузаришҳои имрӯза анҷом ёфтаанд</p>
-            <p className="text-xs text-ink-muted mt-0.5">Ҳеҷ амалиёти боқимонда нест — ба бонк фиристода, фактура ва SWIFT гирифта шудаанд.</p>
+        <div className="px-5 py-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 shrink-0" />
+            <div>
+              <p className="font-semibold text-ink text-sm">{completeStateHeading}</p>
+              <p className="text-xs text-ink-muted mt-0.5">
+                {summary.fullyCompletedTransfers} гузариш анҷом ёфт — ба бонк фиристода, фактура ва SWIFT гирифта шудаанд. Маблағи баргашта сабт нашудааст.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── 2. Currency summary — net-first, currencies never combined ── */}
-      {summary.activeCurrencies.length > 0 && (
+      {summary.currencySummaries.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-4">
-          {summary.activeCurrencies.map((cur) => (
-            <div key={cur} className="elevation-2 rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-4 py-3">
+          {summary.currencySummaries.map((row) => (
+            <div key={row.currency} className="elevation-2 rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-4 py-3">
               <div className="flex items-center justify-between">
-                <span className={cn('text-sm font-bold', CURRENCY_COLOR_MAP[cur].text)}>{currencySymbol(cur)} {cur}</span>
-                {summary.incompleteByCurrency[cur] > 0 && (
-                  <span className="status-chip text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{summary.incompleteByCurrency[cur]} боқӣ</span>
+                <span className={cn('text-sm font-bold', CURRENCY_COLOR_MAP[row.currency].text)}>{currencySymbol(row.currency)} {row.currency}</span>
+                {row.incomplete > 0 && (
+                  <span className="status-chip text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{row.incomplete} боқӣ</span>
                 )}
               </div>
               <div
-                className={cn('money text-2xl font-extrabold font-mono mt-1 tracking-tight', CURRENCY_COLOR_MAP[cur].text)}
-                style={{ textShadow: `0 0 24px ${cur === 'USD' ? 'rgba(16,185,129,0.25)' : cur === 'EUR' ? 'rgba(59,130,246,0.2)' : 'rgba(234,179,8,0.2)'}` }}
+                className={cn('money text-2xl font-extrabold font-mono mt-1 tracking-tight', CURRENCY_COLOR_MAP[row.currency].text)}
+                style={{ textShadow: `0 0 24px ${row.currency === 'USD' ? 'rgba(16,185,129,0.25)' : row.currency === 'EUR' ? 'rgba(59,130,246,0.2)' : 'rgba(234,179,8,0.2)'}` }}
               >
-                {formatCurrency(summary.netByCurrency[cur], cur)}
+                {formatCurrency(row.net, row.currency)}
               </div>
               <div className="flex items-center gap-3 mt-1.5 text-[10px] text-ink-muted">
-                <span className="money">Гузариш: {formatCurrency(summary.totalsByCurrency[cur], cur)}</span>
-                {summary.returnsByCurrency[cur] > 0 && (
-                  <span className="money text-red-500 dark:text-red-400">Баргашт: {formatCurrency(summary.returnsByCurrency[cur], cur)}</span>
+                <span className="money">Гузариш: {formatCurrency(row.total, row.currency)}</span>
+                {row.returned > 0 && (
+                  <span className="money text-red-500 dark:text-red-400">Баргашт: {formatCurrency(row.returned, row.currency)}</span>
                 )}
-                <span className="money ml-auto">{summary.countByCurrency[cur]} гузариш</span>
+                <span className="money ml-auto">{row.count} гузариш</span>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── 3. Operational pipeline ── */}
+      {/* ── 3. Operator status summary (section 3) ── */}
       <div className="px-5 pb-4">
         <div className="text-kpi-label mb-2">Ҷараёни коркард</div>
         <div className="flex flex-col sm:flex-row gap-3">
           {pipelineSteps.map((step) => {
             const pct = summary.pipeline.total > 0 ? Math.round((step.count / summary.pipeline.total) * 100) : 0;
+            const StepIcon = step.icon;
             return (
               <div key={step.key} className="flex-1 min-w-0">
-                <div className="flex items-center justify-between text-[10px] text-ink-muted mb-1">
+                <div className="flex items-center gap-1.5 text-[10px] text-ink-muted mb-1">
+                  <StepIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
                   <span className="truncate">{step.label}</span>
-                  <span className="money font-mono shrink-0 ml-1">{step.count}/{summary.pipeline.total} · {pct}%</span>
+                  <span className="money font-mono shrink-0 ml-auto">{step.count}/{summary.pipeline.total} · {pct}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                   <div
@@ -978,65 +1265,73 @@ function CommandCenter({
         </div>
       </div>
 
-      {/* ── 4 & 5. Bank workload + company attention, side by side ── */}
+      {/* ── 4 & 5. Bank operational health + company attention, side by side ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-5 pb-4">
         <div>
-          <div className="text-kpi-label mb-2">Бори кории бонкҳо</div>
-          <div className="space-y-2">
-            {summary.bankWorkload.map((b) => (
-              <div key={b.bankId} className="flex items-center gap-2">
-                <div className="w-24 shrink-0 text-xs font-medium text-ink truncate" title={b.bankName}>{b.bankName}</div>
-                <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
-                  <div
-                    className="progress-fill h-full rounded-full transition-all duration-200"
-                    style={{ width: `${(b.count / maxBankCount) * 100}%` }}
-                  />
+          <div className="text-kpi-label mb-2">Ҳолати амалиётии бонкҳо</div>
+          <div className="space-y-2.5">
+            {summary.bankWorkload.map((b) => {
+              const status = bankStatusLabel(b);
+              return (
+                <div key={b.bankId}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 shrink-0 text-xs font-medium text-ink truncate" title={b.bankName}>{b.bankName}</div>
+                    <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                      <div
+                        className="progress-fill h-full rounded-full transition-all duration-200"
+                        style={{ width: `${(b.count / maxBankCount) * 100}%` }}
+                      />
+                    </div>
+                    <span className="money text-[11px] text-ink-muted w-6 text-right shrink-0">{b.count}</span>
+                    <span
+                      className={cn(
+                        'status-chip text-[9px] px-1.5 py-0.5 rounded-full shrink-0 font-semibold',
+                        status.tone === 'success'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+                      )}
+                    >
+                      {status.text}
+                    </span>
+                  </div>
+                  {b.primaryUnresolvedReason && (
+                    <div className="text-[10px] text-ink-muted ml-[104px] mt-0.5">{b.primaryUnresolvedReason} · {b.completionPct}% анҷом ёфт</div>
+                  )}
                 </div>
-                <span className="money text-[11px] text-ink-muted w-6 text-right shrink-0">{b.count}</span>
-                {b.incompleteCount > 0 && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 shrink-0">
-                    {b.incompleteCount}
-                  </span>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         <div>
-          <div className="text-kpi-label mb-2">Ширкатҳои ниёзманд</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-kpi-label mb-0">Ширкатҳои ниёзманд</div>
+            {summary.companyAttention.length > 4 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCompanies((v) => !v)}
+                className="text-[10px] font-semibold text-brand-green-dark dark:text-emerald-400 hover:underline"
+              >
+                {showAllCompanies ? 'Камтар нишон додан' : `Ҳамаро нишон додан (${summary.companyAttention.length})`}
+              </button>
+            )}
+          </div>
           {summary.companyAttention.length > 0 ? (
             <div className="space-y-1.5">
-              {summary.companyAttention.map((c) => (
+              {visibleCompanyAttention.map((c) => (
                 <button
                   key={c.companyId}
                   type="button"
                   onClick={() => onJumpToCompany(c.companyId, c.bankId)}
-                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                  className="w-full flex items-start justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
                 >
-                  <span className="text-xs font-semibold text-ink truncate shrink-0 max-w-[35%]">{c.companyName}</span>
-                  <div className="flex items-center gap-1 flex-wrap min-w-0">
-                    {c.notSent > 0 && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
-                        Нафиристода {c.notSent}
-                      </span>
-                    )}
-                    {c.missingInvoice > 0 && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
-                        Бе фактура {c.missingInvoice}
-                      </span>
-                    )}
-                    {c.missingSwift > 0 && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
-                        Бе SWIFT {c.missingSwift}
-                      </span>
-                    )}
-                    {c.hasReturnIssue && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400">
-                        Баргашт
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-xs font-semibold text-ink shrink-0">{c.companyName}</span>
+                  <span className="text-[10px] text-ink-muted text-right">
+                    {c.pendingCount} гузариши нопурра
+                    {c.missingInvoice > 0 && <> · {c.missingInvoice} фактураи норасон</>}
+                    {c.missingSwift > 0 && <> · {c.missingSwift} SWIFT норасон</>}
+                    {c.hasReturnIssue && <> · <span className="text-red-500 dark:text-red-400">баргашт</span></>}
+                  </span>
                 </button>
               ))}
             </div>
@@ -1048,6 +1343,21 @@ function CommandCenter({
           )}
         </div>
       </div>
+
+      {/* ── Rule-based operational insights (section 7) ── */}
+      {insights.length > 0 && (
+        <div className="px-5 pb-4">
+          <div className="text-kpi-label mb-2">Мушоҳидаҳо</div>
+          <ul className="space-y-1">
+            {insights.map((text, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-ink">
+                <Lightbulb className="w-3.5 h-3.5 text-brand-green-dark dark:text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* ── 6. Activity pulse — real timestamps grouped by hour ── */}
       {summary.activityByHour.length > 1 && (
@@ -1749,6 +2059,26 @@ const updateTransferConfirmation = async (
     });
   };
 
+  // Reversible highlight only — no filtering/hiding of the company list,
+  // no persistence, cleared by the visible reset action rendered next to
+  // it in CommandCenter or by picking a different attention category.
+  const [attentionHighlight, setAttentionHighlightState] = useState<{ kind: AttentionKind; label: string; companyIds: string[] } | null>(null);
+  const setAttentionHighlight = (kind: AttentionKind, label: string, companyIds: string[]) => {
+    setAttentionHighlightState({ kind, label, companyIds });
+  };
+  const clearAttentionHighlight = () => setAttentionHighlightState(null);
+
+  const isToday = selectedDate === format(new Date(), 'yyyy-MM-dd');
+  const navigateCommandCenterDate = (direction: 'prev' | 'next' | 'today') => {
+    if (direction === 'today') {
+      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+      return;
+    }
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + (direction === 'next' ? 1 : -1));
+    setSelectedDate(format(d, 'yyyy-MM-dd'));
+  };
+
   const handleDeleteCompany = (company: Company) => {
     const confirmDelete = window.confirm(
       `Ширкати "${company.name}" нест карда шавад?\n\nҲамаи гузаришҳо ва маблағҳои баргаштӣ ҳам нест мешаванд.`
@@ -2054,9 +2384,14 @@ const updateTransferConfirmation = async (
         <CommandCenter
           summary={commandCenterSummary}
           dateLabel={format(parseISO(`${selectedDate}T00:00:00`), 'dd.MM.yyyy')}
+          isToday={isToday}
           lastSyncedAt={lastSyncedAt}
           onJumpToCompany={jumpToCompany}
           entryDelay={prefersReducedMotionEntry ? 0 : 0.05}
+          attentionHighlight={attentionHighlight}
+          onSetAttentionHighlight={setAttentionHighlight}
+          onClearAttentionHighlight={clearAttentionHighlight}
+          onNavigateDate={navigateCommandCenterDate}
         />
       )}
 
@@ -2186,6 +2521,7 @@ const updateTransferConfirmation = async (
                 <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
                   {visibleCompanies.map((company) => {
                     const isSelected = company.id === selectedCompanyId;
+                    const isAttentionHighlighted = !isSelected && !!attentionHighlight?.companyIds.includes(company.id);
                     const companyTransfersForBadge = getCompanyTransfersForCurrentFilter(company.id);
                     const companyTotals = summarizeByCurrency(companyTransfersForBadge);
                     const unconfirmedCount = companyTransfersForBadge.filter(
@@ -2202,7 +2538,9 @@ const updateTransferConfirmation = async (
                           'relative text-left px-3 py-2.5 rounded-xl border card-hover transition-colors shrink-0 md:w-full whitespace-nowrap md:whitespace-normal',
                           isSelected
                             ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md shadow-[var(--shadow-glow)]'
-                            : 'bg-surface-1 text-gray-600 dark:text-gray-300 border-line hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
+                            : isAttentionHighlighted
+                              ? 'bg-amber-50 dark:bg-amber-500/10 text-gray-700 dark:text-gray-200 border-amber-400 dark:border-amber-500/50 shadow-[0_0_0_2px_rgba(245,158,11,0.2)]'
+                              : 'bg-surface-1 text-gray-600 dark:text-gray-300 border-line hover:border-brand-green/40 hover:bg-brand-green-light/40 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-500/30'
                         )}
                       >
                         {unconfirmedCount > 0 && (
@@ -2405,13 +2743,17 @@ const updateTransferConfirmation = async (
         </div>
       </Modal>
 
+      {/* wsConnected really only means "a Supabase load has completed at
+          least once" — this app has no live/websocket connection to
+          report on (see section 11 audit), so the label says exactly
+          that and nothing more. */}
       <div
         className={cn(
           'fixed bottom-4 right-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest',
           wsConnected ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
         )}
       >
-        {wsConnected ? 'Пайваст шуд' : 'Пайвастшавӣ...'}
+        {wsConnected ? 'Маълумот бор шуд' : 'Дар ҳоли боркунӣ…'}
       </div>
 
       <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2 w-full max-w-xs pointer-events-none">
