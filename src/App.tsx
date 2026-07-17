@@ -180,6 +180,10 @@ type CommandCenterBankRow = {
    *  this bank's largest single unresolved reason. Null when the bank has
    *  no incomplete transfers at all — a fact, not a judgment call. */
   primaryUnresolvedReason: string | null;
+  /** Stage 6: this bank's share of the day's total transfer *count*
+   *  (never amount — section 6 explicitly says workload isn't money).
+   *  Rounded percentage of summary.totalTransfers. */
+  workloadSharePct: number;
 };
 
 type CommandCenterCompanyRow = {
@@ -193,6 +197,29 @@ type CommandCenterCompanyRow = {
   missingInvoice: number;
   notSent: number;
   hasReturnIssue: boolean;
+  /**
+   * Stage 6 operational priority model (section 3) — explicit, documented
+   * weights, used only to sort/rank this row. Never shown to the operator
+   * as a raw number; only the underlying facts (counts, reason text) are
+   * displayed. Weights:
+   *   notSent        x3  (highest — nothing downstream can happen until
+   *                       the bank has it)
+   *   missingSwift   x2  (high — the confirmation most often blocking a
+   *                       transfer from being usable)
+   *   missingInvoice x1  (medium)
+   *   pendingCount>1 +2  (flat bonus — multiple incomplete transfers at
+   *                       one company is worth surfacing regardless of
+   *                       which specific fields are missing)
+   *   hasReturnIssue +1  (small bonus — visibility, not treated as an
+   *                       error; explicitly not weighted like the
+   *                       confirmation gaps above)
+   * Never a function of transfer amount.
+   */
+  priorityScore: number;
+  /** Single most urgent factual reason for this company, chosen by the
+   *  same weight order as priorityScore (notSent > missingSwift >
+   *  missingInvoice > hasReturnIssue). Null when nothing is unresolved. */
+  primaryReason: string | null;
 };
 
 /** One row per active currency — a reshape of the parallel *ByCurrency
@@ -206,6 +233,23 @@ type CommandCenterCurrencyRow = {
   net: number;
   count: number;
   incomplete: number;
+};
+
+/**
+ * Stage 6 Recent Activity Timeline (section 4) — built ONLY from
+ * `Transfer.timestamp`, which `mapSupabaseTransfer` populates from
+ * `created_at`/`timestamp` on the row. This is a transfer-CREATION time,
+ * not a status-change time (no such field exists anywhere in the schema).
+ * Labeled and rendered accordingly wherever this type is used — never as
+ * "live feed" or "status history".
+ */
+type CommandCenterActivityItem = {
+  transferId: string;
+  time: string;
+  companyName: string;
+  bankName: string;
+  amount: number;
+  currency: Currency;
 };
 
 type CommandCenterSummary = {
@@ -238,6 +282,10 @@ type CommandCenterSummary = {
   bankWorkload: CommandCenterBankRow[];
   companyAttention: CommandCenterCompanyRow[];
   activityByHour: { label: string; value: number }[];
+  /** Section 4 — up to 8 most recently created transfers for the selected
+   *  date, newest first. Collected in the same single loop as everything
+   *  else above; sorted once after the loop, no extra scan of data.transfers. */
+  recentActivity: CommandCenterActivityItem[];
 };
 
 function buildCommandCenterSummary(data: AppData, selectedDate: string): CommandCenterSummary {
@@ -258,6 +306,7 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
   const byHour = new Map<string, number>();
   const bankMap = new Map<string, CommandCenterBankRow>();
   const companyMap = new Map<string, CommandCenterCompanyRow>();
+  const activityItems: CommandCenterActivityItem[] = [];
 
   for (const t of todayTransfers) {
     totalsByCurrency[t.currency] += t.amount;
@@ -293,6 +342,7 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
         missingInvoice: 0,
         missingSwift: 0,
         primaryUnresolvedReason: null,
+        workloadSharePct: 0,
       });
     }
     const bankRow = bankMap.get(t.bankId)!;
@@ -316,6 +366,8 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
         missingInvoice: 0,
         notSent: 0,
         hasReturnIssue: false,
+        priorityScore: 0,
+        primaryReason: null,
       });
     }
     const companyRow = companyMap.get(t.companyId)!;
@@ -324,6 +376,15 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
     if (!t.swiftConfirmed) companyRow.missingSwift += 1;
     if (!t.invoiceConfirmed) companyRow.missingInvoice += 1;
     if (!t.preparedConfirmed) companyRow.notSent += 1;
+
+    activityItems.push({
+      transferId: t.id,
+      time: t.timestamp,
+      companyName: company?.name ?? '—',
+      bankName: bank?.name ?? '—',
+      amount: t.amount,
+      currency: t.currency,
+    });
   }
 
   const returnsByCurrency: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
@@ -367,20 +428,46 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
         ...b,
         completionPct: b.count > 0 ? Math.round((b.completeCount / b.count) * 100) : 100,
         primaryUnresolvedReason,
+        // Share of the day's total transfer COUNT (never amount) — see
+        // CommandCenterBankRow.workloadSharePct doc comment.
+        workloadSharePct: todayTransfers.length > 0 ? Math.round((b.count / todayTransfers.length) * 100) : 0,
       };
     })
     .sort((a, b) => b.count - a.count);
 
-  const allCompanyRows = Array.from(companyMap.values());
+  const allCompanyRows = Array.from(companyMap.values()).map((c) => {
+    // Section 3 operational priority model — see CommandCenterCompanyRow
+    // .priorityScore doc comment for the exact weights. Computed once here,
+    // used only to sort/pick the top rows below; never displayed as a raw
+    // number in the UI.
+    const priorityScore = c.notSent * 3 + c.missingSwift * 2 + c.missingInvoice * 1
+      + (c.pendingCount > 1 ? 2 : 0) + (c.hasReturnIssue ? 1 : 0);
+
+    let primaryReason: string | null = null;
+    if (c.notSent > 0) primaryReason = 'Ба бонк фиристода нашуд';
+    else if (c.missingSwift > 0) primaryReason = 'SWIFT нарасидааст';
+    else if (c.missingInvoice > 0) primaryReason = 'Фактура нарасидааст';
+    else if (c.hasReturnIssue) primaryReason = 'Баргардонидани маблағ сабт шудааст';
+
+    return { ...c, priorityScore, primaryReason };
+  });
+
   const companyAttention = allCompanyRows
     .filter((c) => c.pendingCount > 0 || c.hasReturnIssue)
-    .sort((a, b) => (b.missingSwift + b.missingInvoice + b.notSent) - (a.missingSwift + a.missingInvoice + a.notSent))
+    .sort((a, b) => b.priorityScore - a.priorityScore)
     .slice(0, 6);
 
   // See CommandCenterSummary.transfersWithReturnsCount doc comment — this
   // counts companies with a return record, not individual transfers.
   const transfersWithReturnsCount = allCompanyRows.filter((c) => c.hasReturnIssue).length;
   const companiesWithMultipleIncomplete = allCompanyRows.filter((c) => c.pendingCount > 1).length;
+
+  // Section 4 — newest first, capped at 8. `time` is a genuine creation
+  // timestamp (see CommandCenterActivityItem doc comment); sorting
+  // descending on it is a plain string/date compare, no new data source.
+  const recentActivity = [...activityItems]
+    .sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0))
+    .slice(0, 8);
 
   const currencySummaries: CommandCenterCurrencyRow[] = activeCurrencies.map((cur) => ({
     currency: cur,
@@ -415,6 +502,7 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
     bankWorkload,
     companyAttention,
     activityByHour,
+    recentActivity,
   };
 }
 
@@ -1002,6 +1090,16 @@ function CommandCenter({
   onSetAttentionHighlight,
   onClearAttentionHighlight,
   onNavigateDate,
+  loadError,
+  onRetryLoad,
+  selectedBankName,
+  hasSelectedCompany,
+  onGoToSelectedCompany,
+  onSelectBank,
+  onOpenAnalytics,
+  onExportExcel,
+  onExportPdf,
+  canExport,
 }: {
   summary: CommandCenterSummary;
   dateLabel: string;
@@ -1013,9 +1111,26 @@ function CommandCenter({
   onSetAttentionHighlight: (kind: AttentionKind, label: string, companyIds: string[]) => void;
   onClearAttentionHighlight: () => void;
   onNavigateDate: (direction: 'prev' | 'next' | 'today') => void;
+  /** Section 12 — true only after a real Supabase fetch error from
+   *  loadAllFromSupabase; never a synthetic/demo state. */
+  loadError: boolean;
+  onRetryLoad: () => void;
+  selectedBankName: string | null;
+  hasSelectedCompany: boolean;
+  onGoToSelectedCompany: () => void;
+  onSelectBank: (bankId: string) => void;
+  onOpenAnalytics: () => void;
+  onExportExcel: () => void;
+  onExportPdf: () => void;
+  canExport: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const [showAllCompanies, setShowAllCompanies] = useState(false);
+  // Section 11 compact mode — local UI state only, no persistence to DB.
+  // Mobile starts collapsed per the brief; desktop starts expanded.
+  const [isCollapsed, setIsCollapsed] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
   const unresolvedTotal = summary.unresolved.notSent + summary.unresolved.missingInvoice + summary.unresolved.missingSwift;
   const maxBankCount = Math.max(...summary.bankWorkload.map((b) => b.count), 1);
   const maxHourCount = Math.max(...summary.activityByHour.map((h) => h.value), 1);
@@ -1032,6 +1147,20 @@ function CommandCenter({
     onJumpToCompany(matches[0].companyId, matches[0].bankId);
   };
 
+  // Section 2 Next Action Queue — "reveal affected transfers" + "select
+  // company" for one specific row, using the same reversible highlight
+  // mechanism as jumpToFirstWith above, scoped to just this one company
+  // rather than every company sharing that reason.
+  const goToNextAction = (c: CommandCenterCompanyRow) => {
+    let kind: AttentionKind | null = null;
+    if (c.notSent > 0) kind = 'notSent';
+    else if (c.missingSwift > 0) kind = 'missingSwift';
+    else if (c.missingInvoice > 0) kind = 'missingInvoice';
+    else if (c.hasReturnIssue) kind = 'hasReturnIssue';
+    if (kind) onSetAttentionHighlight(kind, c.primaryReason ?? c.companyName, [c.companyId]);
+    onJumpToCompany(c.companyId, c.bankId);
+  };
+
   const pipelineSteps: { key: string; label: string; count: number; icon: typeof Send }[] = [
     { key: 'total', label: 'Ҳамагӣ', count: summary.pipeline.total, icon: BarChart3 },
     { key: 'sent', label: 'Ба бонк фиристода шуд', count: summary.pipeline.sentToBank, icon: Send },
@@ -1044,6 +1173,33 @@ function CommandCenter({
   const completeStateHeading = isToday
     ? 'Ҳама гузаришҳои имрӯза анҷом ёфтаанд'
     : `Ҳама гузаришҳои санаи ${dateLabel} анҷом ёфтаанд`;
+
+  if (loadError) {
+    return (
+      <motion.div
+        initial={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut', delay: entryDelay }}
+        className="command-center-surface saadi-beam-top glass-panel rounded-3xl border border-line shadow-sm mb-6 overflow-hidden"
+      >
+        <div className="text-center py-10 px-5">
+          <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+            <AlertTriangle className="w-7 h-7 text-red-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-ink">Боркунии маълумот ноком шуд</h3>
+          <p className="text-ink-muted text-sm mt-1">Пайваст ба Supabase имконнопазир буд. Маълумоти пешина (агар боркунии қаблӣ муваффақ буд) то навсозии оянда нишон дода мешавад.</p>
+          <button
+            type="button"
+            onClick={onRetryLoad}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-brand-green text-white hover:bg-brand-green-dark transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" aria-hidden="true" />
+            Такрор кардани боркунӣ
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   if (summary.totalTransfers === 0) {
     return (
@@ -1091,7 +1247,7 @@ function CommandCenter({
     );
   }
 
-  const visibleCompanyAttention = showAllCompanies ? summary.companyAttention : summary.companyAttention.slice(0, 4);
+  const visibleCompanyAttention = showAllCompanies ? summary.companyAttention : summary.companyAttention.slice(0, 5);
 
   return (
     <motion.div
@@ -1105,6 +1261,11 @@ function CommandCenter({
         <span className="text-[11px] font-bold text-brand-green-dark dark:text-emerald-400 uppercase tracking-wider">
           Маркази амалиёт
         </span>
+        {isToday && (
+          <span className="status-chip text-[10px] px-2 py-0.5 rounded-full font-semibold bg-brand-green/10 text-brand-green-dark dark:bg-emerald-500/15 dark:text-emerald-400">
+            Имрӯз
+          </span>
+        )}
         <span className="text-base font-extrabold text-ink tracking-tight">{dateLabel}</span>
         <span className="text-xs text-ink-muted">{summary.totalTransfers} гузариш</span>
         <span
@@ -1117,6 +1278,16 @@ function CommandCenter({
         >
           {unresolvedTotal === 0 ? 'Ҳама анҷом ёфт' : `${unresolvedTotal} боқимонда`}
         </span>
+        {selectedBankName && (
+          <span className="status-chip text-[10px] px-2 py-0.5 rounded-full font-semibold bg-black/[0.04] dark:bg-white/[0.06] text-ink-muted">
+            Бонк: {selectedBankName}
+          </span>
+        )}
+        {attentionHighlight && (
+          <span className="status-chip text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+            Филтр: {attentionHighlight.label}
+          </span>
+        )}
         <span
           className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-ink-muted bg-black/[0.02] dark:bg-white/[0.04] px-2.5 py-1 rounded-full"
           aria-live="polite"
@@ -1126,13 +1297,23 @@ function CommandCenter({
             ? `Навсозии охирин: ${format(lastSyncedAt, 'HH:mm')}`
             : 'Дар ҳоли боркунӣ…'}
         </span>
+        <button
+          type="button"
+          onClick={() => setIsCollapsed((v) => !v)}
+          aria-expanded={!isCollapsed}
+          aria-controls="mission-control-details"
+          className="flex items-center gap-1 text-[11px] font-semibold text-ink-muted hover:text-ink bg-black/[0.03] dark:bg-white/[0.05] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] px-2.5 py-1 rounded-full transition-colors shrink-0"
+        >
+          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" /> : <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />}
+          {isCollapsed ? 'Кушодан' : 'Пӯшидан'}
+        </button>
       </div>
 
       {/* ── Workflow progress (section 2) ── */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-line">
         <WorkflowProgressRing percentage={summary.completionPercentage} prefersReducedMotion={!!prefersReducedMotion} />
         <div className="min-w-0">
-          <div className="text-kpi-label">{workflowLabel}</div>
+          <h3 className="text-kpi-label">{workflowLabel}</h3>
           <div className="flex items-baseline gap-2 mt-0.5">
             <span className="money text-lg font-extrabold text-ink">
               {summary.fullyCompletedTransfers} аз {summary.totalTransfers} анҷом ёфт
@@ -1210,6 +1391,16 @@ function CommandCenter({
         </div>
       )}
 
+      {/* Section 11 compact mode — header, workflow ring, and Needs
+          Attention above this line stay visible even when collapsed;
+          everything below is the "secondary detail" that collapses. */}
+      <motion.div
+        id="mission-control-details"
+        initial={false}
+        animate={{ height: isCollapsed ? 0 : 'auto', opacity: isCollapsed ? 0 : 1 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: 'easeOut' }}
+        className="overflow-hidden"
+      >
       {/* ── 2. Currency summary — net-first, currencies never combined ── */}
       {summary.currencySummaries.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-4">
@@ -1241,7 +1432,7 @@ function CommandCenter({
 
       {/* ── 3. Operator status summary (section 3) ── */}
       <div className="px-5 pb-4">
-        <div className="text-kpi-label mb-2">Ҷараёни коркард</div>
+        <h3 className="text-kpi-label mb-2">Ҷараёни коркард</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           {pipelineSteps.map((step) => {
             const pct = summary.pipeline.total > 0 ? Math.round((step.count / summary.pipeline.total) * 100) : 0;
@@ -1265,15 +1456,21 @@ function CommandCenter({
         </div>
       </div>
 
-      {/* ── 4 & 5. Bank operational health + company attention, side by side ── */}
+      {/* ── Row 2: Bank workload + Next Action queue, side by side ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-5 pb-4">
         <div>
-          <div className="text-kpi-label mb-2">Ҳолати амалиётии бонкҳо</div>
+          <h3 className="text-kpi-label mb-2">Ҳаҷми кор аз рӯйи бонк</h3>
           <div className="space-y-2.5">
             {summary.bankWorkload.map((b) => {
               const status = bankStatusLabel(b);
               return (
-                <div key={b.bankId}>
+                <button
+                  key={b.bankId}
+                  type="button"
+                  onClick={() => onSelectBank(b.bankId)}
+                  className="w-full text-left rounded-lg -mx-1 px-1 py-0.5 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                  title={`Гузариш ба ${b.bankName}`}
+                >
                   <div className="flex items-center gap-2">
                     <div className="w-24 shrink-0 text-xs font-medium text-ink truncate" title={b.bankName}>{b.bankName}</div>
                     <div className="flex-1 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
@@ -1294,10 +1491,11 @@ function CommandCenter({
                       {status.text}
                     </span>
                   </div>
-                  {b.primaryUnresolvedReason && (
-                    <div className="text-[10px] text-ink-muted ml-[104px] mt-0.5">{b.primaryUnresolvedReason} · {b.completionPct}% анҷом ёфт</div>
-                  )}
-                </div>
+                  <div className="text-[10px] text-ink-muted ml-[104px] mt-0.5">
+                    {b.primaryUnresolvedReason ? `${b.primaryUnresolvedReason} · ` : ''}
+                    {b.completionPct}% анҷом ёфт · {b.workloadSharePct}% аз ҳаҷми рӯз
+                  </div>
+                </button>
               );
             })}
           </div>
@@ -1305,8 +1503,8 @@ function CommandCenter({
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-kpi-label mb-0">Ширкатҳои ниёзманд</div>
-            {summary.companyAttention.length > 4 && (
+            <h3 className="text-kpi-label mb-0">Навбати амали навбатӣ</h3>
+            {summary.companyAttention.length > 5 && (
               <button
                 type="button"
                 onClick={() => setShowAllCompanies((v) => !v)}
@@ -1319,26 +1517,32 @@ function CommandCenter({
           {summary.companyAttention.length > 0 ? (
             <div className="space-y-1.5">
               {visibleCompanyAttention.map((c) => (
-                <button
+                <div
                   key={c.companyId}
-                  type="button"
-                  onClick={() => onJumpToCompany(c.companyId, c.bankId)}
-                  className="w-full flex items-start justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                  className="w-full flex items-start justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
                 >
-                  <span className="text-xs font-semibold text-ink shrink-0">{c.companyName}</span>
-                  <span className="text-[10px] text-ink-muted text-right">
-                    {c.pendingCount} гузариши нопурра
-                    {c.missingInvoice > 0 && <> · {c.missingInvoice} фактураи норасон</>}
-                    {c.missingSwift > 0 && <> · {c.missingSwift} SWIFT норасон</>}
-                    {c.hasReturnIssue && <> · <span className="text-red-500 dark:text-red-400">баргашт</span></>}
-                  </span>
-                </button>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-ink truncate">{c.companyName}</div>
+                    <div className="text-[10px] text-ink-muted mt-0.5">
+                      {c.bankName} · {c.pendingCount} гузариши нопурра
+                      {c.primaryReason && <> · {c.primaryReason}</>}
+                      {c.hasReturnIssue && <> · <span className="text-red-500 dark:text-red-400">баргашт сабт шудааст</span></>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => goToNextAction(c)}
+                    className="shrink-0 text-[10px] font-semibold text-brand-green-dark dark:text-emerald-400 hover:underline whitespace-nowrap"
+                  >
+                    Гузариш →
+                  </button>
+                </div>
               ))}
             </div>
           ) : (
             <div className="flex items-center gap-2 text-xs text-ink-muted py-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              Ҳама ширкатҳо дар ҳолати хуб
+              Ягон амали навбатӣ нест — ҳама ширкатҳо дар ҳолати хуб
             </div>
           )}
         </div>
@@ -1347,7 +1551,7 @@ function CommandCenter({
       {/* ── Rule-based operational insights (section 7) ── */}
       {insights.length > 0 && (
         <div className="px-5 pb-4">
-          <div className="text-kpi-label mb-2">Мушоҳидаҳо</div>
+          <h3 className="text-kpi-label mb-2">Мушоҳидаҳо</h3>
           <ul className="space-y-1">
             {insights.map((text, i) => (
               <li key={i} className="flex items-start gap-2 text-xs text-ink">
@@ -1359,27 +1563,121 @@ function CommandCenter({
         </div>
       )}
 
-      {/* ── 6. Activity pulse — real timestamps grouped by hour ── */}
-      {summary.activityByHour.length > 1 && (
-        <div className="px-5 pb-5">
-          <div className="text-kpi-label mb-2">Фаъолият аз рӯйи соат</div>
-          <div className="flex items-end gap-1 h-12">
-            {summary.activityByHour.map((h) => (
-              <div key={h.label} className="flex-1 min-w-0 h-full flex items-end" title={`${h.label} — ${h.value} гузариш`}>
-                <div
-                  className="w-full bg-brand-green/70 dark:bg-emerald-500/60 rounded-t transition-all duration-200"
-                  style={{ height: `${Math.max((h.value / maxHourCount) * 100, 8)}%` }}
-                />
-              </div>
-            ))}
+      {/* ── Row 3: Recent Activity / Activity density / Quick Actions ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-5 pb-5">
+        {/* Section 4 — labeled precisely: these are transfer REGISTRATION
+            times (Transfer.timestamp / created_at), not a status-change or
+            live feed, per the timestamp audit documented on
+            CommandCenterActivityItem. */}
+        <div>
+          <h3 className="text-kpi-label mb-2">Гузаришҳои сабтшуда</h3>
+          {summary.recentActivity.length > 0 ? (
+            <ul className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {summary.recentActivity.map((item, i) => {
+                let timeLabel = '—';
+                try {
+                  timeLabel = format(parseISO(item.time), 'HH:mm');
+                } catch {
+                  // malformed timestamp — show the placeholder rather than crash
+                }
+                return (
+                  <motion.li
+                    key={item.transferId}
+                    initial={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: 'easeOut', delay: i * 0.015 }}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <Plus className="w-3 h-3 text-brand-green dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                    <span className="money font-mono text-[10px] text-ink-muted shrink-0">{timeLabel}</span>
+                    <span className="text-ink font-medium truncate">{item.companyName}</span>
+                    <span className="text-ink-muted text-[10px] truncate">{item.bankName}</span>
+                    <span className={cn('money text-[10px] font-semibold ml-auto shrink-0', CURRENCY_COLOR_MAP[item.currency].text)}>
+                      {formatCurrency(item.amount, item.currency)}
+                    </span>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-xs text-ink-muted">Барои {dateLabel} гузариш сабт нашудааст.</p>
+          )}
+          <p className="text-[9px] text-ink-muted mt-2">Вақти сабти гузариш дар система — на таърихи тағйири ҳолат.</p>
+        </div>
+
+        {/* Section 5 — same real hourly timestamps as before, relabeled to
+            avoid implying anything beyond "how many transfers were
+            registered in each hour". */}
+        {summary.activityByHour.length > 1 ? (
+          <div>
+            <h3 className="text-kpi-label mb-2">Зичии фаъолият (аз рӯйи соати сабт)</h3>
+            <div className="flex items-end gap-1 h-12">
+              {summary.activityByHour.map((h) => (
+                <div key={h.label} className="flex-1 min-w-0 h-full flex items-end" title={`${h.label} — ${h.value} гузариш сабт шуд`}>
+                  <div
+                    className="w-full bg-brand-green/70 dark:bg-emerald-500/60 rounded-t transition-all duration-200"
+                    style={{ height: `${Math.max((h.value / maxHourCount) * 100, 8)}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between text-[9px] text-ink-muted mt-1">
+              <span>{summary.activityByHour[0]?.label}</span>
+              <span>{summary.activityByHour[summary.activityByHour.length - 1]?.label}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-[9px] text-ink-muted mt-1">
-            <span>{summary.activityByHour[0]?.label}</span>
-            <span>{summary.activityByHour[summary.activityByHour.length - 1]?.label}</span>
+        ) : (
+          <div />
+        )}
+
+        {/* Section 8 — compact, keyboard-accessible navigation only;
+            every action below calls an existing App() handler, nothing new
+            is written to Supabase from here. */}
+        <div>
+          <h3 className="text-kpi-label mb-2">Амалҳои зуд</h3>
+          <div className="grid grid-cols-2 gap-1.5">
+            <QuickActionButton icon={AlertTriangle} label="Ҳалнашуда" onClick={() => jumpToFirstWith('notSent', 'Ба бонк фиристода нашуд')} disabled={unresolvedTotal === 0} />
+            <QuickActionButton icon={Building2} label="Ширкати интихобшуда" onClick={onGoToSelectedCompany} disabled={!hasSelectedCompany} />
+            <QuickActionButton icon={Landmark} label="Иваз кардани бонк" onClick={() => summary.bankWorkload[0] && onSelectBank(summary.bankWorkload[0].bankId)} disabled={summary.bankWorkload.length === 0} />
+            <QuickActionButton icon={BarChart3} label="Таҳлил" onClick={onOpenAnalytics} />
+            <QuickActionButton icon={FileSpreadsheet} label="Excel" onClick={onExportExcel} disabled={!canExport} />
+            <QuickActionButton icon={FileText} label="PDF" onClick={onExportPdf} disabled={!canExport} />
+            <QuickActionButton icon={CalendarIcon} label="Санаи ҷорӣ" onClick={() => onNavigateDate('today')} disabled={isToday} />
+            <QuickActionButton icon={RotateCcw} label="Бекор кардани филтр" onClick={onClearAttentionHighlight} disabled={!attentionHighlight} />
           </div>
         </div>
-      )}
+      </div>
+      </motion.div>
     </motion.div>
+  );
+}
+
+function QuickActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled = false,
+}: {
+  icon: typeof Send;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium text-left transition-colors border',
+        disabled
+          ? 'opacity-40 cursor-not-allowed border-line bg-transparent'
+          : 'border-line bg-black/[0.015] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-ink'
+      )}
+    >
+      <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
@@ -1406,6 +1704,11 @@ export default function App() {
   // Command Center as "last updated", never as a claim of live/real-time
   // connectivity (there is none; this app is REST-poll based).
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  // Stage 6 section 12 — set only when loadAllFromSupabase's own error
+  // branches fire (a real fetch failure), cleared on the next successful
+  // load. Drives the Mission Control load-error state and its retry
+  // button; does not change what loadAllFromSupabase itself does on error.
+  const [loadError, setLoadError] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => getStoredString('saadi_theme', 'light') === 'dark');
 
   useEffect(() => {
@@ -1525,6 +1828,7 @@ const loadAllFromSupabase = async () => {
 
   if (banksError) {
     console.error('Supabase banks error:', banksError);
+    setLoadError(true);
     return null;
   }
 
@@ -1537,6 +1841,7 @@ const loadAllFromSupabase = async () => {
 
   if (companiesError) {
     console.error('Supabase companies error:', companiesError);
+    setLoadError(true);
     return null;
   }
 
@@ -1547,6 +1852,7 @@ const loadAllFromSupabase = async () => {
 
   if (transfersError) {
     console.error('Supabase transfers error:', transfersError);
+    setLoadError(true);
     return null;
   }
 
@@ -1557,6 +1863,7 @@ const loadAllFromSupabase = async () => {
 
   if (returnsError) {
     console.error('Supabase returns error:', returnsError);
+    setLoadError(true);
     return null;
   }
 
@@ -1608,6 +1915,7 @@ const loadAllFromSupabase = async () => {
 
   setWsConnected(true);
   setLastSyncedAt(new Date());
+  setLoadError(false);
   return freshData;
 };
 
@@ -2059,6 +2367,20 @@ const updateTransferConfirmation = async (
     });
   };
 
+  // Quick Actions "go to selected company" — scrolls to the already-selected
+  // company without touching bank/company/view state (unlike jumpToCompany,
+  // which navigates TO a specific company).
+  const goToSelectedCompany = () => {
+    if (!selectedCompanyId) return;
+    if (viewMode !== 'tracker') setViewMode('tracker');
+    const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`company-pill-${selectedCompanyId}`)
+        ?.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'nearest' });
+    });
+  };
+
   // Reversible highlight only — no filtering/hiding of the company list,
   // no persistence, cleared by the visible reset action rendered next to
   // it in CommandCenter or by picking a different attention category.
@@ -2392,6 +2714,19 @@ const updateTransferConfirmation = async (
           onSetAttentionHighlight={setAttentionHighlight}
           onClearAttentionHighlight={clearAttentionHighlight}
           onNavigateDate={navigateCommandCenterDate}
+          loadError={loadError}
+          onRetryLoad={loadAllFromSupabase}
+          selectedBankName={selectedBank?.name ?? null}
+          hasSelectedCompany={!!selectedCompanyId}
+          onGoToSelectedCompany={goToSelectedCompany}
+          onSelectBank={(bankId) => {
+            setSelectedBankId(bankId);
+            if (viewMode !== 'tracker') setViewMode('tracker');
+          }}
+          onOpenAnalytics={() => setViewMode('analytics')}
+          onExportExcel={exportAnalyticsExcel}
+          onExportPdf={exportAnalyticsPDF}
+          canExport={!!selectedBank}
         />
       )}
 
