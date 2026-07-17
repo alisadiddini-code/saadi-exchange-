@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
 import {
   Plus,
   Building2,
@@ -32,7 +32,9 @@ import {
   Zap,
   Lightbulb,
   RotateCcw,
-  Users
+  Users,
+  Compass,
+  Info
 } from 'lucide-react';
 import {
   format,
@@ -50,6 +52,15 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AppData, Bank, ClientMessage, Company, Currency, ServerMessage, Transfer } from './types';
 import { cn } from './lib/utils';
+import {
+  AssistantAction,
+  AssistantContext,
+  AssistantMessageCard,
+  answerIntent,
+  buildAssistantInsights,
+  getSuggestedIntents,
+  type AssistantIntentId,
+} from './assistantEngine';
 import { supabase } from './lib/supabase';
 
 type ViewMode = 'tracker' | 'analytics';
@@ -163,7 +174,7 @@ const CURRENCY_COLOR_MAP: Record<Currency, { text: string; bg: string; badge: st
 // function does not call Supabase — it is exactly one pass over that day's
 // transfers, computed once per (data, selectedDate) change via useMemo at
 // the call site.
-type CommandCenterBankRow = {
+export type CommandCenterBankRow = {
   bankId: string;
   bankName: string;
   count: number;
@@ -186,7 +197,7 @@ type CommandCenterBankRow = {
   workloadSharePct: number;
 };
 
-type CommandCenterCompanyRow = {
+export type CommandCenterCompanyRow = {
   companyId: string;
   companyName: string;
   bankId: string;
@@ -226,7 +237,7 @@ type CommandCenterCompanyRow = {
  *  records above into a single array, so a new currency-summary UI reads
  *  one list instead of five separate Records. No new scan: same values,
  *  different shape. */
-type CommandCenterCurrencyRow = {
+export type CommandCenterCurrencyRow = {
   currency: Currency;
   total: number;
   returned: number;
@@ -243,7 +254,7 @@ type CommandCenterCurrencyRow = {
  * Labeled and rendered accordingly wherever this type is used — never as
  * "live feed" or "status history".
  */
-type CommandCenterActivityItem = {
+export type CommandCenterActivityItem = {
   transferId: string;
   time: string;
   companyName: string;
@@ -252,7 +263,7 @@ type CommandCenterActivityItem = {
   currency: Currency;
 };
 
-type CommandCenterSummary = {
+export type CommandCenterSummary = {
   date: string;
   totalTransfers: number;
   // Stage 5.1: named explicitly rather than left as "pipeline.complete" /
@@ -286,6 +297,13 @@ type CommandCenterSummary = {
    *  date, newest first. Collected in the same single loop as everything
    *  else above; sorted once after the loop, no extra scan of data.transfers. */
   recentActivity: CommandCenterActivityItem[];
+  /** Stage 7 — every company with at least one transfer on this date,
+   *  including fully-complete ones (unlike companyAttention, which only
+   *  keeps unresolved/returned rows capped at 6). Same array already built
+   *  by the loop above; exposing it here is not a new scan — it lets the
+   *  assistant answer "summarize company X" honestly even when X has zero
+   *  unresolved items, which companyAttention alone can't do. */
+  allCompanyRows: CommandCenterCompanyRow[];
 };
 
 function buildCommandCenterSummary(data: AppData, selectedDate: string): CommandCenterSummary {
@@ -503,6 +521,7 @@ function buildCommandCenterSummary(data: AppData, selectedDate: string): Command
     companyAttention,
     activityByHour,
     recentActivity,
+    allCompanyRows,
   };
 }
 
@@ -1077,7 +1096,43 @@ function bankStatusLabel(b: CommandCenterBankRow): { text: string; tone: 'succes
   return { text: 'Ниёз ба таваҷҷуҳ', tone: 'warning' };
 }
 
-type AttentionKind = 'notSent' | 'missingInvoice' | 'missingSwift' | 'hasReturnIssue' | 'multiIncomplete';
+export type AttentionKind = 'notSent' | 'missingInvoice' | 'missingSwift' | 'hasReturnIssue' | 'multiIncomplete';
+
+// Shared, side-effect-free navigation helpers — used by both CommandCenter
+// (Stage 5.1/6) and AssistantPanel (Stage 7) so the "jump to the company
+// behind an attention reason" logic exists in exactly one place. Neither
+// function touches Supabase or any confirmation field; both only call the
+// reversible highlight/select-company handlers passed in.
+function jumpToFirstAttentionMatch(
+  summary: CommandCenterSummary,
+  kind: AttentionKind,
+  label: string,
+  onSetAttentionHighlight: (kind: AttentionKind, label: string, companyIds: string[]) => void,
+  onJumpToCompany: (companyId: string, bankId: string) => void
+) {
+  const matches = summary.companyAttention.filter((c) => {
+    if (kind === 'hasReturnIssue') return c.hasReturnIssue;
+    if (kind === 'multiIncomplete') return c.pendingCount > 1;
+    return c[kind] > 0;
+  });
+  if (matches.length === 0) return;
+  onSetAttentionHighlight(kind, label, matches.map((c) => c.companyId));
+  onJumpToCompany(matches[0].companyId, matches[0].bankId);
+}
+
+function jumpToCompanyWithPrimaryReason(
+  c: CommandCenterCompanyRow,
+  onSetAttentionHighlight: (kind: AttentionKind, label: string, companyIds: string[]) => void,
+  onJumpToCompany: (companyId: string, bankId: string) => void
+) {
+  let kind: AttentionKind | null = null;
+  if (c.notSent > 0) kind = 'notSent';
+  else if (c.missingSwift > 0) kind = 'missingSwift';
+  else if (c.missingInvoice > 0) kind = 'missingInvoice';
+  else if (c.hasReturnIssue) kind = 'hasReturnIssue';
+  if (kind) onSetAttentionHighlight(kind, c.primaryReason ?? c.companyName, [c.companyId]);
+  onJumpToCompany(c.companyId, c.bankId);
+}
 
 function CommandCenter({
   summary,
@@ -1136,30 +1191,15 @@ function CommandCenter({
   const maxHourCount = Math.max(...summary.activityByHour.map((h) => h.value), 1);
   const insights = useMemo(() => buildOperationalInsights(summary), [summary]);
 
-  const jumpToFirstWith = (kind: AttentionKind, label: string) => {
-    const matches = summary.companyAttention.filter((c) => {
-      if (kind === 'hasReturnIssue') return c.hasReturnIssue;
-      if (kind === 'multiIncomplete') return c.pendingCount > 1;
-      return c[kind] > 0;
-    });
-    if (matches.length === 0) return;
-    onSetAttentionHighlight(kind, label, matches.map((c) => c.companyId));
-    onJumpToCompany(matches[0].companyId, matches[0].bankId);
-  };
+  const jumpToFirstWith = (kind: AttentionKind, label: string) =>
+    jumpToFirstAttentionMatch(summary, kind, label, onSetAttentionHighlight, onJumpToCompany);
 
   // Section 2 Next Action Queue — "reveal affected transfers" + "select
   // company" for one specific row, using the same reversible highlight
   // mechanism as jumpToFirstWith above, scoped to just this one company
   // rather than every company sharing that reason.
-  const goToNextAction = (c: CommandCenterCompanyRow) => {
-    let kind: AttentionKind | null = null;
-    if (c.notSent > 0) kind = 'notSent';
-    else if (c.missingSwift > 0) kind = 'missingSwift';
-    else if (c.missingInvoice > 0) kind = 'missingInvoice';
-    else if (c.hasReturnIssue) kind = 'hasReturnIssue';
-    if (kind) onSetAttentionHighlight(kind, c.primaryReason ?? c.companyName, [c.companyId]);
-    onJumpToCompany(c.companyId, c.bankId);
-  };
+  const goToNextAction = (c: CommandCenterCompanyRow) =>
+    jumpToCompanyWithPrimaryReason(c, onSetAttentionHighlight, onJumpToCompany);
 
   const pipelineSteps: { key: string; label: string; count: number; icon: typeof Send }[] = [
     { key: 'total', label: 'Ҳамагӣ', count: summary.pipeline.total, icon: BarChart3 },
@@ -1678,6 +1718,267 @@ function QuickActionButton({
       <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
       <span className="truncate">{label}</span>
     </button>
+  );
+}
+
+// ── Stage 7: Saadi Assistant panel ──────────────────────────────────────
+// Rule-based operational guidance, not generative AI (see the disclosure
+// footer). Every fact traces to CommandCenterSummary, already computed one
+// pass over the day's transfers in buildCommandCenterSummary — this
+// component never touches data.transfers itself.
+const ASSISTANT_MESSAGE_ICON: Record<AssistantMessageCard['type'], typeof Send> = {
+  summary: BarChart3,
+  attention: AlertTriangle,
+  success: CheckCircle2,
+  navigation: Compass,
+  limitation: Info,
+};
+
+const ASSISTANT_MESSAGE_TONE: Record<AssistantMessageCard['type'], string> = {
+  summary: 'border-line bg-black/[0.012] dark:bg-white/[0.02]',
+  attention: 'border-amber-300 dark:border-amber-500/35 bg-amber-50 dark:bg-amber-500/10',
+  success: 'border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10',
+  navigation: 'border-line bg-black/[0.012] dark:bg-white/[0.02]',
+  limitation: 'border-line bg-black/[0.012] dark:bg-white/[0.02]',
+};
+
+function AssistantMessageCardView({
+  msg,
+  onRunAction,
+}: {
+  // Type-only — React strips `key` before this component ever sees its
+  // props; this just satisfies the JSX call-site type check at the one
+  // call site (line ~1920) that passes key directly to this component,
+  // matching how the project's existing JSX/React types already work
+  // everywhere else `key` is used.
+  key?: string;
+  msg: AssistantMessageCard;
+  onRunAction: (action: AssistantAction) => void;
+}) {
+  const Icon = ASSISTANT_MESSAGE_ICON[msg.type];
+  return (
+    <div className={cn('rounded-xl border px-3 py-2.5', ASSISTANT_MESSAGE_TONE[msg.type])}>
+      {msg.questionLabel && (
+        <div className="text-[10px] text-ink-muted mb-1.5 italic">«{msg.questionLabel}»</div>
+      )}
+      <div className="flex items-start gap-2">
+        <Icon className="w-3.5 h-3.5 mt-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-ink">{msg.title}</div>
+          <p className="text-[11px] text-ink-muted mt-0.5">{msg.paragraph}</p>
+          {msg.facts.length > 0 && (
+            <ul className="mt-1.5 space-y-0.5">
+              {msg.facts.map((fact, i) => (
+                <li key={i} className="text-[10px] text-ink flex items-start gap-1.5">
+                  <span className="text-ink-muted mt-0.5" aria-hidden="true">•</span>
+                  <span>{fact}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="text-[9px] text-ink-muted mt-1.5">{msg.sourceContext}</div>
+          {msg.action && (
+            <button
+              type="button"
+              onClick={() => onRunAction(msg.action!)}
+              className="mt-2 text-[10px] font-semibold text-brand-green-dark dark:text-emerald-400 hover:underline"
+            >
+              {msg.action.label} →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssistantPanel({
+  isOpen,
+  onClose,
+  closeButtonRef,
+  context,
+  summary,
+  insights,
+  responses,
+  onAsk,
+  onRunAction,
+  loadError,
+  onRetryLoad,
+  onNavigateDate,
+  prefersReducedMotion,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  closeButtonRef: RefObject<HTMLButtonElement>;
+  context: AssistantContext;
+  summary: CommandCenterSummary;
+  insights: AssistantMessageCard[];
+  responses: AssistantMessageCard[];
+  onAsk: (intentId: AssistantIntentId) => void;
+  onRunAction: (action: AssistantAction) => void;
+  loadError: boolean;
+  onRetryLoad: () => void;
+  onNavigateDate: (direction: 'prev' | 'next' | 'today') => void;
+  prefersReducedMotion: boolean;
+}) {
+  const suggestedIntents = getSuggestedIntents(context);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={prefersReducedMotion ? undefined : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+            className="fixed inset-0 z-[70] bg-black/20"
+            onClick={onClose}
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ёрдамчии амалиётии Saadi"
+            initial={prefersReducedMotion ? undefined : { x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: 'easeOut' }}
+            className={cn(
+              'fixed z-[71] glass-panel elevation-3 flex flex-col',
+              // Desktop/tablet: right-anchored drawer. Mobile: bottom sheet.
+              'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl',
+              'sm:inset-x-auto sm:right-0 sm:top-0 sm:bottom-0 sm:max-h-none sm:h-full sm:w-[380px] sm:max-w-[92vw] sm:rounded-t-none sm:rounded-l-3xl sm:border-l sm:border-line'
+            )}
+          >
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-line shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <Compass className="w-4.5 h-4.5 text-brand-green-dark dark:text-emerald-400" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-bold text-ink truncate">Ёрдамчии амалиётии Saadi</h2>
+                  <p className="text-[10px] text-ink-muted">Дастури қоидабунёд — на AI-и генеративӣ</p>
+                </div>
+              </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={onClose}
+                aria-label="Пӯшидани ёрдамчӣ"
+                className="p-2 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors shrink-0"
+              >
+                <X className="w-4 h-4 text-ink-muted" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              {loadError ? (
+                <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" aria-hidden="true" />
+                    <div>
+                      <p className="text-xs font-semibold text-ink">Маълумот дастрас нест</p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">Пайваст ба система ноком шуд, аз ин рӯ ёрдамчӣ наметавонад маълумоти ҷориро таҳлил кунад.</p>
+                      <button
+                        type="button"
+                        onClick={onRetryLoad}
+                        className="mt-2 text-[10px] font-semibold text-brand-green-dark dark:text-emerald-400 hover:underline"
+                      >
+                        Такрор кардани боркунӣ →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* ── Context (section 2) ── */}
+                  <div>
+                    <h3 className="text-kpi-label mb-2">Контекст</h3>
+                    <div className="rounded-xl border border-line bg-black/[0.012] dark:bg-white/[0.02] px-3 py-2.5 space-y-1 text-[11px]">
+                      <div className="flex justify-between gap-2"><span className="text-ink-muted">Сана</span><span className="text-ink font-medium">{context.dateLabel}{context.isToday ? ' (имрӯз)' : ''}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-ink-muted">Бонк</span><span className="text-ink font-medium truncate">{context.bankName ?? '—'}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-ink-muted">Ширкат</span><span className="text-ink font-medium truncate">{context.companyName ?? 'интихоб нашудааст'}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-ink-muted">Намоиш</span><span className="text-ink font-medium">{context.viewMode === 'tracker' ? 'Пайгирӣ' : 'Таҳлил'}</span></div>
+                      {context.activeFilterLabel && (
+                        <div className="flex justify-between gap-2"><span className="text-ink-muted">Филтр</span><span className="text-ink font-medium truncate">{context.activeFilterLabel}</span></div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Section 9: empty-date handling ── */}
+                  {summary.totalTransfers === 0 && (
+                    <div className="flex items-center justify-center gap-2">
+                      <button type="button" onClick={() => onNavigateDate('prev')} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-line hover:border-brand-green/50 transition-colors">← Гузашта</button>
+                      {!context.isToday && (
+                        <button type="button" onClick={() => onNavigateDate('today')} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-brand-green/40 bg-brand-green/10 text-brand-green-dark dark:text-emerald-400 transition-colors">Имрӯз</button>
+                      )}
+                      <button type="button" onClick={() => onNavigateDate('next')} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-line hover:border-brand-green/50 transition-colors">Оянда →</button>
+                    </div>
+                  )}
+
+                  {/* ── Section 3: passive insights ── */}
+                  <div>
+                    <h3 className="text-kpi-label mb-2">Пешниҳодҳои амалиётӣ</h3>
+                    <div className="space-y-2">
+                      {insights.map((msg) => (
+                        <AssistantMessageCardView key={msg.id} msg={msg} onRunAction={onRunAction} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Section 4: suggested questions ── */}
+                  <div>
+                    <h3 className="text-kpi-label mb-2">Саволҳои пешниҳодшуда</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {suggestedIntents.map((intent) => (
+                        <button
+                          key={intent.id}
+                          type="button"
+                          onClick={() => onAsk(intent.id)}
+                          className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-line bg-black/[0.015] dark:bg-white/[0.02] hover:border-brand-green/50 active:scale-[0.98] transition-all"
+                        >
+                          {intent.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Section 5: response history (local only) ── */}
+                  {responses.length > 0 && (
+                    <div>
+                      <h3 className="text-kpi-label mb-2">Ҷавобҳо</h3>
+                      <div className="space-y-2">
+                        <AnimatePresence initial={false}>
+                          {responses.map((msg) => (
+                            <motion.div
+                              key={msg.id}
+                              initial={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: 'easeOut' }}
+                            >
+                              <AssistantMessageCardView msg={msg} onRunAction={onRunAction} />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* ── Section 8: limitation disclosure — always visible, unobtrusive ── */}
+            <div className="px-5 py-3 border-t border-line shrink-0">
+              <p className="text-[9px] text-ink-muted leading-relaxed">
+                Ин ёрдамчӣ танҳо маълумоти дар система боркардашударо таҳлил мекунад. Он бо бонкҳо тамос намегирад, ҳисобуктобро тасдиқ намекунад ва қарори молиявӣ намебарорад.
+              </p>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -2367,6 +2668,14 @@ const updateTransferConfirmation = async (
     });
   };
 
+  // Shared "switch bank tab" handler — used by CommandCenter's bank-workload
+  // rows/Quick Actions (Stage 6) and now AssistantPanel (Stage 7) so both
+  // reuse the same one-line state change instead of two inline copies.
+  const selectBank = (bankId: string) => {
+    setSelectedBankId(bankId);
+    if (viewMode !== 'tracker') setViewMode('tracker');
+  };
+
   // Quick Actions "go to selected company" — scrolls to the already-selected
   // company without touching bank/company/view state (unlike jumpToCompany,
   // which navigates TO a specific company).
@@ -2400,6 +2709,128 @@ const updateTransferConfirmation = async (
     d.setDate(d.getDate() + (direction === 'next' ? 1 : -1));
     setSelectedDate(format(d, 'yyyy-MM-dd'));
   };
+
+  // ── Stage 7: AI Exchange Assistant Foundation ──────────────────────────
+  // Local-only UI state. Nothing here is persisted (no localStorage, no
+  // Supabase) — closing the tab clears it, exactly as instructed.
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [hasOpenedAssistant, setHasOpenedAssistant] = useState(false);
+  const [assistantResponses, setAssistantResponses] = useState<AssistantMessageCard[]>([]);
+  const assistantLauncherRef = useRef<HTMLButtonElement>(null);
+  const assistantPanelCloseRef = useRef<HTMLButtonElement>(null);
+
+  const assistantDateLabel = format(parseISO(`${selectedDate}T00:00:00`), 'dd.MM.yyyy');
+
+  // Mirrors the same in-memory UI state CommandCenter already reads — no
+  // new source of truth, just reshaped for the assistant's own display.
+  const assistantContext: AssistantContext = useMemo(
+    () => ({
+      dateLabel: assistantDateLabel,
+      isToday,
+      bankId: selectedBank?.id ?? null,
+      bankName: selectedBank?.name ?? null,
+      companyId: selectedCompanyId,
+      companyName: selectedCompany?.name ?? null,
+      viewMode,
+      activeFilterLabel: attentionHighlight?.label ?? null,
+    }),
+    [assistantDateLabel, isToday, selectedBank, selectedCompanyId, selectedCompany, viewMode, attentionHighlight]
+  );
+
+  const assistantInsights = useMemo(
+    () => buildAssistantInsights(commandCenterSummary, assistantDateLabel),
+    [commandCenterSummary, assistantDateLabel]
+  );
+
+  const openAssistant = () => {
+    setIsAssistantOpen(true);
+    setHasOpenedAssistant(true);
+  };
+  const closeAssistant = () => setIsAssistantOpen(false);
+
+  const askAssistant = (intentId: AssistantIntentId) => {
+    const response = answerIntent(intentId, commandCenterSummary, assistantContext);
+    // Capped local list — this is not chat history persistence (nothing is
+    // written to storage or Supabase), just how many response cards stay
+    // visible in the panel at once.
+    setAssistantResponses((prev) => [response, ...prev].slice(0, 6));
+  };
+
+  // The engine only ever returns action *descriptors* (section 6, "safe
+  // actions") — every branch below calls a handler that already existed
+  // before Stage 7. No branch writes to Supabase, changes a confirmation
+  // checkbox, or performs an irreversible action.
+  const runAssistantAction = (action: AssistantAction) => {
+    switch (action.type) {
+      case 'selectCompany':
+        jumpToCompany(action.companyId, action.bankId);
+        break;
+      case 'switchBank':
+        selectBank(action.bankId);
+        break;
+      case 'setAttentionFilter':
+        setAttentionHighlight(action.kind, action.label, action.companyIds);
+        jumpToCompany(action.jumpCompanyId, action.jumpBankId);
+        break;
+      case 'resetFilters':
+        clearAttentionHighlight();
+        break;
+      case 'scrollMissionControl': {
+        const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.querySelector('.command-center-surface')?.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' });
+        break;
+      }
+      case 'openAnalytics':
+        setViewMode('analytics');
+        break;
+      case 'jumpToday':
+        navigateCommandCenterDate('today');
+        break;
+    }
+  };
+
+  // Ctrl+/ (Cmd+/ on Mac) toggles the assistant; Escape closes it. Ignored
+  // entirely while the user is typing in any input/textarea/select or a
+  // contenteditable field, so it never hijacks normal form entry.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        if (isTyping) return;
+        e.preventDefault();
+        setIsAssistantOpen((prev) => {
+          const next = !prev;
+          if (next) setHasOpenedAssistant(true);
+          return next;
+        });
+        return;
+      }
+      if (e.key === 'Escape' && isAssistantOpen && !isTyping) {
+        closeAssistant();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isAssistantOpen]);
+
+  // Focus discipline (section 11): move focus into the panel on open, and
+  // back to the launcher button on close, so keyboard users never lose
+  // their place. Guarded with wasAssistantOpenRef so this never steals
+  // focus to the launcher on initial page load (when the panel has never
+  // been open at all).
+  const wasAssistantOpenRef = useRef(false);
+  useEffect(() => {
+    if (isAssistantOpen) {
+      assistantPanelCloseRef.current?.focus();
+      wasAssistantOpenRef.current = true;
+    } else if (wasAssistantOpenRef.current) {
+      assistantLauncherRef.current?.focus();
+      wasAssistantOpenRef.current = false;
+    }
+  }, [isAssistantOpen]);
 
   const handleDeleteCompany = (company: Company) => {
     const confirmDelete = window.confirm(
@@ -2634,6 +3065,21 @@ const updateTransferConfirmation = async (
           </div>
 
           <button
+            ref={assistantLauncherRef}
+            type="button"
+            onClick={openAssistant}
+            title="Ёрдамчии амалиётӣ (Ctrl+/)"
+            aria-label="Кушодани ёрдамчии амалиётӣ"
+            className="relative flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hover:border-brand-green/50 transition-colors shrink-0"
+          >
+            <Compass className="w-5 h-5 text-brand-green-dark dark:text-emerald-400" />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 hidden sm:inline">Ёрдамчӣ</span>
+            {!hasOpenedAssistant && assistantInsights.some((i) => i.type === 'attention') && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white dark:border-gray-900" aria-hidden="true" />
+            )}
+          </button>
+
+          <button
             type="button"
             onClick={() => setIsDarkMode((prev) => !prev)}
             title={isDarkMode ? 'Гузариш ба ҳолати равшан' : 'Гузариш ба ҳолати торик'}
@@ -2719,10 +3165,7 @@ const updateTransferConfirmation = async (
           selectedBankName={selectedBank?.name ?? null}
           hasSelectedCompany={!!selectedCompanyId}
           onGoToSelectedCompany={goToSelectedCompany}
-          onSelectBank={(bankId) => {
-            setSelectedBankId(bankId);
-            if (viewMode !== 'tracker') setViewMode('tracker');
-          }}
+          onSelectBank={selectBank}
           onOpenAnalytics={() => setViewMode('analytics')}
           onExportExcel={exportAnalyticsExcel}
           onExportPdf={exportAnalyticsPDF}
@@ -3119,6 +3562,22 @@ const updateTransferConfirmation = async (
           ))}
         </AnimatePresence>
       </div>
+
+      <AssistantPanel
+        isOpen={isAssistantOpen}
+        onClose={closeAssistant}
+        closeButtonRef={assistantPanelCloseRef}
+        context={assistantContext}
+        summary={commandCenterSummary}
+        insights={assistantInsights}
+        responses={assistantResponses}
+        onAsk={askAssistant}
+        onRunAction={runAssistantAction}
+        loadError={loadError}
+        onRetryLoad={loadAllFromSupabase}
+        onNavigateDate={navigateCommandCenterDate}
+        prefersReducedMotion={!!prefersReducedMotionEntry}
+      />
     </div>
   );
 }
