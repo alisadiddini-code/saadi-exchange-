@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
+import { useState, useEffect, useRef, useMemo, Fragment, type RefObject } from 'react';
 import {
   Plus,
   Building2,
@@ -34,7 +34,10 @@ import {
   RotateCcw,
   Users,
   Compass,
-  Info
+  Info,
+  TrendingDown,
+  Minus,
+  ArrowRight
 } from 'lucide-react';
 import {
   format,
@@ -44,7 +47,10 @@ import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
-  eachMonthOfInterval
+  eachMonthOfInterval,
+  subDays,
+  subWeeks,
+  subMonths
 } from 'date-fns';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -61,10 +67,21 @@ import {
   getSuggestedIntents,
   type AssistantIntentId,
 } from './assistantEngine';
+import {
+  sumReturnsByCurrencyInRange,
+  buildAnalyticsTrend,
+  buildPeriodComparison,
+  buildCompanyDistribution,
+  buildAnalyticsInsights,
+  type AnalyticsTrendPoint,
+  type PeriodComparisonRow,
+  type CompanyDistribution,
+  type AnalyticsInsight,
+} from './analyticsModel';
 import { supabase } from './lib/supabase';
 
 type ViewMode = 'tracker' | 'analytics';
-type DateFilterMode = 'day' | 'week' | 'month' | 'all';
+export type DateFilterMode = 'day' | 'week' | 'month' | 'all';
 type CompanySortMode =
   | 'manual'
   | 'name-asc'
@@ -104,6 +121,20 @@ function getActiveRange(selectedDate: string, filterMode: DateFilterMode) {
     start: startOfMonth(selectedDateObj),
     end: endOfMonth(selectedDateObj),
   };
+}
+
+/** Analytics V2 period comparison (section 6) — the equivalent preceding
+ *  range for the same filter mode. 'all' has no meaningful "previous all
+ *  time", so it's the one mode with no comparison. Pure date arithmetic,
+ *  no new data source. */
+function getPreviousRange(selectedDate: string, filterMode: DateFilterMode): { start: Date; end: Date } | null {
+  if (filterMode === 'all') return null;
+  const d = parseISO(`${selectedDate}T00:00:00`);
+  const shifted =
+    filterMode === 'day' ? subDays(d, 1) :
+    filterMode === 'week' ? subWeeks(d, 1) :
+    subMonths(d, 1);
+  return getActiveRange(format(shifted, 'yyyy-MM-dd'), filterMode);
 }
 
 function currencySymbol(currency: Currency) {
@@ -753,143 +784,6 @@ function buildDailySeries(
       netUsd: totals.USD - returned
     };
   });
-}
-
-function SmallBarChart({
-  title,
-  data,
-  colorClass = 'bg-emerald-500'
-}: {
-  title: string;
-  data: { label: string; value: number }[];
-  colorClass?: string;
-}) {
-  const maxValue = Math.max(...data.map((item) => item.value), 1);
-
-  return (
-    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-ink mb-4">{title}</div>
-
-      <div className="h-64 flex items-end gap-3">
-        {data.map((item) => {
-          const height = Math.max((item.value / maxValue) * 100, item.value > 0 ? 6 : 0);
-
-          return (
-            <div key={item.label} className="bar-tooltip-anchor flex-1 min-w-0 flex flex-col items-center justify-end gap-2">
-              <div className="money text-[10px] text-ink-muted font-mono truncate max-w-full">
-                {item.value > 0 ? numberFormat(item.value) : ''}
-              </div>
-              <div className="relative w-full h-44 flex items-end">
-                {/* faint reference gridlines at 25/50/75% */}
-                <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
-                  <div className="border-t border-line" />
-                  <div className="border-t border-line" />
-                  <div className="border-t border-line" />
-                  <div className="border-t border-line" />
-                </div>
-                <div
-                  className={cn('bar-reveal relative w-full rounded-t-xl transition-all', colorClass)}
-                  style={{ height: `${height}%` }}
-                  title={`${item.label}: ${numberFormat(item.value)}`}
-                />
-                <div className="bar-tooltip absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink text-surface-1 text-[10px] font-mono px-2 py-1 shadow-lg z-10">
-                  {item.label}: {numberFormat(item.value)}
-                </div>
-              </div>
-              <div className="text-[11px] text-ink-muted">{item.label}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-const DONUT_COLORS = ['#10b981', '#38bdf8', '#f59e0b', '#94a3b8', '#fb7185', '#2dd4bf', '#c4b5fd', '#facc15'];
-
-function DonutChart({
-  title,
-  data,
-}: {
-  title: string;
-  data: { label: string; value: number }[];
-}) {
-  const filtered = data.filter((d) => d.value > 0).slice(0, 8);
-  const total = filtered.reduce((sum, d) => sum + d.value, 0);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
-  if (!filtered.length || total <= 0) {
-    return null;
-  }
-
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  let offsetAcc = 0;
-
-  return (
-    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 overflow-hidden">
-      <div className="text-lg font-bold text-ink mb-4">{title}</div>
-      <div className="flex flex-col sm:flex-row items-center gap-6">
-        <svg viewBox="0 0 100 100" className="w-40 h-40 shrink-0 -rotate-90">
-          <circle cx="50" cy="50" r={radius} fill="none" className="stroke-line" strokeWidth="14" />
-          {filtered.map((item, i) => {
-            const fraction = item.value / total;
-            const dash = fraction * circumference;
-            const gap = circumference - dash;
-            const dashoffset = -offsetAcc;
-            offsetAcc += dash;
-            const isHovered = hoveredIndex === i;
-            const isDimmed = hoveredIndex !== null && !isHovered;
-            return (
-              <circle
-                key={item.label}
-                cx="50"
-                cy="50"
-                r={radius}
-                fill="none"
-                stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
-                strokeWidth={isHovered ? 17 : 14}
-                strokeOpacity={isDimmed ? 0.35 : 1}
-                strokeDasharray={`${dash} ${gap}`}
-                strokeDashoffset={dashoffset}
-                className="donut-segment"
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              >
-                <title>{`${item.label}: ${numberFormat(item.value)} (${Math.round(fraction * 100)}%)`}</title>
-              </circle>
-            );
-          })}
-        </svg>
-        <div className="flex-1 min-w-0 w-full space-y-1">
-          {filtered.map((item, i) => {
-            const isHovered = hoveredIndex === i;
-            const isDimmed = hoveredIndex !== null && !isHovered;
-            return (
-              <div
-                key={item.label}
-                className={cn(
-                  'flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 -mx-2 transition-all cursor-default',
-                  isHovered ? 'bg-black/[0.04] dark:bg-white/[0.06]' : 'bg-transparent',
-                  isDimmed && 'opacity-50'
-                )}
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
-                />
-                <span className="text-ink truncate flex-1">{item.label}</span>
-                <span className="text-ink-muted text-xs shrink-0">{Math.round((item.value / total) * 100)}%</span>
-                <span className="money font-mono font-semibold text-ink text-xs shrink-0">{numberFormat(item.value)}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 const AVATAR_COLORS = [
@@ -3217,76 +3111,78 @@ const updateTransferConfirmation = async (
           )}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_auto_auto] gap-3">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
-            <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              placeholder="Ҷустуҷӯ аз рӯйи маблағ, асъор, рақами ҳисоб, соат, сана ё ширкат..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent outline-none text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400"
-            />
-            {searchQuery && (
+        {viewMode === 'tracker' && (
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_auto_auto] gap-3">
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
+              <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                placeholder="Ҷустуҷӯ аз рӯйи маблағ, асъор, рақами ҳисоб, соат, сана ё ширкат..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent outline-none text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
+                >
+                  Пок
+                </button>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
+              <ArrowUpDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <select
+                value={companySortMode}
+                onChange={(e) => setCompanySortMode(e.target.value as CompanySortMode)}
+                className="bg-transparent outline-none text-sm text-gray-700 dark:text-gray-200"
+              >
+                <option value="manual">Ҷойи дастӣ</option>
+                <option value="name-asc">Ном A-Я</option>
+                <option value="name-desc">Ном Я-A</option>
+                <option value="net-desc">USD соф калон-кам</option>
+                <option value="net-asc">USD соф кам-калон</option>
+                <option value="count-desc">Шумора калон-кам</option>
+                <option value="count-asc">Шумора кам-калон</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={exportAnalyticsExcel}
+              disabled={!selectedBank}
+              className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              Excel
+            </button>
+
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
+                onClick={exportAnalyticsPDF}
+                disabled={!selectedBank}
+                className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
               >
-                Пок
+                <FileText className="w-4 h-4 text-red-500" />
+                PDF
               </button>
-            )}
+
+              <button
+                type="button"
+                onClick={printProfessionalReport}
+                disabled={!selectedBank}
+                className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4 text-blue-500" />
+                Чоп
+              </button>
+            </div>
           </div>
-
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
-            <ArrowUpDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <select
-              value={companySortMode}
-              onChange={(e) => setCompanySortMode(e.target.value as CompanySortMode)}
-              className="bg-transparent outline-none text-sm text-gray-700 dark:text-gray-200"
-            >
-              <option value="manual">Ҷойи дастӣ</option>
-              <option value="name-asc">Ном A-Я</option>
-              <option value="name-desc">Ном Я-A</option>
-              <option value="net-desc">USD соф калон-кам</option>
-              <option value="net-asc">USD соф кам-калон</option>
-              <option value="count-desc">Шумора калон-кам</option>
-              <option value="count-asc">Шумора кам-калон</option>
-            </select>
-          </div>
-
-          <button
-            type="button"
-            onClick={exportAnalyticsExcel}
-            disabled={!selectedBank}
-            className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            Excel
-          </button>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={exportAnalyticsPDF}
-              disabled={!selectedBank}
-              className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4 text-red-500" />
-              PDF
-            </button>
-
-            <button
-              type="button"
-              onClick={printProfessionalReport}
-              disabled={!selectedBank}
-              className="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
-            >
-              <Printer className="w-4 h-4 text-blue-500" />
-              Чоп
-            </button>
-          </div>
-        </div>
+        )}
       </motion.div>
 
       <main className="flex-1">
@@ -3435,6 +3331,10 @@ const updateTransferConfirmation = async (
             selectedDate={selectedDate}
             selectedBank={selectedBank}
             companies={filteredCompanies}
+            dateFilterMode={dateFilterMode}
+            onExportExcel={exportAnalyticsExcel}
+            onExportPdf={exportAnalyticsPDF}
+            onPrint={printProfessionalReport}
           />
         )}
       </main>
@@ -4157,161 +4057,49 @@ function CompanyCard({
 }
 
 // ── Analytics dashboard types ────────────────────────────────────────────
-type AnalyticsPeriod = 'day' | 'week' | 'month' | 'all';
+// AnalyticsPeriod, getPeriodRange/getPeriodLabel, sumReturnsByCurrencyInRange
+// and buildAnalyticsTrend moved to src/analyticsModel.ts (Analytics V2).
+// AnalyticsView now reads the app-wide DateFilterMode/getActiveRange
+// instead of maintaining its own separate period state — this was a real
+// bug, not just duplication: exports (Excel/PDF/Print) always used the
+// outer dateFilterMode, so the old local `period` tabs could show the
+// operator a different range than what actually got exported.
 type AnalyticsCurrencyFilter = 'ALL' | Currency;
 
-/** Sum returns per currency for a set of companyIds inside an optional date range */
-function sumReturnsByCurrencyInRange(
-  returnsMap: AppData['returns'],
-  companyIds: string[],
-  start: Date | null,
-  end: Date | null
-): Record<Currency, number> {
-  const result: Record<Currency, number> = { USD: 0, EUR: 0, CNY: 0 };
-  Object.entries(returnsMap).forEach(([dateKey, companyMap]) => {
-    if (start && end && !isDateWithinRange(dateKey, start, end)) return;
-    Object.entries(companyMap).forEach(([companyId, currencyMap]) => {
-      if (companyIds.length && !companyIds.includes(companyId)) return;
-      (Object.keys(currencyMap) as Currency[]).forEach((cur) => {
-        result[cur] = (result[cur] || 0) + (currencyMap[cur] ?? 0);
-      });
-    });
-  });
-  return result;
-}
-
-function getPeriodRange(selectedDate: string, period: AnalyticsPeriod): { start: Date; end: Date } | null {
-  if (period === 'all') return null;
-  const d = parseISO(`${selectedDate}T00:00:00`);
-  if (period === 'day') return { start: d, end: d };
-  if (period === 'week') return {
-    start: startOfWeek(d, { weekStartsOn: 1 }),
-    end: endOfWeek(d, { weekStartsOn: 1 }),
-  };
-  return { start: startOfMonth(d), end: endOfMonth(d) };
-}
-
-function getPeriodLabel(selectedDate: string, period: AnalyticsPeriod): string {
-  const d = parseISO(`${selectedDate}T00:00:00`);
-  if (period === 'day') return format(d, 'dd.MM.yyyy');
-  if (period === 'week') {
-    const s = startOfWeek(d, { weekStartsOn: 1 });
-    const e = endOfWeek(d, { weekStartsOn: 1 });
-    return `${format(s, 'dd.MM')} – ${format(e, 'dd.MM.yyyy')}`;
-  }
-  if (period === 'month') return format(d, 'MM.yyyy');
-  return 'Ҳамаи давра';
-}
-
-type TrendPoint = {
-  label: string;
-  key: string;
-  netUsd: number; netEur: number; netCny: number;
-  totalUsd: number; totalEur: number; totalCny: number;
-  count: number;
-};
-
-function buildAnalyticsTrend(
-  transfers: Transfer[],
-  returnsMap: AppData['returns'],
-  companyIds: string[],
-  period: AnalyticsPeriod,
-  selectedDate: string
-): TrendPoint[] {
-  if (period === 'day') {
-    const dayTransfers = transfers.filter((t) => t.date === selectedDate);
-    if (!dayTransfers.length) return [];
-    const buckets = new Map<number, Transfer[]>();
-    dayTransfers.forEach((t) => {
-      let hour = 0;
-      const parsed = new Date(t.timestamp);
-      if (!Number.isNaN(parsed.getTime())) hour = parsed.getHours();
-      const arr = buckets.get(hour) ?? [];
-      arr.push(t);
-      buckets.set(hour, arr);
-    });
-    const usedHours = [...buckets.keys()].sort((a, b) => a - b);
-    const dayD = parseISO(`${selectedDate}T00:00:00`);
-    const ret = sumReturnsByCurrencyInRange(returnsMap, companyIds, dayD, dayD);
-    const totalCount = dayTransfers.length;
-    return usedHours.map((hour) => {
-      const ht = buckets.get(hour) ?? [];
-      const totals = summarizeByCurrency(ht);
-      const share = totalCount > 0 ? ht.length / totalCount : 0;
-      return {
-        label: `${String(hour).padStart(2, '0')}:00`,
-        key: `h${hour}`,
-        netUsd: totals.USD - ret.USD * share,
-        netEur: totals.EUR - ret.EUR * share,
-        netCny: totals.CNY - ret.CNY * share,
-        totalUsd: totals.USD,
-        totalEur: totals.EUR,
-        totalCny: totals.CNY,
-        count: ht.length,
-      };
-    });
-  }
-
-  if (period === 'all') {
-    if (!transfers.length) return [];
-    const allDates = [...new Set(transfers.map((t) => t.date))].sort();
-    const firstMonth = startOfMonth(parseISO(`${allDates[0]}T00:00:00`));
-    const months = eachMonthOfInterval({ start: firstMonth, end: endOfMonth(new Date()) });
-    return months.map((monthStart) => {
-      const end = endOfMonth(monthStart);
-      const mt = transfers.filter((t) => isDateWithinRange(t.date, monthStart, end));
-      const totals = summarizeByCurrency(mt);
-      const ret = sumReturnsByCurrencyInRange(returnsMap, companyIds, monthStart, end);
-      return {
-        label: format(monthStart, 'MM.yy'),
-        key: format(monthStart, 'yyyy-MM'),
-        netUsd: totals.USD - ret.USD,
-        netEur: totals.EUR - ret.EUR,
-        netCny: totals.CNY - ret.CNY,
-        totalUsd: totals.USD,
-        totalEur: totals.EUR,
-        totalCny: totals.CNY,
-        count: mt.length,
-      };
-    });
-  }
-
-  const range = getPeriodRange(selectedDate, period);
-  if (!range) return [];
-  const days = eachDayOfInterval({ start: range.start, end: range.end });
-  const labelFmt = period === 'month' ? 'dd' : 'dd.MM';
-
-  return days.map((day) => {
-    const key = format(day, 'yyyy-MM-dd');
-    const dayD = parseISO(`${key}T00:00:00`);
-    const dt = transfers.filter((t) => t.date === key);
-    const totals = summarizeByCurrency(dt);
-    const ret = sumReturnsByCurrencyInRange(returnsMap, companyIds, dayD, dayD);
-    return {
-      label: format(day, labelFmt),
-      key,
-      netUsd: totals.USD - ret.USD,
-      netEur: totals.EUR - ret.EUR,
-      netCny: totals.CNY - ret.CNY,
-      totalUsd: totals.USD,
-      totalEur: totals.EUR,
-      totalCny: totals.CNY,
-      count: dt.length,
-    };
-  });
-}
-
-// ── AnalyticsViewProps (unchanged interface) ──────────────────────────────
 type AnalyticsViewProps = {
   data: AppData;
   selectedDate: string;
   selectedBank: Bank | null;
   companies: Company[];
+  dateFilterMode: DateFilterMode;
+  onExportExcel: () => void;
+  onExportPdf: () => void;
+  onPrint: () => void;
 };
 
-function AnalyticsView({ data, selectedDate, selectedBank, companies }: AnalyticsViewProps) {
-  const [period, setPeriod] = useState<AnalyticsPeriod>('day');
+type CompanyBreakdownRow = {
+  companyId: string;
+  name: string;
+  count: number;
+  usd: number; eur: number; cny: number;
+  retUsd: number; retEur: number; retCny: number;
+  netUsd: number; netEur: number; netCny: number;
+};
+
+type CompanyTableSort = 'name-asc' | 'name-desc' | 'net-desc' | 'net-asc' | 'gross-desc' | 'returned-desc' | 'count-desc' | 'avg-desc';
+
+function metricFor(row: CompanyBreakdownRow, currency: Currency, metric: 'gross' | 'net' | 'returned'): number {
+  if (metric === 'gross') return currency === 'USD' ? row.usd : currency === 'EUR' ? row.eur : row.cny;
+  if (metric === 'returned') return currency === 'USD' ? row.retUsd : currency === 'EUR' ? row.retEur : row.retCny;
+  return currency === 'USD' ? row.netUsd : currency === 'EUR' ? row.netEur : row.netCny;
+}
+
+function AnalyticsView({ data, selectedDate, selectedBank, companies, dateFilterMode, onExportExcel, onExportPdf, onPrint }: AnalyticsViewProps) {
   const [currencyFilter, setCurrencyFilter] = useState<AnalyticsCurrencyFilter>('ALL');
+  const [analyticsSearch, setAnalyticsSearch] = useState('');
+  const [tableSort, setTableSort] = useState<CompanyTableSort>('net-desc');
+  const [trendMetric, setTrendMetric] = useState<'gross' | 'returns' | 'net'>('net');
+  const [trendCurrencyTab, setTrendCurrencyTab] = useState<Currency | null>(null);
 
   if (!selectedBank) {
     return (
@@ -4332,7 +4120,12 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
     [data.transfers, selectedBank.id]
   );
 
-  const range = useMemo(() => getPeriodRange(selectedDate, period), [selectedDate, period]);
+  // Single authoritative date range — the same dateFilterMode the header's
+  // "Давра:" control and the Excel/PDF/Print exports already use. Analytics
+  // used to keep its own separate `period` state here; that meant the
+  // range displayed on screen could silently differ from the range that
+  // actually got exported. Now there is exactly one range, everywhere.
+  const range = useMemo(() => getActiveRange(selectedDate, dateFilterMode), [selectedDate, dateFilterMode]);
 
   const periodTransfers = useMemo(() => {
     if (!range) return bankTransfers;
@@ -4373,12 +4166,21 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
     [transferTotals, countByCurrency]
   );
 
-  const trendData = useMemo(
-    () => buildAnalyticsTrend(bankTransfers, data.returns, companyIds, period, selectedDate),
-    [bankTransfers, data.returns, companyIds, period, selectedDate]
+  // ── Section 15: the one Analytics model — a single pass over
+  // bankTransfers per (data, selectedDate, dateFilterMode) change, reused
+  // by the trend chart, comparison panel, distribution panel, performance
+  // table, and insights below. No card/chart re-scans data.transfers on
+  // its own.
+  const trendData: AnalyticsTrendPoint[] = useMemo(
+    () => buildAnalyticsTrend(bankTransfers, data.returns, companyIds, dateFilterMode, selectedDate, {
+      startOfWeek: (d) => startOfWeek(d, { weekStartsOn: 1 }),
+      endOfWeek: (d) => endOfWeek(d, { weekStartsOn: 1 }),
+      startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval, format,
+    }),
+    [bankTransfers, data.returns, companyIds, dateFilterMode, selectedDate]
   );
 
-  const companyBreakdown = useMemo(() => {
+  const companyBreakdown: CompanyBreakdownRow[] = useMemo(() => {
     return companies
       .map((company) => {
         const ct = periodTransfers.filter((t) => t.companyId === company.id);
@@ -4387,6 +4189,7 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
           data.returns, [company.id], range?.start ?? null, range?.end ?? null
         );
         return {
+          companyId: company.id,
           name: company.name,
           count: ct.length,
           usd: totals.USD, eur: totals.EUR, cny: totals.CNY,
@@ -4396,325 +4199,876 @@ function AnalyticsView({ data, selectedDate, selectedBank, companies }: Analytic
           netCny: totals.CNY - ret.CNY,
         };
       })
-      .filter((c) => c.count > 0)
-      .sort((a, b) => (b.usd + b.eur + b.cny) - (a.usd + a.eur + a.cny));
+      .filter((c) => c.count > 0);
   }, [companies, periodTransfers, data.returns, range]);
 
-  const periodLabel = getPeriodLabel(selectedDate, period);
+  // ── Period comparison (section 6) ──
+  const previousRange = useMemo(() => getPreviousRange(selectedDate, dateFilterMode), [selectedDate, dateFilterMode]);
+  const earliestTransferDate = useMemo(
+    () => bankTransfers.reduce((min: string | null, t) => (min === null || t.date < min ? t.date : min), null as string | null),
+    [bankTransfers]
+  );
+  // A previous period that predates this bank's very first transfer isn't
+  // "zero activity", it's "before this bank existed here" — structurally
+  // not comparable, not a real zero.
+  const previousRangeComparable = !!previousRange && !!earliestTransferDate &&
+    format(previousRange.end, 'yyyy-MM-dd') >= earliestTransferDate;
+  const previousPeriodNet = useMemo<Record<Currency, number> | null>(() => {
+    if (!previousRange || !previousRangeComparable) return null;
+    const pt = bankTransfers.filter((t) => isDateWithinRange(t.date, previousRange.start, previousRange.end));
+    const totals = summarizeByCurrency(pt);
+    const ret = sumReturnsByCurrencyInRange(data.returns, companyIds, previousRange.start, previousRange.end);
+    return { USD: totals.USD - ret.USD, EUR: totals.EUR - ret.EUR, CNY: totals.CNY - ret.CNY };
+  }, [previousRange, previousRangeComparable, bankTransfers, data.returns, companyIds]);
+  const previousPeriodLabel = previousRange ? formatRangeLabel(format(previousRange.start, 'yyyy-MM-dd'), dateFilterMode) : null;
+
+  const periodLabel = formatRangeLabel(selectedDate, dateFilterMode);
   const hasAnyData = periodTransfers.length > 0;
   const hasEur = transferTotals.EUR > 0 || periodReturns.EUR > 0;
   const hasCny = transferTotals.CNY > 0 || periodReturns.CNY > 0;
-  const showChart = trendData.length > 0;
 
-  const chartPeriodLabel =
-    period === 'all' ? 'Тренди моҳона' :
-    period === 'month' ? 'Рӯзона дар моҳ' :
-    period === 'week' ? 'Рӯзона дар ҳафта' : 'Соатона имрӯз';
+  const activeCurrencies: Currency[] = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
+    (cur) => (currencyFilter === 'ALL' || currencyFilter === cur) && (cur === 'USD' ? true : cur === 'EUR' ? hasEur : hasCny)
+  );
+  const allActiveCurrencies: Currency[] = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
+    (cur) => currencyFilter === 'ALL' || currencyFilter === cur
+  );
 
-  const usdTrend = useMemo(
-    () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netUsd, 0) })),
-    [trendData]
+  const comparisonRows: PeriodComparisonRow[] = useMemo(
+    () => buildPeriodComparison(netTotals, previousPeriodNet, allActiveCurrencies),
+    [netTotals, previousPeriodNet, allActiveCurrencies]
   );
-  const eurTrend = useMemo(
-    () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netEur, 0) })),
-    [trendData]
+
+  // One currency at a time for anything value-ranked (distribution,
+  // insights, table sort) — never combined across currencies.
+  const singleCurrency: Currency = currencyFilter !== 'ALL' ? currencyFilter : (trendCurrencyTab ?? (activeCurrencies[0] ?? 'USD'));
+
+  const distribution: CompanyDistribution = useMemo(
+    () => buildCompanyDistribution(
+      companyBreakdown.map((c) => ({ name: c.name, value: metricFor(c, singleCurrency, 'gross'), count: c.count, returned: metricFor(c, singleCurrency, 'returned') })),
+      5
+    ),
+    [companyBreakdown, singleCurrency]
   );
-  const cnyTrend = useMemo(
-    () => trendData.map((p) => ({ label: p.label, value: Math.max(p.netCny, 0) })),
-    [trendData]
+
+  const insights: AnalyticsInsight[] = useMemo(
+    () => buildAnalyticsInsights({
+      currency: singleCurrency,
+      companyRows: companyBreakdown.map((c) => ({ name: c.name, count: c.count, net: metricFor(c, singleCurrency, 'net'), returned: metricFor(c, singleCurrency, 'returned') })),
+      trend: trendData,
+      grossByCurrency: transferTotals,
+      returnsByCurrency: periodReturns,
+      periodLabel,
+      currencySymbol,
+      formatAmount: numberFormat,
+    }),
+    [singleCurrency, companyBreakdown, trendData, transferTotals, periodReturns, periodLabel]
   );
+
+  const tableRows = useMemo(() => {
+    let rows = companyBreakdown;
+    const q = analyticsSearch.trim().toLowerCase();
+    if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q));
+    const sorted = [...rows];
+    switch (tableSort) {
+      case 'name-asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case 'name-desc': sorted.sort((a, b) => b.name.localeCompare(a.name)); break;
+      case 'net-asc': sorted.sort((a, b) => metricFor(a, singleCurrency, 'net') - metricFor(b, singleCurrency, 'net')); break;
+      case 'net-desc': sorted.sort((a, b) => metricFor(b, singleCurrency, 'net') - metricFor(a, singleCurrency, 'net')); break;
+      case 'gross-desc': sorted.sort((a, b) => metricFor(b, singleCurrency, 'gross') - metricFor(a, singleCurrency, 'gross')); break;
+      case 'returned-desc': sorted.sort((a, b) => metricFor(b, singleCurrency, 'returned') - metricFor(a, singleCurrency, 'returned')); break;
+      case 'count-desc': sorted.sort((a, b) => b.count - a.count); break;
+      case 'avg-desc': sorted.sort((a, b) => (b.count ? metricFor(b, singleCurrency, 'gross') / b.count : 0) - (a.count ? metricFor(a, singleCurrency, 'gross') / a.count : 0)); break;
+    }
+    return sorted;
+  }, [companyBreakdown, analyticsSearch, tableSort, singleCurrency]);
 
   // Same shared currency identity the Command Center and transfer rows
   // use — see CURRENCY_COLOR_MAP's own comment for why this used to be a
   // separate, independently-maintained copy.
   const colorMap = CURRENCY_COLOR_MAP;
 
-  const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
-    day: 'Рӯз', week: 'Ҳафта', month: 'Моҳ', all: 'Ҳама',
+  const resetAnalyticsFilters = () => {
+    setCurrencyFilter('ALL');
+    setAnalyticsSearch('');
+    setTableSort('net-desc');
   };
+  const filtersActive = currencyFilter !== 'ALL' || analyticsSearch.trim() !== '';
 
-  const activeCurrencies: Currency[] = (['USD', 'EUR', 'CNY'] as Currency[]).filter(
-    (cur) => currencyFilter === 'ALL' || currencyFilter === cur
-  );
+  if (!hasAnyData) {
+    return (
+      <div className="space-y-6">
+        <AnalyticsControlBar
+          selectedBank={selectedBank}
+          periodLabel={periodLabel}
+          currencyFilter={currencyFilter}
+          onCurrencyFilterChange={setCurrencyFilter}
+          search={analyticsSearch}
+          onSearchChange={setAnalyticsSearch}
+          sort={tableSort}
+          onSortChange={setTableSort}
+          onExportExcel={onExportExcel}
+          onExportPdf={onExportPdf}
+          onPrint={onPrint}
+          filtersActive={filtersActive}
+          onReset={resetAnalyticsFilters}
+        />
+        <div className="text-center py-16 glass-panel rounded-2xl border border-line shadow-sm">
+          <div className="w-12 h-12 rounded-xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+            <BarChart3 className="w-6 h-6 text-brand-green dark:text-emerald-400" />
+          </div>
+          <p className="text-ink font-semibold">Барои {periodLabel} гузариш нест</p>
+          <p className="text-ink-muted text-sm mt-1">Дар ин давра барои «{selectedBank.name}» ягон гузариш сабт нашудааст.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* ── Controls ── */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Period tabs */}
-        <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 shadow-sm">
-          {(['day', 'week', 'month', 'all'] as AnalyticsPeriod[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriod(p)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors',
-                period === p ? 'bg-brand-green text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              )}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
+      <AnalyticsControlBar
+        selectedBank={selectedBank}
+        periodLabel={periodLabel}
+        currencyFilter={currencyFilter}
+        onCurrencyFilterChange={setCurrencyFilter}
+        search={analyticsSearch}
+        onSearchChange={setAnalyticsSearch}
+        sort={tableSort}
+        onSortChange={setTableSort}
+        onExportExcel={onExportExcel}
+        onExportPdf={onExportPdf}
+        onPrint={onPrint}
+        filtersActive={filtersActive}
+        onReset={resetAnalyticsFilters}
+      />
+
+      {/* ── A. Executive Summary ── */}
+      <section aria-labelledby="analytics-summary-heading" className="space-y-3">
+        <h2 id="analytics-summary-heading" className="text-kpi-label">Ҷамъбасти умумӣ</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {allActiveCurrencies.map((cur) => (
+            <AnalyticsKpiCard
+              key={cur}
+              currency={cur}
+              gross={transferTotals[cur]}
+              returned={periodReturns[cur]}
+              net={netTotals[cur]}
+              count={countByCurrency[cur]}
+              avg={avgByCurrency[cur]}
+              colorMap={colorMap}
+            />
           ))}
         </div>
+      </section>
 
-        {/* Currency filter */}
-        <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 shadow-sm">
-          {(['ALL', 'USD', 'EUR', 'CNY'] as AnalyticsCurrencyFilter[]).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCurrencyFilter(c)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors',
-                currencyFilter === c
-                  ? c === 'USD' ? 'bg-emerald-500 text-white'
-                    : c === 'EUR' ? 'bg-blue-500 text-white'
-                    : c === 'CNY' ? 'bg-yellow-500 text-white'
-                    : 'bg-brand-green text-white'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              )}
-            >
-              {c === 'ALL' ? 'Ҳама' : c}
-            </button>
-          ))}
+      {/* ── B. Financial Trends + Period Comparison ── */}
+      <section aria-labelledby="analytics-trend-heading" className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2">
+          <h2 id="analytics-trend-heading" className="text-kpi-label mb-3">Тамоюли молиявӣ</h2>
+          <TrendSection
+            trendData={trendData}
+            activeCurrencies={allActiveCurrencies}
+            currencyTab={singleCurrency}
+            onCurrencyTabChange={setTrendCurrencyTab}
+            metric={trendMetric}
+            onMetricChange={setTrendMetric}
+            dateFilterMode={dateFilterMode}
+            colorMap={colorMap}
+          />
         </div>
+        <div>
+          <h2 className="text-kpi-label mb-3">Муқоисаи давра</h2>
+          <PeriodComparisonPanel
+            rows={comparisonRows}
+            currentLabel={periodLabel}
+            previousLabel={previousPeriodLabel}
+            colorMap={colorMap}
+          />
+        </div>
+      </section>
 
-        <span className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2 shadow-sm">
-          {selectedBank.name} · {periodLabel}
-        </span>
+      {/* ── C. Company Distribution ── */}
+      <section aria-labelledby="analytics-distribution-heading" className="space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 id="analytics-distribution-heading" className="text-kpi-label">Тақсимоти ширкатҳо</h2>
+          {allActiveCurrencies.length > 1 && (
+            <div className="flex gap-1 bg-surface-1 border border-line rounded-lg p-1">
+              {allActiveCurrencies.map((cur) => (
+                <button
+                  key={cur}
+                  type="button"
+                  onClick={() => setTrendCurrencyTab(cur)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-semibold transition-colors',
+                    singleCurrency === cur ? colorMap[cur].btnActive : 'text-ink-muted hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
+                  )}
+                >
+                  {cur}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <CompanyDistributionPanel distribution={distribution} currency={singleCurrency} colorMap={colorMap} />
+      </section>
 
-        {period === 'all' && bankTransfers.length > 0 && (
-          <span className="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2 shadow-sm">
-            Ҳамагӣ {bankTransfers.length} гузариш
-          </span>
-        )}
+      {/* ── D. Detailed Company Analysis ── */}
+      <section aria-labelledby="analytics-table-heading" className="space-y-3">
+        <h2 id="analytics-table-heading" className="text-kpi-label">Таҳлили муфассали ширкатҳо</h2>
+        <CompanyPerformanceTable
+          rows={tableRows}
+          totalCompanies={companyBreakdown.length}
+          currencyFilter={currencyFilter}
+          singleCurrency={singleCurrency}
+          colorMap={colorMap}
+        />
+      </section>
+
+      {/* ── Analytics Insights ── */}
+      {insights.length > 0 && (
+        <section aria-labelledby="analytics-insights-heading" className="glass-panel rounded-2xl border border-line shadow-sm p-5">
+          <h2 id="analytics-insights-heading" className="text-kpi-label mb-3">Мушоҳидаҳои таҳлилӣ</h2>
+          <ul className="space-y-1.5">
+            {insights.map((ins) => (
+              <li key={ins.id} className="flex items-start gap-2 text-sm text-ink">
+                <Lightbulb className="w-3.5 h-3.5 text-brand-green-dark dark:text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{ins.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// ── Analytics V2 — consolidated control bar (section 3) ─────────────────
+// One bar: bank/period context, currency filter, search, sort, export.
+// The date-range control itself is intentionally NOT duplicated here — the
+// header's existing "Давра:" buttons are the single authoritative control
+// (see the dateFilterMode prop threaded into AnalyticsView above); this
+// bar only shows the resulting period as text.
+function AnalyticsControlBar({
+  selectedBank,
+  periodLabel,
+  currencyFilter,
+  onCurrencyFilterChange,
+  search,
+  onSearchChange,
+  sort,
+  onSortChange,
+  onExportExcel,
+  onExportPdf,
+  onPrint,
+  filtersActive,
+  onReset,
+}: {
+  selectedBank: Bank;
+  periodLabel: string;
+  currencyFilter: AnalyticsCurrencyFilter;
+  onCurrencyFilterChange: (c: AnalyticsCurrencyFilter) => void;
+  search: string;
+  onSearchChange: (v: string) => void;
+  sort: CompanyTableSort;
+  onSortChange: (s: CompanyTableSort) => void;
+  onExportExcel: () => void;
+  onExportPdf: () => void;
+  onPrint: () => void;
+  filtersActive: boolean;
+  onReset: () => void;
+}) {
+  return (
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-3 flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/[0.025] dark:bg-white/[0.04] text-sm font-semibold text-ink shrink-0">
+        <Landmark className="w-3.5 h-3.5 text-ink-muted" aria-hidden="true" />
+        <span className="truncate max-w-[140px]">{selectedBank.name}</span>
+        <span className="text-ink-muted font-normal text-xs">· {periodLabel}</span>
       </div>
 
-      {/* ── Per-currency summary blocks (bento grid) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {activeCurrencies.map((cur, curIdx) => {
-          const gross = transferTotals[cur];
-          const ret = periodReturns[cur];
-          const net = netTotals[cur];
-          const cnt = countByCurrency[cur];
-          const avg = avgByCurrency[cur];
-          if (currencyFilter === 'ALL' && gross === 0 && ret === 0) return null;
-          return (
-            <div
-              key={cur}
-              className={cn(
-                'glass-panel rounded-2xl border border-line shadow-sm overflow-hidden',
-                curIdx === 0 ? 'lg:col-span-2' : 'lg:col-span-1'
-              )}
-            >
-              {/* currency header */}
-              <div className={cn('px-5 py-3 border-b border-line flex items-center gap-3', colorMap[cur].bg)}>
-                <span className={cn('font-bold text-lg tracking-wide', colorMap[cur].text)}>
-                  {currencySymbol(cur)} {cur}
-                </span>
-                <span className={cn('text-[10px] px-2 py-1 rounded-full font-semibold ml-auto', TRANSFER_STATUS_CLASS[cnt > 0 ? 'complete' : 'waiting'])}>
-                  {cnt} гузариш
-                </span>
-              </div>
-              {/* metric columns — net figure leads, count/avg step back */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-x divide-line">
-                <div className="px-5 py-4">
-                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Гузариш</p>
-                  <p className={cn('money text-lg font-semibold font-mono mt-2', colorMap[cur].text)}>
-                    {formatCurrency(gross, cur)}
-                  </p>
-                </div>
-                <div className="px-5 py-4">
-                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Баргашт</p>
-                  <p className="money text-lg font-semibold font-mono mt-2 text-red-500 dark:text-red-400">
-                    {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                  </p>
-                </div>
-                <div className="px-5 py-4 bg-black/[0.015] dark:bg-white/[0.03]">
-                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-bold">Соф</p>
-                  <p className={cn('money text-2xl font-extrabold font-mono mt-2 tracking-tight', net >= 0 ? colorMap[cur].text : 'text-red-600 dark:text-red-400')}>
-                    {formatCurrency(net, cur)}
-                  </p>
-                </div>
-                <div className="px-5 py-4">
-                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Шумора</p>
-                  <p className="money text-sm font-medium font-mono mt-2 text-ink-muted">{cnt}</p>
-                </div>
-                <div className="px-5 py-4">
-                  <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Миёна</p>
-                  <p className="money text-sm font-medium font-mono mt-2 text-ink-muted">
-                    {avg > 0 ? formatCurrency(avg, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                  </p>
-                </div>
-              </div>
+      <div className="flex gap-1 bg-surface-1 border border-line rounded-xl p-1 shrink-0">
+        {(['ALL', 'USD', 'EUR', 'CNY'] as AnalyticsCurrencyFilter[]).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onCurrencyFilterChange(c)}
+            aria-pressed={currencyFilter === c}
+            className={cn(
+              'px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+              currencyFilter === c
+                ? c === 'ALL' ? 'bg-brand-green text-white' : CURRENCY_COLOR_MAP[c].btnActive
+                : 'text-ink-muted hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
+            )}
+          >
+            {c === 'ALL' ? 'Ҳама' : c}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line bg-surface-1 flex-1 min-w-[160px] max-w-xs">
+        <Search className="w-3.5 h-3.5 text-ink-muted shrink-0" aria-hidden="true" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Ҷустуҷӯи ширкат..."
+          aria-label="Ҷустуҷӯи ширкат дар таҳлил"
+          className="w-full bg-transparent outline-none text-sm text-ink placeholder:text-ink-muted"
+        />
+      </div>
+
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line bg-surface-1 shrink-0">
+        <ArrowUpDown className="w-3.5 h-3.5 text-ink-muted shrink-0" aria-hidden="true" />
+        <select
+          value={sort}
+          onChange={(e) => onSortChange(e.target.value as CompanyTableSort)}
+          aria-label="Тартиби ширкатҳо"
+          className="bg-transparent outline-none text-sm text-ink"
+        >
+          <option value="net-desc">Соф калон-кам</option>
+          <option value="net-asc">Соф кам-калон</option>
+          <option value="gross-desc">Гузариш калон-кам</option>
+          <option value="returned-desc">Баргашт калон-кам</option>
+          <option value="count-desc">Шумора калон-кам</option>
+          <option value="avg-desc">Миёна калон-кам</option>
+          <option value="name-asc">Ном A-Я</option>
+          <option value="name-desc">Ном Я-A</option>
+        </select>
+      </div>
+
+      {filtersActive && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium text-ink-muted hover:text-ink bg-black/[0.03] dark:bg-white/[0.05] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors shrink-0"
+        >
+          <RotateCcw className="w-3 h-3" aria-hidden="true" />
+          Бекор кардани филтрҳо
+        </button>
+      )}
+
+      {/* Export actions — visually secondary, per section 3 */}
+      <div className="ml-auto flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={onExportExcel}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-ink-muted border border-line hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+          Excel
+        </button>
+        <button
+          type="button"
+          onClick={onExportPdf}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-ink-muted border border-line hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+        >
+          <FileText className="w-3.5 h-3.5 text-red-500" aria-hidden="true" />
+          PDF
+        </button>
+        <button
+          type="button"
+          onClick={onPrint}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-ink-muted border border-line hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+        >
+          <Printer className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
+          Чоп
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── A. Executive Summary KPI card (section 4) ────────────────────────────
+// min-w-0 + truncate + a clamped hero figure so a value like
+// $162,210,162.70 shrinks instead of overflowing its card at any width.
+function AnalyticsKpiCard({
+  currency,
+  gross,
+  returned,
+  net,
+  count,
+  avg,
+  colorMap,
+}: {
+  // Type-only — same pre-existing JSX/React `key`-stripping quirk as
+  // CompanyCardProps; see AssistantMessageCardView's identical fix.
+  key?: string;
+  currency: Currency;
+  gross: number;
+  returned: number;
+  net: number;
+  count: number;
+  avg: number;
+  colorMap: typeof CURRENCY_COLOR_MAP;
+}) {
+  return (
+    <div className="glass-panel rounded-2xl border border-line shadow-sm overflow-hidden min-w-0">
+      <div className={cn('px-5 py-3 border-b border-line flex items-center gap-3', colorMap[currency].bg)}>
+        <span className={cn('font-bold text-lg tracking-wide', colorMap[currency].text)}>
+          {currencySymbol(currency)} {currency}
+        </span>
+        <span className="text-[10px] px-2 py-1 rounded-full font-semibold ml-auto bg-black/5 dark:bg-white/10 text-ink-muted shrink-0">
+          {count} гузариш
+        </span>
+      </div>
+      <div className="p-5 min-w-0">
+        <p className="text-[10px] text-ink-muted uppercase tracking-wider font-bold">Соф</p>
+        <p
+          className={cn(
+            'money font-extrabold font-mono mt-1 tracking-tight leading-tight break-words text-[clamp(1.05rem,2.2vw,1.75rem)]',
+            net >= 0 ? colorMap[currency].text : 'text-red-600 dark:text-red-400'
+          )}
+          title={formatCurrency(net, currency)}
+        >
+          {formatCurrency(net, currency)}
+        </p>
+        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-line">
+          <div className="min-w-0">
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Гузариш</p>
+            <p className={cn('money text-sm font-semibold font-mono mt-1 truncate', colorMap[currency].text)} title={formatCurrency(gross, currency)}>
+              {formatCurrency(gross, currency)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider font-semibold">Баргашт</p>
+            <p className="money text-sm font-semibold font-mono mt-1 text-red-500 dark:text-red-400 truncate" title={returned > 0 ? formatCurrency(returned, currency) : undefined}>
+              {returned > 0 ? formatCurrency(returned, currency) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="min-w-0">
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider">Шумора</p>
+            <p className="money text-xs text-ink-muted mt-0.5">{count}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider">Миёна</p>
+            <p className="money text-xs text-ink-muted mt-0.5 truncate" title={avg > 0 ? formatCurrency(avg, currency) : undefined}>
+              {avg > 0 ? formatCurrency(avg, currency) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── B. Financial Trends (section 5) — SVG line/area, no chart library ───
+const TREND_COLOR_HEX: Record<Currency, string> = { USD: '#10b981', EUR: '#3b82f6', CNY: '#eab308' };
+
+function trendValueFor(p: AnalyticsTrendPoint, currency: Currency, metric: 'gross' | 'returns' | 'net'): number {
+  const gross = currency === 'USD' ? p.grossUsd : currency === 'EUR' ? p.grossEur : p.grossCny;
+  const net = currency === 'USD' ? p.netUsd : currency === 'EUR' ? p.netEur : p.netCny;
+  if (metric === 'gross') return gross;
+  if (metric === 'net') return net;
+  return gross - net;
+}
+
+function TrendSection({
+  trendData,
+  activeCurrencies,
+  currencyTab,
+  onCurrencyTabChange,
+  metric,
+  onMetricChange,
+  dateFilterMode,
+  colorMap,
+}: {
+  trendData: AnalyticsTrendPoint[];
+  activeCurrencies: Currency[];
+  currencyTab: Currency;
+  onCurrencyTabChange: (c: Currency) => void;
+  metric: 'gross' | 'returns' | 'net';
+  onMetricChange: (m: 'gross' | 'returns' | 'net') => void;
+  dateFilterMode: DateFilterMode;
+  colorMap: typeof CURRENCY_COLOR_MAP;
+}) {
+  if (trendData.length === 0) {
+    return (
+      <div className="glass-panel rounded-2xl border border-line shadow-sm p-8 text-center">
+        <p className="text-ink-muted text-sm">Барои ин давра маълумоти тамоюл вуҷуд надорад.</p>
+      </div>
+    );
+  }
+
+  const values = trendData.map((p) => trendValueFor(p, currencyTab, metric));
+  const labels = trendData.map((p) => p.label);
+  const rangeCaption =
+    dateFilterMode === 'day' ? 'Соатона' :
+    dateFilterMode === 'week' ? 'Рӯзона дар ҳафта' :
+    dateFilterMode === 'month' ? 'Рӯзона дар моҳ' : 'Моҳона';
+
+  return (
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <span className="text-xs text-ink-muted font-medium">{rangeCaption}</span>
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          {activeCurrencies.length > 1 && (
+            <div className="flex gap-1 bg-surface-1 border border-line rounded-lg p-1">
+              {activeCurrencies.map((cur) => (
+                <button
+                  key={cur}
+                  type="button"
+                  onClick={() => onCurrencyTabChange(cur)}
+                  aria-pressed={currencyTab === cur}
+                  className={cn('px-2.5 py-1 rounded-md text-xs font-semibold transition-colors', currencyTab === cur ? colorMap[cur].btnActive : 'text-ink-muted hover:bg-black/[0.04] dark:hover:bg-white/[0.06]')}
+                >
+                  {cur}
+                </button>
+              ))}
             </div>
+          )}
+          <div className="flex gap-1 bg-surface-1 border border-line rounded-lg p-1">
+            {(['gross', 'returns', 'net'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onMetricChange(m)}
+                aria-pressed={metric === m}
+                className={cn('px-2.5 py-1 rounded-md text-xs font-semibold transition-colors', metric === m ? 'bg-brand-green text-white' : 'text-ink-muted hover:bg-black/[0.04] dark:hover:bg-white/[0.06]')}
+              >
+                {m === 'gross' ? 'Гузариш' : m === 'returns' ? 'Баргашт' : 'Соф'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <TrendChart labels={labels} values={values} currency={currencyTab} colorHex={TREND_COLOR_HEX[currencyTab]} />
+    </div>
+  );
+}
+
+function TrendChart({
+  labels,
+  values,
+  currency,
+  colorHex,
+}: {
+  labels: string[];
+  values: number[];
+  currency: Currency;
+  colorHex: string;
+}) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const width = 640;
+  const height = 220;
+  const padTop = 16;
+  const padBottom = 26;
+  const padSide = 10;
+  const innerH = height - padTop - padBottom;
+  const n = values.length;
+
+  const yMin = Math.min(0, ...values);
+  const yMax = Math.max(1, ...values);
+  const yRange = yMax - yMin || 1;
+  const stepX = n > 1 ? (width - padSide * 2) / (n - 1) : 0;
+  const xFor = (i: number) => padSide + i * stepX;
+  const yFor = (v: number) => padTop + innerH - ((v - yMin) / yRange) * innerH;
+  const zeroY = yFor(0);
+
+  const linePath = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`).join(' ');
+  const areaPath = n > 0
+    ? `${linePath} L${xFor(n - 1).toFixed(1)},${zeroY.toFixed(1)} L${xFor(0).toFixed(1)},${zeroY.toFixed(1)} Z`
+    : '';
+  const gridFractions = [0, 0.25, 0.5, 0.75, 1];
+  const labelStep = Math.max(1, Math.ceil(n / 8));
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-56" role="img" aria-label={`Тамоюли ${currency}, ${n} нуқта аз ${labels[0]} то ${labels[n - 1]}`}>
+        {gridFractions.map((f) => {
+          const gv = yMin + f * yRange;
+          const gy = yFor(gv);
+          return (
+            <line
+              key={f}
+              x1={padSide} x2={width - padSide} y1={gy} y2={gy}
+              className="stroke-line"
+              strokeWidth={Math.abs(gv) < 1e-6 ? 1.5 : 1}
+              strokeDasharray={Math.abs(gv) < 1e-6 ? undefined : '3 3'}
+            />
           );
         })}
-
-        {!hasAnyData && (
-          <div className="text-center py-16 glass-panel rounded-2xl border border-line shadow-sm">
-            <div className="w-12 h-12 rounded-xl bg-brand-green/10 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
-              <BarChart3 className="w-6 h-6 text-brand-green dark:text-emerald-400" />
-            </div>
-            <p className="text-ink-muted font-medium">Дар ин давра маълумоте вуҷуд надорад</p>
+        <path d={areaPath} fill={colorHex} fillOpacity={0.12} />
+        <path d={linePath} fill="none" stroke={colorHex} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        {values.map((v, i) => (
+          <circle
+            key={i}
+            cx={xFor(i)}
+            cy={yFor(v)}
+            r={hoverIndex === i ? 5 : 3}
+            fill={colorHex}
+            stroke="var(--color-surface-1)"
+            strokeWidth={1.5}
+            tabIndex={0}
+            role="button"
+            aria-label={`${labels[i]}: ${formatCurrency(v, currency)}`}
+            onMouseEnter={() => setHoverIndex(i)}
+            onMouseLeave={() => setHoverIndex(null)}
+            onFocus={() => setHoverIndex(i)}
+            onBlur={() => setHoverIndex(null)}
+            className="cursor-pointer outline-none"
+          />
+        ))}
+        {labels.map((l, i) => (i % labelStep === 0 || i === n - 1) ? (
+          <text key={i} x={xFor(i)} y={height - 8} textAnchor="middle" className="fill-current text-ink-muted" fontSize="9">
+            {l}
+          </text>
+        ) : null)}
+      </svg>
+      <div className="h-7 mt-1">
+        {hoverIndex !== null && (
+          <div className="inline-flex items-center gap-2 text-xs font-mono bg-ink text-surface-1 px-2.5 py-1.5 rounded-lg shadow-lg">
+            <span className="font-sans font-semibold">{labels[hoverIndex]}</span>
+            <span>{formatCurrency(values[hoverIndex], currency)}</span>
           </div>
         )}
       </div>
+      {/* Accessible text equivalent — same data, not pointer-dependent */}
+      <p className="sr-only">
+        {labels.map((l, i) => `${l}: ${formatCurrency(values[i], currency)}`).join('; ')}
+      </p>
+    </div>
+  );
+}
 
-      {/* ── Trend charts ── */}
-      {showChart && (
-        <div
-          className={cn(
-            'grid gap-6',
-            (currencyFilter === 'ALL' ? 1 + (hasEur ? 1 : 0) + (hasCny ? 1 : 0) : 1) >= 3
-              ? 'xl:grid-cols-3'
-              : (currencyFilter === 'ALL' ? 1 + (hasEur ? 1 : 0) + (hasCny ? 1 : 0) : 1) >= 2
-              ? 'xl:grid-cols-2'
-              : 'grid-cols-1'
-          )}
-        >
-          {(currencyFilter === 'ALL' || currencyFilter === 'USD') && transferTotals.USD > 0 && (
-            <SmallBarChart
-              title={`${chartPeriodLabel} · USD Соф`}
-              data={usdTrend}
-              colorClass="bg-emerald-500"
-            />
-          )}
-          {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && hasEur && (
-            <SmallBarChart
-              title={`${chartPeriodLabel} · EUR Соф`}
-              data={eurTrend}
-              colorClass="bg-blue-500"
-            />
-          )}
-          {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && hasCny && (
-            <SmallBarChart
-              title={`${chartPeriodLabel} · CNY Соф`}
-              data={cnyTrend}
-              colorClass="bg-yellow-500"
-            />
-          )}
-        </div>
-      )}
+// ── Period comparison panel (section 6) ──────────────────────────────────
+function PeriodComparisonPanel({
+  rows,
+  currentLabel,
+  previousLabel,
+  colorMap,
+}: {
+  rows: PeriodComparisonRow[];
+  currentLabel: string;
+  previousLabel: string | null;
+  colorMap: typeof CURRENCY_COLOR_MAP;
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="glass-panel rounded-2xl border border-line shadow-sm p-5 text-sm text-ink-muted">
+        Барои муқоиса маълумот нест.
+      </div>
+    );
+  }
 
-      {/* ── Company share donut ── */}
-      {companyBreakdown.length > 1 && (
-        <DonutChart
-          title={`Ҳиссаи ширкатҳо · ${currencyFilter === 'ALL' ? 'USD' : currencyFilter}`}
-          data={companyBreakdown.map((row) => ({
-            label: row.name,
-            value: currencyFilter === 'EUR' ? row.eur : currencyFilter === 'CNY' ? row.cny : row.usd,
-          }))}
-        />
-      )}
-
-      {/* ── Company breakdown table ── */}
-      {companyBreakdown.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
-            <h3 className="font-bold text-gray-800 dark:text-gray-100">Таҳлил аз рӯйи ширкат</h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{companyBreakdown.length} ширкат</span>
+  return (
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5">
+      <p className="text-[10px] text-ink-muted mb-3">
+        {currentLabel}{previousLabel ? ` нисбат ба ${previousLabel}` : ''}
+      </p>
+      <div className="space-y-3">
+        {rows.map((row) => (
+          <div key={row.currency} className="border-b border-line last:border-0 pb-3 last:pb-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className={cn('font-bold text-sm', colorMap[row.currency].text)}>{currencySymbol(row.currency)} {row.currency}</span>
+              {row.direction === 'unavailable' ? (
+                <span className="text-[10px] text-ink-muted">Маълумот нест</span>
+              ) : row.percentChange === null ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-muted">
+                  <Minus className="w-3 h-3" aria-hidden="true" /> —
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs font-bold',
+                    row.direction === 'up' ? 'text-emerald-600 dark:text-emerald-400' : row.direction === 'down' ? 'text-red-500 dark:text-red-400' : 'text-ink-muted'
+                  )}
+                >
+                  {row.direction === 'up' ? <TrendingUp className="w-3 h-3" aria-hidden="true" /> : row.direction === 'down' ? <TrendingDown className="w-3 h-3" aria-hidden="true" /> : <Minus className="w-3 h-3" aria-hidden="true" />}
+                  {row.percentChange > 0 ? '+' : ''}{row.percentChange.toFixed(1)}%
+                </span>
+              )}
+            </div>
+            <p className="money text-lg font-extrabold font-mono mt-1 text-ink">{formatCurrency(row.currentValue, row.currency)}</p>
+            {row.direction === 'unavailable' ? (
+              <p className="text-[10px] text-ink-muted mt-1">Маълумоти давраи қаблии муқоисашаванда вуҷуд надорад</p>
+            ) : (
+              <p className="text-[10px] text-ink-muted mt-1">
+                Давраи қаблӣ: {formatCurrency(row.previousValue!, row.currency)}
+                {row.absoluteChange !== null && <> · {row.absoluteChange >= 0 ? '+' : ''}{formatCurrency(row.absoluteChange, row.currency)}</>}
+              </p>
+            )}
           </div>
-          <div className="overflow-x-auto">
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── C. Company Distribution (section 7) — ranked list, Top 5 + Others ───
+function CompanyDistributionPanel({
+  distribution,
+  currency,
+  colorMap,
+}: {
+  distribution: CompanyDistribution;
+  currency: Currency;
+  colorMap: typeof CURRENCY_COLOR_MAP;
+}) {
+  if (distribution.rows.length === 0) {
+    return (
+      <div className="glass-panel rounded-2xl border border-line shadow-sm p-8 text-center">
+        <p className="text-ink-muted text-sm">Барои {currency} маълумоти тақсимот вуҷуд надорад.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-panel rounded-2xl border border-line shadow-sm p-5">
+      <div className="space-y-3">
+        {distribution.rows.map((row, i) => (
+          <div key={row.name} className="flex items-center gap-3">
+            <span className="w-5 text-xs font-bold text-ink-muted shrink-0 text-right">{i + 1}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-sm font-semibold text-ink truncate">{row.name}</span>
+                <span className="text-xs font-mono text-ink-muted shrink-0">{row.pct.toFixed(1)}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-200" style={{ width: `${row.pct}%`, backgroundColor: TREND_COLOR_HEX[currency] }} />
+              </div>
+              <div className="flex items-center gap-3 mt-1 text-[10px] text-ink-muted flex-wrap">
+                <span className="money">{formatCurrency(row.value, currency)}</span>
+                <span>{row.count} гузариш</span>
+                {row.returned > 0 && <span className="text-red-500 dark:text-red-400 money">Барг. {formatCurrency(row.returned, currency)}</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+        {distribution.others && (
+          <div className="flex items-center gap-3 pt-3 border-t border-line">
+            <span className="w-5 shrink-0" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-sm font-medium text-ink-muted">Дигарон</span>
+                <span className="text-xs font-mono text-ink-muted">{distribution.others.pct.toFixed(1)}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                <div className="h-full rounded-full bg-ink-muted/40" style={{ width: `${distribution.others.pct}%` }} />
+              </div>
+              <div className="text-[10px] text-ink-muted mt-1">{formatCurrency(distribution.others.value, currency)} · {distribution.others.count} гузариш</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── D. Detailed Company Analysis table (sections 8-9) ────────────────────
+function CompanyPerformanceTable({
+  rows,
+  totalCompanies,
+  currencyFilter,
+  singleCurrency,
+  colorMap,
+}: {
+  rows: CompanyBreakdownRow[];
+  totalCompanies: number;
+  currencyFilter: AnalyticsCurrencyFilter;
+  singleCurrency: Currency;
+  colorMap: typeof CURRENCY_COLOR_MAP;
+}) {
+  const showCurrencies: Currency[] = currencyFilter === 'ALL'
+    ? (['USD', 'EUR', 'CNY'] as Currency[]).filter((cur) => rows.some((r) => metricFor(r, cur, 'gross') > 0 || metricFor(r, cur, 'returned') > 0))
+    : [currencyFilter];
+
+  return (
+    <div className="glass-panel rounded-2xl border border-line shadow-sm overflow-hidden">
+      <div className="px-5 py-3 border-b border-line flex items-center gap-3">
+        <span className="text-xs text-ink-muted">{rows.length} аз {totalCompanies} ширкат</span>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="text-center py-10 text-sm text-ink-muted">Ягон ширкат ба ин ҷустуҷӯ мувофиқ нест.</div>
+      ) : (
+        <>
+          {/* Desktop/tablet: full grouped table, sticky header + first column */}
+          <div className="hidden sm:block overflow-auto max-h-[520px]">
             <table className="w-full text-sm min-w-max">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 text-[10px] uppercase tracking-wider">
-                  <th className="text-left px-4 py-3 font-semibold sticky left-0 bg-gray-50 dark:bg-gray-900">Ширкат</th>
-                  <th className="text-right px-4 py-3 font-semibold">Шум.</th>
-                  {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
-                    <>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">USD</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.$</th>
-                      <th className="text-right px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-400">Соф$</th>
-                    </>
-                  )}
-                  {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
-                    <>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-600 dark:text-blue-400">EUR</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.€</th>
-                      <th className="text-right px-4 py-3 font-semibold text-blue-700 dark:text-blue-400">Соф€</th>
-                    </>
-                  )}
-                  {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
-                    <>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-600 dark:text-yellow-400">CNY</th>
-                      <th className="text-right px-4 py-3 font-semibold text-red-400 dark:text-red-400">Барг.¥</th>
-                      <th className="text-right px-4 py-3 font-semibold text-yellow-700 dark:text-yellow-400">Соф¥</th>
-                    </>
-                  )}
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-surface-1 text-ink-muted text-[9px] uppercase tracking-wider">
+                  <th rowSpan={2} className="text-left px-4 py-2 font-semibold sticky left-0 bg-surface-1 z-20 border-b border-line align-bottom">Ширкат</th>
+                  <th rowSpan={2} className="text-right px-4 py-2 font-semibold border-b border-line align-bottom">Гуз.</th>
+                  {showCurrencies.map((cur) => (
+                    <th key={cur} colSpan={3} className={cn('text-center px-4 py-1.5 font-bold border-b border-l border-line', colorMap[cur].text)}>{cur}</th>
+                  ))}
+                </tr>
+                <tr className="bg-surface-1 text-ink-muted text-[9px] uppercase tracking-wider">
+                  {showCurrencies.map((cur) => (
+                    <Fragment key={cur}>
+                      <th className="text-right px-4 py-2 font-semibold border-b border-l border-line">Гузариш</th>
+                      <th className="text-right px-4 py-2 font-semibold border-b border-line text-red-400">Баргашт</th>
+                      <th className="text-right px-4 py-2 font-semibold border-b border-line">Соф</th>
+                    </Fragment>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                {companyBreakdown.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/70 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-white sticky left-0 bg-white dark:bg-gray-900">{row.name}</td>
-                    <td className="text-right px-4 py-3 font-mono text-gray-500 dark:text-gray-300">{row.count}</td>
-                    {(currencyFilter === 'ALL' || currencyFilter === 'USD') && (
-                      <>
-                        <td className="text-right px-4 py-3 font-mono text-emerald-700 dark:text-emerald-400">
-                          {row.usd > 0 ? formatCurrency(row.usd, 'USD') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
-                          {row.retUsd > 0 ? formatCurrency(row.retUsd, 'USD') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netUsd >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
-                          {formatCurrency(row.netUsd, 'USD')}
-                        </td>
-                      </>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr
+                    key={row.companyId}
+                    className={cn(
+                      'border-b border-line/60 hover:bg-black/[0.025] dark:hover:bg-white/[0.03] transition-colors',
+                      i % 2 === 1 && 'bg-black/[0.012] dark:bg-white/[0.015]'
                     )}
-                    {(currencyFilter === 'ALL' || currencyFilter === 'EUR') && (
-                      <>
-                        <td className="text-right px-4 py-3 font-mono text-blue-700 dark:text-blue-400">
-                          {row.eur > 0 ? formatCurrency(row.eur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
-                          {row.retEur > 0 ? formatCurrency(row.retEur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netEur >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400')}>
-                          {row.eur > 0 || row.retEur > 0 ? formatCurrency(row.netEur, 'EUR') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                      </>
-                    )}
-                    {(currencyFilter === 'ALL' || currencyFilter === 'CNY') && (
-                      <>
-                        <td className="text-right px-4 py-3 font-mono text-yellow-700 dark:text-yellow-400">
-                          {row.cny > 0 ? formatCurrency(row.cny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                        <td className="text-right px-4 py-3 font-mono text-red-400 dark:text-red-400">
-                          {row.retCny > 0 ? formatCurrency(row.retCny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                        <td className={cn('text-right px-4 py-3 font-mono font-bold', row.netCny >= 0 ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-600 dark:text-red-400')}>
-                          {row.cny > 0 || row.retCny > 0 ? formatCurrency(row.netCny, 'CNY') : <span className="text-gray-200 dark:text-gray-600">—</span>}
-                        </td>
-                      </>
-                    )}
+                  >
+                    <td className="px-4 py-2.5 font-semibold text-ink sticky left-0 bg-inherit">{row.name}</td>
+                    <td className="text-right px-4 py-2.5 font-mono text-ink-muted">{row.count}</td>
+                    {showCurrencies.map((cur) => {
+                      const gross = metricFor(row, cur, 'gross');
+                      const ret = metricFor(row, cur, 'returned');
+                      const net = metricFor(row, cur, 'net');
+                      return (
+                        <Fragment key={cur}>
+                          <td className="text-right px-4 py-2.5 font-mono border-l border-line/40 text-ink">
+                            {gross > 0 ? formatCurrency(gross, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                          </td>
+                          <td className="text-right px-4 py-2.5 font-mono text-red-500 dark:text-red-400">
+                            {ret > 0 ? formatCurrency(ret, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                          </td>
+                          <td className={cn('text-right px-4 py-2.5 font-mono font-bold', net >= 0 ? 'text-ink' : 'text-red-600 dark:text-red-400')}>
+                            {gross > 0 || ret > 0 ? formatCurrency(net, cur) : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                          </td>
+                        </Fragment>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-type MetricCardProps = {
-  title: string;
-  subtitle: string;
-  value: string;
-  extra: string;
-};
 
-function MetricCard({ title, subtitle, value, extra }: MetricCardProps) {
-  return (
-    <div className="glass-panel rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 min-w-0 overflow-hidden">
-      <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 break-words">{subtitle}</p>
-      <div className="mt-4 font-bold font-mono text-brand-green-dark dark:text-emerald-400 leading-tight whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(1rem,1.6vw,1.6rem)]">
-        <span className="tracking-tight">{value}</span>
-      </div>
-      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 break-words">{extra}</div>
+          {/* Mobile: compact single-currency card list (section 9's
+              "currency-focused table" for narrow screens) */}
+          <div className="sm:hidden divide-y divide-line">
+            {rows.map((row) => (
+              <div key={row.companyId} className="px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-ink text-sm truncate">{row.name}</span>
+                  <span className="text-[10px] text-ink-muted shrink-0">{row.count} гуз.</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                  <div className="min-w-0">
+                    <p className="text-[9px] text-ink-muted uppercase tracking-wider">Гузариш</p>
+                    <p className="money font-mono font-semibold mt-0.5 truncate">{formatCurrency(metricFor(row, singleCurrency, 'gross'), singleCurrency)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] text-ink-muted uppercase tracking-wider">Баргашт</p>
+                    <p className="money font-mono font-semibold mt-0.5 text-red-500 dark:text-red-400 truncate">
+                      {metricFor(row, singleCurrency, 'returned') > 0 ? formatCurrency(metricFor(row, singleCurrency, 'returned'), singleCurrency) : '—'}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] text-ink-muted uppercase tracking-wider">Соф</p>
+                    <p className="money font-mono font-bold mt-0.5 truncate">{formatCurrency(metricFor(row, singleCurrency, 'net'), singleCurrency)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
