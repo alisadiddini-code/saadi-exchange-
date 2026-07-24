@@ -1,0 +1,324 @@
+/* NUR HOLO — standalone hologram page styles (no app layout) */
+
+.holo-root {
+  --holo-bg: #000000;
+  --holo-cyan: #61ddff;
+  --holo-cyan-2: #1bb8ff;
+  --holo-text: #eafaff;
+  --holo-muted: rgba(215, 246, 255, 0.64);
+  --holo-line: rgba(78, 211, 255, 0.34);
+
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 174, 255, 0.08), transparent 30%), #000;
+  color: var(--holo-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* ---------- 4-way cross panels ---------- */
+.holo-cross { position: absolute; inset: 0; }
+
+.holo-panel {
+  position: absolute;
+  width: 42vw;
+  height: 42vh;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 1.5vh 1.5vw;
+}
+
+.holo-panel--top { transform: translate(-50%, -100%); }
+.holo-panel--bottom { transform: translate(-50%, 0) rotate(180deg); }
+.holo-panel--left { transform: translate(-100%, -50%) rotate(-90deg); }
+.holo-panel--right { transform: translate(0, -50%) rotate(90deg); }
+
+.holo-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--holo-line);
+  clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
+  background:
+    linear-gradient(180deg, rgba(25, 181, 255, 0.05), transparent 30%),
+    radial-gradient(circle at 50% 68%, rgba(0, 179, 255, 0.16), transparent 28%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8%;
+  filter: drop-shadow(0 0 8px rgba(43, 204, 255, 0.28));
+}
+
+/* subtle holographic rings */
+.holo-content::before,
+.holo-content::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid rgba(65, 216, 255, 0.45);
+  animation: holo-pulse 2.8s ease-in-out infinite;
+}
+.holo-content::before { width: 43%; height: 13%; bottom: 12%; }
+.holo-content::after { width: 29%; height: 9%; bottom: 15%; animation-delay: 1.1s; }
+
+@keyframes holo-pulse {
+  0%, 100% { opacity: 0.28; transform: translateX(-50%) scale(0.92); }
+  50% { opacity: 0.8; transform: translateX(-50%) scale(1.08); }
+}
+
+/* ---------- scenes ---------- */
+.holo-scene {
+  width: 100%;
+  text-align: center;
+  animation: holo-scene-in 0.8s ease both;
+}
+
+@keyframes holo-scene-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.holo-logo {
+  position: relative;
+  width: 6.2vh;
+  height: 6.2vh;
+  min-width: 34px;
+  min-height: 34px;
+  margin: 0 auto 1.2vh;
+  display: grid;
+  place-items: center;
+  font-size: clamp(22px, 4.4vh, 48px);
+  font-weight: 800;
+  letter-spacing: -0.12em;
+  text-shadow: 0 0 8px rgba(97, 221, 255, 1), 0 0 22px rgba(27, 184, 255, 0.8);
+  animation: holo-float 3.2s ease-in-out infinite;
+}
+
+@keyframes holo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.holo-brand {
+  font-size: clamp(11px, 2.15vh, 22px);
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 0 11px rgba(97, 221, 255, 0.7);
+}
+
+.holo-kicker {
+  margin-top: 0.8vh;
+  font-size: clamp(7px, 1.15vh, 12px);
+  letter-spacing: 0.24em;
+  color: var(--holo-muted);
+}
+
+.holo-bank {
+  font-size: clamp(10px, 1.8vh, 20px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--holo-cyan);
+  text-shadow: 0 0 8px rgba(97, 221, 255, 0.6);
+}
+
+.holo-count {
+  margin-top: 1.3vh;
+  font-size: clamp(24px, 5.1vh, 56px);
+  font-weight: 700;
+  line-height: 0.95;
+  text-shadow: 0 0 14px rgba(97, 221, 255, 0.65);
+}
+
+.holo-label {
+  margin-top: 0.45vh;
+  font-size: clamp(7px, 1.1vh, 11px);
+  color: var(--holo-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.holo-amount {
+  margin-top: 1.5vh;
+  font-size: clamp(13px, 2.4vh, 26px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(97, 221, 255, 0.6);
+}
+
+.holo-divider {
+  width: 45%;
+  height: 1px;
+  margin: 1.2vh auto 0;
+  background: linear-gradient(90deg, transparent, var(--holo-cyan), transparent);
+  opacity: 0.8;
+}
+
+/* number update flash */
+.holo-value-updated {
+  animation: holo-value-in 0.6s ease both;
+}
+
+@keyframes holo-value-in {
+  from { opacity: 0.2; transform: scale(0.94); text-shadow: 0 0 22px rgba(97, 221, 255, 1); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ---------- status indicators ---------- */
+.holo-live {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--holo-muted);
+  pointer-events: none;
+}
+
+.holo-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22ff88;
+  box-shadow: 0 0 8px rgba(34, 255, 136, 0.9);
+}
+
+.holo-live--reconnecting .holo-live-dot {
+  background: #ffb020;
+  box-shadow: 0 0 8px rgba(255, 176, 32, 0.9);
+  animation: holo-blink 1s ease-in-out infinite;
+}
+
+.holo-live--offline .holo-live-dot {
+  background: #ff4d5e;
+  box-shadow: 0 0 8px rgba(255, 77, 94, 0.9);
+  animation: holo-blink 1s ease-in-out infinite;
+}
+
+@keyframes holo-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.holo-data-lost {
+  position: fixed;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #ff8a95;
+  text-shadow: 0 0 8px rgba(255, 77, 94, 0.5);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.holo-loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  background: #000;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--holo-muted);
+}
+
+/* ---------- controls ---------- */
+.holo-controls {
+  position: fixed;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.holo-controls--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.holo-btn {
+  appearance: none;
+  border: 1px solid rgba(97, 221, 255, 0.28);
+  background: rgba(3, 13, 19, 0.74);
+  color: var(--holo-text);
+  border-radius: 999px;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+/* ---------- diagnostics ---------- */
+.holo-diag {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  z-index: 60;
+  width: min(300px, calc(100vw - 20px));
+  padding: 12px 14px;
+  border: 1px solid rgba(97, 221, 255, 0.25);
+  background: rgba(0, 0, 0, 0.92);
+  border-radius: 14px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--holo-muted);
+}
+
+.holo-diag strong { color: var(--holo-text); font-weight: 600; }
+
+/* ---------- portrait hint ---------- */
+.holo-rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: none;
+  place-items: center;
+  background: #000;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  color: var(--holo-cyan);
+  text-shadow: 0 0 10px rgba(97, 221, 255, 0.6);
+}
+
+@media (orientation: portrait) {
+  .holo-rotate { display: grid; }
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .holo-content::before,
+  .holo-content::after,
+  .holo-logo,
+  .holo-live-dot,
+  .holo-scene,
+  .holo-value-updated {
+    animation: none !important;
+  }
+}
