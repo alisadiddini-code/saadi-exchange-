@@ -9,7 +9,9 @@
 -- Иҷрои такрорӣ бехатар аст (рамзи идоракуниро нав мекунад).
 -- =====================================================================
 
+-- pgcrypto (crypt, gen_salt) — дар ҳар схемае, ки аллакай насб шудааст, кор мекунад
 create extension if not exists pgcrypto with schema extensions;
+set search_path = public, extensions;
 
 -- Номҳои иҷозатдодашуда
 create table if not exists public.app_users (
@@ -45,7 +47,7 @@ revoke all on public.app_users, public.app_sessions, public.app_settings from an
 
 -- >>> РАМЗИ ИДОРАКУНИРО ДАР ИН ҶО ИВАЗ КУНЕД <<<
 insert into public.app_settings (key, value)
-values ('admin_code_hash', extensions.crypt('CHANGE_ME', extensions.gen_salt('bf')))
+values ('admin_code_hash', crypt('CHANGE_ME', gen_salt('bf')))
 on conflict (key) do update set value = excluded.value;
 
 
@@ -147,7 +149,7 @@ declare
   h text;
 begin
   select value into h from public.app_settings where key = 'admin_code_hash';
-  if h is null or p_code is null or extensions.crypt(p_code, h) <> h then
+  if h is null or p_code is null or crypt(p_code, h) <> h then
     perform pg_sleep(0.6);
     return false;
   end if;
@@ -245,3 +247,16 @@ grant execute on function
   public.app_admin_remove_user(text, text),
   public.app_admin_end_session(text, text)
 to anon, authenticated;
+
+-- Ба PostgREST хабар медиҳем, ки функсияҳои навро бинад.
+notify pgrst, 'reload schema';
+
+-- Санҷиш: бояд "ok" нишон диҳад (8 функсия, 3 ҷадвал).
+select
+  case when count(*) = 8 then 'ok' else 'хато: функсияҳо пурра нестанд' end as natija,
+  count(*) as functions,
+  (select count(*) from pg_tables where schemaname = 'public' and tablename in ('app_users', 'app_sessions', 'app_settings')) as tables
+from pg_proc
+where pronamespace = 'public'::regnamespace
+  and proname in ('app_login', 'app_check_session', 'app_logout', 'app_admin_ok',
+                  'app_admin_list', 'app_admin_add_user', 'app_admin_remove_user', 'app_admin_end_session');
