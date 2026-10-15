@@ -719,13 +719,11 @@ async function fetchAllSupabaseRows<T = any>(
   }
 ): Promise<{ data: T[]; error: any }> {
   const pageSize = 1000;
-  let from = 0;
-  const allRows: T[] = [];
 
-  while (true) {
+  const fetchPage = (from: number, withCount = false) => {
     let query = supabase
       .from(tableName)
-      .select('*')
+      .select('*', withCount ? { count: 'exact' } : undefined)
       .range(from, from + pageSize - 1);
 
     if (options?.orderBy) {
@@ -736,20 +734,24 @@ async function fetchAllSupabaseRows<T = any>(
       query = query.order(options.secondOrderBy, { ascending: options.secondAscending ?? true });
     }
 
-    const { data, error } = await query;
+    // Тартиби устувор, то саҳифаҳои параллелӣ ҳамдигарро такрор накунанд.
+    return query.order('id', { ascending: true });
+  };
 
-    if (error) {
-      return { data: allRows, error };
-    }
+  // Саҳифаи аввал шумораи умумиро медиҳад; боқимонда якбора (параллелӣ) хонда мешаванд.
+  const first = await fetchPage(0, true);
+  if (first.error) return { data: [], error: first.error };
 
-    const rows = (data || []) as T[];
-    allRows.push(...rows);
+  const allRows: T[] = [...((first.data || []) as T[])];
+  const total = first.count ?? allRows.length;
 
-    if (rows.length < pageSize) {
-      break;
-    }
+  const offsets: number[] = [];
+  for (let from = pageSize; from < total; from += pageSize) offsets.push(from);
 
-    from += pageSize;
+  const pages = await Promise.all(offsets.map((from) => fetchPage(from)));
+  for (const page of pages) {
+    if (page.error) return { data: allRows, error: page.error };
+    allRows.push(...((page.data || []) as T[]));
   }
 
   return { data: allRows, error: null };
@@ -2016,10 +2018,20 @@ export default function App() {
 const loadAllFromSupabase = async () => {
   const fallbackDate = selectedDate || format(new Date(), 'yyyy-MM-dd');
 
-  const { data: banksData, error: banksError } = await fetchAllSupabaseRows('banks', {
-    orderBy: 'created_at',
-    ascending: true,
-  });
+  // Ҳар чор ҷадвал якбора (параллелӣ) хонда мешаванд.
+  const [banksResult, companiesResult, transfersResult, returnsResult] = await Promise.all([
+    fetchAllSupabaseRows('banks', { orderBy: 'created_at', ascending: true }),
+    fetchAllSupabaseRows('companies', {
+      orderBy: 'sort_order',
+      ascending: true,
+      secondOrderBy: 'created_at',
+      secondAscending: true,
+    }),
+    fetchAllSupabaseRows('transfers', { orderBy: 'created_at', ascending: true }),
+    fetchAllSupabaseRows('returns', { orderBy: 'date', ascending: true }),
+  ]);
+
+  const { data: banksData, error: banksError } = banksResult;
 
   if (banksError) {
     console.error('Supabase banks error:', banksError);
@@ -2027,12 +2039,7 @@ const loadAllFromSupabase = async () => {
     return null;
   }
 
-  const { data: companiesData, error: companiesError } = await fetchAllSupabaseRows('companies', {
-    orderBy: 'sort_order',
-    ascending: true,
-    secondOrderBy: 'created_at',
-    secondAscending: true,
-  });
+  const { data: companiesData, error: companiesError } = companiesResult;
 
   if (companiesError) {
     console.error('Supabase companies error:', companiesError);
@@ -2040,10 +2047,7 @@ const loadAllFromSupabase = async () => {
     return null;
   }
 
-  const { data: transfersData, error: transfersError } = await fetchAllSupabaseRows('transfers', {
-    orderBy: 'created_at',
-    ascending: true,
-  });
+  const { data: transfersData, error: transfersError } = transfersResult;
 
   if (transfersError) {
     console.error('Supabase transfers error:', transfersError);
@@ -2051,10 +2055,7 @@ const loadAllFromSupabase = async () => {
     return null;
   }
 
-  const { data: returnsData, error: returnsError } = await fetchAllSupabaseRows('returns', {
-    orderBy: 'date',
-    ascending: true,
-  });
+  const { data: returnsData, error: returnsError } = returnsResult;
 
   if (returnsError) {
     console.error('Supabase returns error:', returnsError);
@@ -2164,10 +2165,47 @@ const scheduleReload = (delay = 400) => {
   }, delay);
 };
 
-const notifyDataChanged = (table: string) => {
+// Худи тағйирот дар паём фиристода мешавад, то дигарон онро фавран (бе
+// интизори боркунии пурра) бинанд.
+type SyncChange =
+  | { kind: 'transfer-upsert'; transfer: Transfer }
+  | { kind: 'transfer-delete'; id: string }
+  | { kind: 'transfer-patch'; id: string; patch: Partial<Transfer> }
+  | { kind: 'return-upsert'; date: string; companyId: string; currency: Currency; amount: number };
+
+const notifyDataChanged = (table: string, change?: SyncChange) => {
   const channel = realtimeChannelRef.current;
   if (!channel) return;
-  void channel.send({ type: 'broadcast', event: 'data-changed', payload: { table, at: Date.now() } });
+  void channel.send({ type: 'broadcast', event: 'data-changed', payload: { table, change, at: Date.now() } });
+};
+
+const applyRemoteChange = (change: SyncChange) => {
+  setData((prev) => {
+    if (change.kind === 'transfer-upsert') {
+      return { ...prev, transfers: sortTransfersByTime(mergeTransfer(prev.transfers, change.transfer)) };
+    }
+    if (change.kind === 'transfer-delete') {
+      return { ...prev, transfers: prev.transfers.filter((t) => t.id !== change.id) };
+    }
+    if (change.kind === 'transfer-patch') {
+      return {
+        ...prev,
+        transfers: prev.transfers.map((t) => (t.id === change.id ? { ...t, ...change.patch } : t)),
+      };
+    }
+    const dateMap = prev.returns[change.date] || {};
+    return {
+      ...prev,
+      returns: {
+        ...prev.returns,
+        [change.date]: {
+          ...dateMap,
+          [change.companyId]: { ...(dateMap[change.companyId] || {}), [change.currency]: change.amount },
+        },
+      },
+    };
+  });
+  setLastSyncedAt(new Date());
 };
 
 useEffect(() => {
@@ -2175,7 +2213,16 @@ useEffect(() => {
     config: { broadcast: { self: false } },
   });
 
-  channel.on('broadcast', { event: 'data-changed' }, () => scheduleReload());
+  channel.on('broadcast', { event: 'data-changed' }, ({ payload }) => {
+    const change = payload?.change as SyncChange | undefined;
+    if (change) {
+      // Фавран дар экран; боркунии пурра баъдтар танҳо барои санҷиш.
+      applyRemoteChange(change);
+      scheduleReload(3000);
+    } else {
+      scheduleReload(300);
+    }
+  });
 
   for (const table of ['banks', 'companies', 'transfers', 'returns']) {
     channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => scheduleReload());
@@ -2192,8 +2239,30 @@ useEffect(() => {
   });
   realtimeChannelRef.current = channel;
 
+  // Агар версияи нави сайт deploy шуда бошад, саҳифаҳои кушода худашон
+  // навсозӣ мешаванд — вагарна онҳо бо коди кӯҳна мемонанд ва тағйиротро
+  // намебинанд. Ҳангоми навиштан дар майдон саҳифа навсозӣ намешавад.
+  const currentBundle = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src;
+  const checkForNewVersion = async () => {
+    if (!currentBundle) return;
+    try {
+      const html = await fetch('/', { cache: 'no-store' }).then((r) => r.text());
+      const match = html.match(/\/assets\/index-[^"']+\.js/);
+      if (!match || currentBundle.endsWith(match[0])) return;
+      const active = document.activeElement;
+      const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+      if (!typing) window.location.reload();
+    } catch {
+      // шабака нест — дафъаи дигар санҷида мешавад
+    }
+  };
+  const versionId = window.setInterval(checkForNewVersion, 60000);
+
   const onVisible = () => {
-    if (document.visibilityState === 'visible') scheduleReload(0);
+    if (document.visibilityState === 'visible') {
+      scheduleReload(0);
+      void checkForNewVersion();
+    }
   };
   const onOnline = () => scheduleReload(0);
   document.addEventListener('visibilitychange', onVisible);
@@ -2214,6 +2283,7 @@ useEffect(() => {
     document.removeEventListener('visibilitychange', onVisible);
     window.removeEventListener('online', onOnline);
     window.clearInterval(pollId);
+    window.clearInterval(versionId);
     if (reloadTimerRef.current !== null) window.clearTimeout(reloadTimerRef.current);
     realtimeChannelRef.current = null;
     void supabase.removeChannel(channel);
@@ -2277,7 +2347,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     const mappedTransfer = mapSupabaseTransfer(savedTransfer, msg.date);
     console.log('TRANSFER SAVED:', savedTransfer);
-    notifyDataChanged('transfers');
+    notifyDataChanged('transfers', { kind: 'transfer-upsert', transfer: mappedTransfer });
 
     // 1) Дарҳол дар экран нишон медиҳем, то оператор корро идома дода тавонад.
     setData((prev) => ({
@@ -2324,7 +2394,7 @@ const sendMessage = async (msg: ClientMessage) => {
     }
 
     const mappedTransfer = mapSupabaseTransfer(updatedTransfer, selectedDate);
-    notifyDataChanged('transfers');
+    notifyDataChanged('transfers', { kind: 'transfer-upsert', transfer: mappedTransfer });
 
     setData((prev) => ({
       ...prev,
@@ -2347,7 +2417,7 @@ const sendMessage = async (msg: ClientMessage) => {
       return;
     }
 
-    notifyDataChanged('transfers');
+    notifyDataChanged('transfers', { kind: 'transfer-delete', id: msg.id });
 
     setData((prev) => ({
       ...prev,
@@ -2386,7 +2456,13 @@ const sendMessage = async (msg: ClientMessage) => {
       return;
     }
 
-    notifyDataChanged('returns');
+    notifyDataChanged('returns', {
+      kind: 'return-upsert',
+      date: msg.date,
+      companyId: msg.companyId,
+      currency: returnCurrency,
+      amount: returnAmount,
+    });
 
     setData((prev) => {
       const prevDateMap = prev.returns[msg.date] || {};
@@ -2509,7 +2585,7 @@ const updateTransferConfirmation = async (
     return;
   }
 
-  notifyDataChanged('transfers');
+  notifyDataChanged('transfers', { kind: 'transfer-patch', id, patch: { [key]: value } });
 };
 
   const selectedBank = useMemo(() => {
