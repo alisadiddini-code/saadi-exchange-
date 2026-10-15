@@ -1895,9 +1895,9 @@ export default function App() {
   const [newCompanyName, setNewCompanyName] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  // Timestamp of the last successful Supabase load — shown honestly in the
-  // Command Center as "last updated", never as a claim of live/real-time
-  // connectivity (there is none; this app is REST-poll based).
+  // Timestamp of the last successful Supabase load — shown in the Command
+  // Center as "last updated". Live connectivity is tracked separately by
+  // `realtimeLive` (see the sync effect below loadAllFromSupabase).
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   // Stage 6 section 12 — set only when loadAllFromSupabase's own error
   // branches fire (a real fetch failure), cleared on the next successful
@@ -2118,6 +2118,108 @@ useEffect(() => {
   loadAllFromSupabase().finally(() => setIsInitialLoading(false));
 }, []);
 
+// ---------------------------------------------------------------------------
+// Синхронизатсияи зинда байни ҳамаи корбарон.
+// Ҳар вақте ки як корбар чизеро тағйир медиҳад, дигарон бе refresh онро
+// мебинанд. Се роҳ якҷоя кор мекунанд:
+//  1) Broadcast — пас аз ҳар сабти бомуваффақият ин клиент ба дигарон
+//     хабар медиҳад (ба танзимоти махсуси база ниёз надорад).
+//  2) postgres_changes — агар Realtime барои ҷадвалҳо дар Supabase фаъол
+//     бошад, тағйироти бевосита аз база низ омада мерасад.
+//  3) Ҳангоми бозгашт ба саҳифа / пайвасти дубораи интернет ва инчунин
+//     polling-и эҳтиётӣ, то ҳеҷ тағйирот гум нашавад.
+// ---------------------------------------------------------------------------
+const loadAllRef = useRef(loadAllFromSupabase);
+loadAllRef.current = loadAllFromSupabase;
+const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+const reloadTimerRef = useRef<number | null>(null);
+const reloadInFlightRef = useRef(false);
+const reloadQueuedRef = useRef(false);
+const [realtimeLive, setRealtimeLive] = useState(false);
+
+const runReload = async () => {
+  if (reloadInFlightRef.current) {
+    reloadQueuedRef.current = true;
+    return;
+  }
+  reloadInFlightRef.current = true;
+  try {
+    await loadAllRef.current();
+  } finally {
+    reloadInFlightRef.current = false;
+    if (reloadQueuedRef.current) {
+      reloadQueuedRef.current = false;
+      void runReload();
+    }
+  }
+};
+
+// Чанд тағйироти пайдарпай (масалан, иваз кардани ҷойи ду ширкат) ба як
+// боркунӣ ҷамъ карда мешаванд.
+const scheduleReload = (delay = 400) => {
+  if (reloadTimerRef.current !== null) window.clearTimeout(reloadTimerRef.current);
+  reloadTimerRef.current = window.setTimeout(() => {
+    reloadTimerRef.current = null;
+    void runReload();
+  }, delay);
+};
+
+const notifyDataChanged = (table: string) => {
+  const channel = realtimeChannelRef.current;
+  if (!channel) return;
+  void channel.send({ type: 'broadcast', event: 'data-changed', payload: { table, at: Date.now() } });
+};
+
+useEffect(() => {
+  const channel = supabase.channel('saadi-exchange-sync', {
+    config: { broadcast: { self: false } },
+  });
+
+  channel.on('broadcast', { event: 'data-changed' }, () => scheduleReload());
+
+  for (const table of ['banks', 'companies', 'transfers', 'returns']) {
+    channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => scheduleReload());
+  }
+
+  let subscribedOnce = false;
+  let live = false;
+  channel.subscribe((status) => {
+    live = status === 'SUBSCRIBED';
+    setRealtimeLive(live);
+    // Пас аз пайвасти дубора чизҳое, ки дар вақти қатъ шудан тағйир ёфтанд, мехонем.
+    if (live && subscribedOnce) scheduleReload(0);
+    if (live) subscribedOnce = true;
+  });
+  realtimeChannelRef.current = channel;
+
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') scheduleReload(0);
+  };
+  const onOnline = () => scheduleReload(0);
+  document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('online', onOnline);
+
+  // Polling-и эҳтиётӣ: танҳо вақте ки саҳифа намоён аст. Агар пайвасти
+  // зинда бошад, ҳар 2 дақиқа; агар набошад, ҳар 15 сония.
+  let lastPollAt = Date.now();
+  const pollId = window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    const interval = live ? 120000 : 15000;
+    if (Date.now() - lastPollAt < interval) return;
+    lastPollAt = Date.now();
+    scheduleReload(0);
+  }, 5000);
+
+  return () => {
+    document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('online', onOnline);
+    window.clearInterval(pollId);
+    if (reloadTimerRef.current !== null) window.clearTimeout(reloadTimerRef.current);
+    realtimeChannelRef.current = null;
+    void supabase.removeChannel(channel);
+  };
+}, []);
+
 let toastIdCounter = 0;
 const showToast = (message: string, type: 'error' | 'success' = 'error') => {
   const id = ++toastIdCounter;
@@ -2133,6 +2235,7 @@ const sendMessage = async (msg: ClientMessage) => {
   if (msg.type === 'ADD_BANK') {
     const { error } = await supabase.from('banks').insert({ name: msg.name });
     if (error) return showToast('خطا در افزودن بانک: ' + error.message);
+    notifyDataChanged('banks');
     await loadAllFromSupabase();
     return;
   }
@@ -2144,6 +2247,7 @@ const sendMessage = async (msg: ClientMessage) => {
       sort_order: data.companies.filter((c) => c.bankId === msg.bankId).length,
     });
     if (error) return showToast('خطا در افزودن شرکت: ' + error.message);
+    notifyDataChanged('companies');
     await loadAllFromSupabase();
     return;
   }
@@ -2173,6 +2277,7 @@ const sendMessage = async (msg: ClientMessage) => {
 
     const mappedTransfer = mapSupabaseTransfer(savedTransfer, msg.date);
     console.log('TRANSFER SAVED:', savedTransfer);
+    notifyDataChanged('transfers');
 
     // 1) Дарҳол дар экран нишон медиҳем, то оператор корро идома дода тавонад.
     setData((prev) => ({
@@ -2219,6 +2324,7 @@ const sendMessage = async (msg: ClientMessage) => {
     }
 
     const mappedTransfer = mapSupabaseTransfer(updatedTransfer, selectedDate);
+    notifyDataChanged('transfers');
 
     setData((prev) => ({
       ...prev,
@@ -2240,6 +2346,8 @@ const sendMessage = async (msg: ClientMessage) => {
       showToast('خطا дар حذف انتقال: ' + error.message);
       return;
     }
+
+    notifyDataChanged('transfers');
 
     setData((prev) => ({
       ...prev,
@@ -2277,6 +2385,8 @@ const sendMessage = async (msg: ClientMessage) => {
       showToast('خطа дар ثبت برگашт: ' + error.message);
       return;
     }
+
+    notifyDataChanged('returns');
 
     setData((prev) => {
       const prevDateMap = prev.returns[msg.date] || {};
@@ -2324,6 +2434,7 @@ const sendMessage = async (msg: ClientMessage) => {
     ]);
 
     if (e1 || e2) return showToast('Хато дар иваз кардани ҷой: ' + (e1?.message || e2?.message));
+    notifyDataChanged('companies');
     await loadAllFromSupabase();
     return;
   }
@@ -2344,6 +2455,7 @@ const sendMessage = async (msg: ClientMessage) => {
       .eq('id', msg.companyId);
 
     if (error) return showToast('Хато: ' + error.message);
+    notifyDataChanged('companies');
     await loadAllFromSupabase();
     return;
   }
@@ -2351,6 +2463,7 @@ const sendMessage = async (msg: ClientMessage) => {
   if (msg.type === 'DELETE_COMPANY') {
     const { error } = await supabase.from('companies').delete().eq('id', msg.id);
     if (error) return showToast('خطا дар حذف ширкат: ' + error.message);
+    notifyDataChanged('companies');
     await loadAllFromSupabase();
     return;
   }
@@ -2358,6 +2471,7 @@ const sendMessage = async (msg: ClientMessage) => {
   if (msg.type === 'DELETE_BANK') {
     const { error } = await supabase.from('banks').delete().eq('id', msg.id);
     if (error) return showToast('خطا дар حذف бонк: ' + error.message);
+    notifyDataChanged('banks');
     await loadAllFromSupabase();
     return;
   }
@@ -2392,7 +2506,10 @@ const updateTransferConfirmation = async (
       ...prev,
       transfers: prev.transfers.map((t) => (t.id === id ? { ...t, [key]: !value } : t)),
     }));
+    return;
   }
+
+  notifyDataChanged('transfers');
 };
 
   const selectedBank = useMemo(() => {
@@ -3421,17 +3538,26 @@ const updateTransferConfirmation = async (
         </div>
       </Modal>
 
-      {/* wsConnected really only means "a Supabase load has completed at
-          least once" — this app has no live/websocket connection to
-          report on (see section 11 audit), so the label says exactly
-          that and nothing more. */}
+      {/* Ҳолати пайвасти зинда: сабз = тағйироти дигарон фавран меояд;
+          зард = пайвасти зинда нест, маълумот ҳар 15 сония навсозӣ мешавад. */}
       <div
         className={cn(
-          'fixed bottom-4 right-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest',
-          wsConnected ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+          'fixed bottom-4 right-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5',
+          !wsConnected
+            ? 'bg-red-100 text-red-600'
+            : realtimeLive
+              ? 'bg-green-100 text-green-600'
+              : 'bg-amber-100 text-amber-700'
         )}
+        title={lastSyncedAt ? `Навсозии охирин: ${format(lastSyncedAt, 'HH:mm:ss')}` : undefined}
       >
-        {wsConnected ? 'Маълумот бор шуд' : 'Дар ҳоли боркунӣ…'}
+        {wsConnected && realtimeLive && (
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+          </span>
+        )}
+        {!wsConnected ? 'Дар ҳоли боркунӣ…' : realtimeLive ? 'Зинда' : 'Навсозии худкор'}
       </div>
 
       <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2 w-full max-w-xs pointer-events-none">
