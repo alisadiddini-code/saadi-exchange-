@@ -813,6 +813,139 @@ function CompanyAvatar({ name, selected }: { name: string; selected?: boolean })
   );
 }
 
+// ---------------------------------------------------------------------------
+// Ҳузури зинда: кӣ ҳоло онлайн аст ва дар кадом бонк / ширкат кор мекунад.
+// ---------------------------------------------------------------------------
+type PresenceUser = {
+  clientId: string;
+  name: string;
+  bankId: string | null;
+  companyId: string | null;
+  viewMode: string;
+  typing: boolean;
+  away: boolean;
+};
+
+// Ҳар таб ID-и худро дорад (як нафар метавонад якчанд таб кушояд).
+const CLIENT_ID =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+function PresenceDot({ user, size = 'md', ring }: { key?: string; user: PresenceUser; size?: 'sm' | 'md'; ring?: string }) {
+  const initial = user.name.trim().charAt(0).toUpperCase() || '?';
+  return (
+    <span
+      className={cn(
+        'relative inline-flex items-center justify-center rounded-full font-bold text-white shrink-0',
+        size === 'sm' ? 'w-5 h-5 text-[9px]' : 'w-8 h-8 text-xs',
+        avatarColorFor(user.name),
+        ring ?? 'ring-2 ring-white dark:ring-gray-900',
+        user.away && 'opacity-50'
+      )}
+    >
+      {initial}
+      {user.typing && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-gray-900 animate-pulse" />
+      )}
+    </span>
+  );
+}
+
+function describePresence(user: PresenceUser, banks: Bank[], companies: Company[]) {
+  if (user.away) return 'дур аз саҳифа';
+  if (user.viewMode === 'analytics') return 'дар «Таҳлил»';
+  const bank = banks.find((b) => b.id === user.bankId)?.name;
+  const company = companies.find((c) => c.id === user.companyId)?.name;
+  const where = [bank, company].filter(Boolean).join(' › ') || 'дар саҳифаи асосӣ';
+  return user.typing ? `${where} — таҳрир мекунад…` : where;
+}
+
+// Як нафар бо якчанд таб = як шахс; фаъолтарин табаш нишон дода мешавад.
+function uniquePresenceByName(users: PresenceUser[]) {
+  const byName = new Map<string, PresenceUser>();
+  for (const u of users) {
+    const prev = byName.get(u.name);
+    if (!prev || (prev.away && !u.away) || (!prev.typing && u.typing)) byName.set(u.name, u);
+  }
+  return [...byName.values()];
+}
+
+function PresenceBar({
+  users,
+  selfId,
+  banks,
+  companies,
+  onRename,
+}: {
+  users: PresenceUser[];
+  selfId: string;
+  banks: Bank[];
+  companies: Company[];
+  onRename: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const self = users.find((u) => u.clientId === selfId);
+  const others = uniquePresenceByName(users.filter((u) => u.clientId !== selfId && u.name !== self?.name));
+  const shown = [...(self ? [self] : []), ...others];
+  if (shown.length === 0) return null;
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Кӣ ҳоло онлайн аст"
+        className="flex items-center gap-2 pl-2 pr-3 py-1.5 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hover:border-brand-green/50 transition-colors"
+      >
+        <span className="flex -space-x-2">
+          {shown.slice(0, 4).map((u) => (
+            <PresenceDot key={u.clientId} user={u} />
+          ))}
+        </span>
+        {shown.length > 4 && <span className="text-xs font-semibold text-ink-muted">+{shown.length - 4}</span>}
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 hidden sm:inline">
+          {shown.length} онлайн
+        </span>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div className="absolute left-0 md:left-auto md:right-0 mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-2">
+            <div className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-ink-muted">Ҳоло онлайн</div>
+            {shown.map((u) => (
+              <div key={u.clientId} className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                <PresenceDot user={u} ring="ring-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                    {u.name}
+                    {u.clientId === selfId && <span className="text-ink-muted font-normal"> (шумо)</span>}
+                  </div>
+                  <div className="text-[11px] text-ink-muted truncate">{describePresence(u, banks, companies)}</div>
+                </div>
+                {u.clientId === selfId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onRename();
+                    }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-brand-green hover:bg-brand-green-light/40"
+                    aria-label="Иваз кардани ном"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SkeletonBlock() {
   return (
     <div className="flex flex-col md:flex-row gap-6 items-start">
@@ -2138,6 +2271,15 @@ const reloadInFlightRef = useRef(false);
 const reloadQueuedRef = useRef(false);
 const [realtimeLive, setRealtimeLive] = useState(false);
 
+// Ҳузури зинда
+const [userName, setUserName] = useState(() => getStoredString('saadi_user_name', '').trim());
+const [isNameModalOpen, setIsNameModalOpen] = useState(() => !getStoredString('saadi_user_name', '').trim());
+const [nameDraft, setNameDraft] = useState(() => getStoredString('saadi_user_name', ''));
+const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
+const [isTyping, setIsTyping] = useState(false);
+const [isAway, setIsAway] = useState(() => document.visibilityState === 'hidden');
+const presenceRef = useRef<PresenceUser | null>(null);
+
 const runReload = async () => {
   if (reloadInFlightRef.current) {
     reloadQueuedRef.current = true;
@@ -2210,7 +2352,15 @@ const applyRemoteChange = (change: SyncChange) => {
 
 useEffect(() => {
   const channel = supabase.channel('saadi-exchange-sync', {
-    config: { broadcast: { self: false } },
+    config: { broadcast: { self: false }, presence: { key: CLIENT_ID } },
+  });
+
+  channel.on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState<PresenceUser>();
+    const users = Object.values(state)
+      .map((entries) => entries[entries.length - 1])
+      .filter((u): u is PresenceUser & { presence_ref: string } => !!u && typeof u.name === 'string' && !!u.name);
+    setPresenceUsers(users);
   });
 
   channel.on('broadcast', { event: 'data-changed' }, ({ payload }) => {
@@ -2236,6 +2386,7 @@ useEffect(() => {
     // Пас аз пайвасти дубора чизҳое, ки дар вақти қатъ шудан тағйир ёфтанд, мехонем.
     if (live && subscribedOnce) scheduleReload(0);
     if (live) subscribedOnce = true;
+    if (live && presenceRef.current) void channel.track(presenceRef.current);
   });
   realtimeChannelRef.current = channel;
 
@@ -2289,6 +2440,80 @@ useEffect(() => {
     void supabase.removeChannel(channel);
   };
 }, []);
+
+// Вақте ки оператор дар дохили корти ширкат чизе менависад — ба дигарон
+// нишон дода мешавад, ки ин ширкат ҳоло таҳрир мешавад.
+useEffect(() => {
+  const update = () => {
+    const el = document.activeElement;
+    const editing =
+      (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) &&
+      !!el.closest('[data-company-card]');
+    setIsTyping(editing);
+  };
+  const onFocusOut = () => window.setTimeout(update, 0);
+  const onVisibility = () => setIsAway(document.visibilityState === 'hidden');
+  document.addEventListener('focusin', update);
+  document.addEventListener('focusout', onFocusOut);
+  document.addEventListener('visibilitychange', onVisibility);
+  return () => {
+    document.removeEventListener('focusin', update);
+    document.removeEventListener('focusout', onFocusOut);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+}, []);
+
+useEffect(() => {
+  if (!userName) {
+    presenceRef.current = null;
+    return;
+  }
+  presenceRef.current = {
+    clientId: CLIENT_ID,
+    name: userName,
+    bankId: selectedBankId,
+    companyId: viewMode === 'tracker' ? selectedCompanyId : null,
+    viewMode,
+    typing: isTyping,
+    away: isAway,
+  };
+  const channel = realtimeChannelRef.current;
+  if (channel && realtimeLive) void channel.track(presenceRef.current);
+}, [userName, selectedBankId, selectedCompanyId, viewMode, isTyping, isAway, realtimeLive]);
+
+const saveUserName = () => {
+  const name = nameDraft.trim().slice(0, 30);
+  if (!name) return;
+  try {
+    localStorage.setItem('saadi_user_name', name);
+  } catch {
+    // localStorage дастрас нест — ном танҳо то пӯшидани саҳифа мемонад
+  }
+  setUserName(name);
+  setIsNameModalOpen(false);
+};
+
+// Дигарон (бе худам) барои ҳар ширкат ва бонк.
+const othersOnline = useMemo(
+  () => uniquePresenceByName(presenceUsers.filter((u) => u.clientId !== CLIENT_ID && u.name !== userName)),
+  [presenceUsers, userName]
+);
+const othersByCompany = useMemo(() => {
+  const map = new Map<string, PresenceUser[]>();
+  for (const u of othersOnline) {
+    if (!u.companyId || u.away) continue;
+    map.set(u.companyId, [...(map.get(u.companyId) || []), u]);
+  }
+  return map;
+}, [othersOnline]);
+const othersByBank = useMemo(() => {
+  const map = new Map<string, PresenceUser[]>();
+  for (const u of othersOnline) {
+    if (!u.bankId || u.away || u.viewMode !== 'tracker') continue;
+    map.set(u.bankId, [...(map.get(u.bankId) || []), u]);
+  }
+  return map;
+}, [othersOnline]);
 
 let toastIdCounter = 0;
 const showToast = (message: string, type: 'error' | 'success' = 'error') => {
@@ -3102,7 +3327,7 @@ const updateTransferConfirmation = async (
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
         className="header-gradient saadi-beam-top flex flex-col gap-4 mb-8 rounded-3xl p-5 border border-gray-100 dark:border-gray-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:flex-wrap md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <CoinLogo />
             <div>
@@ -3151,6 +3376,18 @@ const updateTransferConfirmation = async (
             </button>
           </div>
 
+          <div className="flex items-center gap-3 md:ml-auto">
+          <PresenceBar
+            users={presenceUsers}
+            selfId={CLIENT_ID}
+            banks={data.banks}
+            companies={data.companies}
+            onRename={() => {
+              setNameDraft(userName);
+              setIsNameModalOpen(true);
+            }}
+          />
+
           <button
             ref={assistantLauncherRef}
             type="button"
@@ -3178,6 +3415,7 @@ const updateTransferConfirmation = async (
               <Moon className="w-5 h-5 text-gray-600" />
             )}
           </button>
+          </div>
         </div>
 
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
@@ -3272,14 +3510,26 @@ const updateTransferConfirmation = async (
               key={bank.id}
               type="button"
               onClick={() => setSelectedBankId(bank.id)}
+              title={
+                othersByBank.get(bank.id)?.length
+                  ? `Ҳоло дар ин бонк: ${othersByBank.get(bank.id)!.map((u) => u.name).join(', ')}`
+                  : undefined
+              }
               className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-all border',
+                'relative px-4 py-2 rounded-full text-sm font-medium transition-all border',
                 selectedBankId === bank.id
                   ? 'bg-brand-green text-white border-brand-green dark:bg-emerald-900/70 dark:border-emerald-500/40 dark:text-white dark:backdrop-blur-md dark:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] shadow-md shadow-brand-green/20'
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-brand-green/50'
               )}
             >
               {bank.name}
+              {!!othersByBank.get(bank.id)?.length && (
+                <span className="absolute -top-2 -right-1 flex -space-x-1.5">
+                  {othersByBank.get(bank.id)!.slice(0, 3).map((u) => (
+                    <PresenceDot key={u.clientId} user={u} size="sm" />
+                  ))}
+                </span>
+              )}
             </button>
           ))}
 
@@ -3429,6 +3679,24 @@ const updateTransferConfirmation = async (
                               {formatCurrency(companyTotals.USD, 'USD')}
                             </div>
                           </div>
+                          {!!othersByCompany.get(company.id)?.length && (
+                            <span
+                              className="ml-auto flex -space-x-1.5 shrink-0"
+                              title={othersByCompany
+                                .get(company.id)!
+                                .map((u) => (u.typing ? `${u.name} — таҳрир мекунад…` : `${u.name} — ҳоло дар ин ҷо`))
+                                .join(', ')}
+                            >
+                              {othersByCompany.get(company.id)!.slice(0, 3).map((u) => (
+                                <PresenceDot
+                                  key={u.clientId}
+                                  user={u}
+                                  size="sm"
+                                  ring={isSelected ? 'ring-2 ring-brand-green dark:ring-emerald-900' : undefined}
+                                />
+                              ))}
+                            </span>
+                          )}
                         </div>
                       </button>
                     );
@@ -3557,6 +3825,43 @@ const updateTransferConfirmation = async (
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={isNameModalOpen}
+        onClose={() => {
+          // Бе ном пӯшида намешавад, то ҳамкорон донанд кӣ кор мекунад.
+          if (userName) setIsNameModalOpen(false);
+        }}
+        title={userName ? 'Иваз кардани ном' : 'Хуш омадед! Номи шумо чист?'}
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveUserName();
+          }}
+        >
+          <p className="text-sm text-ink-muted">
+            Ин ном ба ҳамкорон нишон медиҳад, ки шумо онлайн ҳастед ва дар кадом ширкат кор мекунед.
+          </p>
+          <input
+            type="text"
+            placeholder="Масалан: Алӣ"
+            maxLength={30}
+            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={!nameDraft.trim()}
+            className="w-full py-3 bg-brand-green text-white rounded-xl font-semibold disabled:opacity-50"
+          >
+            Сабт
+          </button>
+        </form>
+      </Modal>
 
       <Modal isOpen={isAddingBank} onClose={() => setIsAddingBank(false)} title="Иловаи бонк">
         <div className="space-y-4">
@@ -3810,6 +4115,7 @@ function CompanyCard({
 
   return (
     <motion.div
+      data-company-card
       layout={!prefersReducedMotion}
       initial={prefersReducedMotion ? undefined : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
