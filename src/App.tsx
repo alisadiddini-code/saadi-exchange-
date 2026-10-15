@@ -33,6 +33,7 @@ import {
   Lightbulb,
   RotateCcw,
   Users,
+  LogOut,
   Compass,
   Info,
   TrendingDown,
@@ -876,19 +877,31 @@ function PresenceBar({
   selfId,
   banks,
   companies,
-  onRename,
+  selfName,
+  sessionExpiresAt,
+  onLogout,
 }: {
   users: PresenceUser[];
   selfId: string;
+  selfName: string;
   banks: Bank[];
   companies: Company[];
-  onRename: () => void;
+  sessionExpiresAt: string;
+  onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const self = users.find((u) => u.clientId === selfId);
-  const others = uniquePresenceByName(users.filter((u) => u.clientId !== selfId && u.name !== self?.name));
-  const shown = [...(self ? [self] : []), ...others];
-  if (shown.length === 0) return null;
+  // Худам ҳамеша нишон дода мешавам (ҳатто агар пайвасти зинда набошад), то тугмаи «Баромадан» дастрас бошад.
+  const self: PresenceUser = users.find((u) => u.clientId === selfId) ?? {
+    clientId: selfId,
+    name: selfName,
+    bankId: null,
+    companyId: null,
+    viewMode: 'tracker',
+    typing: false,
+    away: false,
+  };
+  const others = uniquePresenceByName(users.filter((u) => u.clientId !== selfId && u.name !== self.name));
+  const shown = [self, ...others];
 
   return (
     <div className="relative shrink-0">
@@ -922,19 +935,24 @@ function PresenceBar({
                     {u.name}
                     {u.clientId === selfId && <span className="text-ink-muted font-normal"> (шумо)</span>}
                   </div>
-                  <div className="text-[11px] text-ink-muted truncate">{describePresence(u, banks, companies)}</div>
+                  <div className="text-[11px] text-ink-muted truncate">
+                    {u.clientId === selfId
+                      ? `Вуруд то ${format(new Date(sessionExpiresAt), 'HH:mm')}`
+                      : describePresence(u, banks, companies)}
+                  </div>
                 </div>
                 {u.clientId === selfId && (
                   <button
                     type="button"
                     onClick={() => {
                       setOpen(false);
-                      onRename();
+                      onLogout();
                     }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-brand-green hover:bg-brand-green-light/40"
-                    aria-label="Иваз кардани ном"
+                    title="Баромадан аз система"
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <LogOut className="w-3.5 h-3.5" />
+                    Баромадан
                   </button>
                 )}
               </div>
@@ -2011,7 +2029,15 @@ function AssistantPanel({
   );
 }
 
-export default function App() {
+export default function App({
+  sessionName,
+  sessionExpiresAt,
+  onLogout,
+}: {
+  sessionName: string;
+  sessionExpiresAt: string;
+  onLogout: () => void;
+}) {
   // Gates the disciplined page-entry stagger below (header -> command
   // center -> controls row) — App() only renders once per page load, so
   // this fires on first mount only, never replaying on a data refresh.
@@ -2272,9 +2298,8 @@ const reloadQueuedRef = useRef(false);
 const [realtimeLive, setRealtimeLive] = useState(false);
 
 // Ҳузури зинда
-const [userName, setUserName] = useState(() => getStoredString('saadi_user_name', '').trim());
-const [isNameModalOpen, setIsNameModalOpen] = useState(() => !getStoredString('saadi_user_name', '').trim());
-const [nameDraft, setNameDraft] = useState(() => getStoredString('saadi_user_name', ''));
+// Ном аз вуруд меояд (AuthGate).
+const userName = sessionName;
 const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
 const [isTyping, setIsTyping] = useState(false);
 const [isAway, setIsAway] = useState(() => document.visibilityState === 'hidden');
@@ -2480,18 +2505,6 @@ useEffect(() => {
   const channel = realtimeChannelRef.current;
   if (channel && realtimeLive) void channel.track(presenceRef.current);
 }, [userName, selectedBankId, selectedCompanyId, viewMode, isTyping, isAway, realtimeLive]);
-
-const saveUserName = () => {
-  const name = nameDraft.trim().slice(0, 30);
-  if (!name) return;
-  try {
-    localStorage.setItem('saadi_user_name', name);
-  } catch {
-    // localStorage дастрас нест — ном танҳо то пӯшидани саҳифа мемонад
-  }
-  setUserName(name);
-  setIsNameModalOpen(false);
-};
 
 // Дигарон (бе худам) барои ҳар ширкат ва бонк.
 const othersOnline = useMemo(
@@ -3380,12 +3393,11 @@ const updateTransferConfirmation = async (
           <PresenceBar
             users={presenceUsers}
             selfId={CLIENT_ID}
+            selfName={userName}
             banks={data.banks}
             companies={data.companies}
-            onRename={() => {
-              setNameDraft(userName);
-              setIsNameModalOpen(true);
-            }}
+            sessionExpiresAt={sessionExpiresAt}
+            onLogout={onLogout}
           />
 
           <button
@@ -3826,42 +3838,6 @@ const updateTransferConfirmation = async (
         </div>
       )}
 
-      <Modal
-        isOpen={isNameModalOpen}
-        onClose={() => {
-          // Бе ном пӯшида намешавад, то ҳамкорон донанд кӣ кор мекунад.
-          if (userName) setIsNameModalOpen(false);
-        }}
-        title={userName ? 'Иваз кардани ном' : 'Хуш омадед! Номи шумо чист?'}
-      >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveUserName();
-          }}
-        >
-          <p className="text-sm text-ink-muted">
-            Ин ном ба ҳамкорон нишон медиҳад, ки шумо онлайн ҳастед ва дар кадом ширкат кор мекунед.
-          </p>
-          <input
-            type="text"
-            placeholder="Масалан: Алӣ"
-            maxLength={30}
-            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-brand-green focus:border-transparent outline-none"
-            value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={!nameDraft.trim()}
-            className="w-full py-3 bg-brand-green text-white rounded-xl font-semibold disabled:opacity-50"
-          >
-            Сабт
-          </button>
-        </form>
-      </Modal>
 
       <Modal isOpen={isAddingBank} onClose={() => setIsAddingBank(false)} title="Иловаи бонк">
         <div className="space-y-4">
