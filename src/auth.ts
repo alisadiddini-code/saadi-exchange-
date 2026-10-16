@@ -3,13 +3,14 @@ import { supabase } from './lib/supabase';
 // Вуруд бо номҳои иҷозатдодашуда. Қоидаҳо дар база (supabase/login_setup.sql)
 // иҷро мешаванд: рӯйхати номҳо, 12 соат эътибор, як ном = як дастгоҳ.
 
-export type Session = { token: string; name: string; expiresAt: string };
+export type Session = { token: string; name: string; expiresAt: string; isAdmin?: boolean };
 
 export type LoginError = 'not_allowed' | 'in_use' | 'bad_device' | 'network' | 'not_setup';
 
 export type AdminUser = {
   name: string;
   active: boolean;
+  is_admin?: boolean;
   session_started: string | null;
   session_expires: string | null;
 };
@@ -69,17 +70,27 @@ export async function login(name: string): Promise<{ session?: Session; error?: 
   const { data, error } = await supabase.rpc('app_login', { p_name: name, p_device: getDeviceId() });
   if (error) return { error: isMissingFunction(error) ? 'not_setup' : 'network' };
   if (!data?.ok) return { error: (data?.error as LoginError) || 'not_allowed' };
-  const session: Session = { token: data.token, name: data.name, expiresAt: data.expires_at };
+  const session: Session = { token: data.token, name: data.name, expiresAt: data.expires_at, isAdmin: !!data.is_admin };
   storeSession(session);
   return { session };
 }
 
+// Барои корбари идоракунанда: вуруди ҷорӣ ба ҷои рамзи идоракунӣ истифода мешавад.
+export function sessionAdminCode(s: Session) {
+  return `session:${s.token}:${getDeviceId()}`;
+}
+
 // 'valid' | 'invalid' | 'unknown' (шабака нест — вурудро нигоҳ медорем)
-export async function checkSession(s: Session): Promise<'valid' | 'invalid' | 'unknown'> {
-  if (new Date(s.expiresAt).getTime() <= Date.now()) return 'invalid';
+export async function checkSession(
+  s: Session
+): Promise<{ status: 'valid' | 'invalid' | 'unknown'; isAdmin?: boolean }> {
+  if (new Date(s.expiresAt).getTime() <= Date.now()) return { status: 'invalid' };
   const { data, error } = await supabase.rpc('app_check_session', { p_token: s.token, p_device: getDeviceId() });
-  if (error) return 'unknown';
-  return data?.ok ? 'valid' : 'invalid';
+  if (error) return { status: 'unknown' };
+  if (!data?.ok) return { status: 'invalid' };
+  const isAdmin = !!data.is_admin;
+  if (isAdmin !== !!s.isAdmin) storeSession({ ...s, isAdmin });
+  return { status: 'valid', isAdmin };
 }
 
 export async function logout(s: Session | null) {

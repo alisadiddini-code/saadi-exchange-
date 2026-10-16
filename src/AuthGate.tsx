@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { format } from 'date-fns';
 import { KeyRound, LogIn, ShieldCheck, Trash2, UserPlus, X, Power, ArrowLeft } from 'lucide-react';
 import App from './App';
-import { admin, checkSession, clearSession, loadStoredSession, login, logout, type AdminUser, type LoginError, type Session } from './auth';
+import { admin, checkSession, clearSession, loadStoredSession, login, logout, sessionAdminCode, type AdminUser, type LoginError, type Session } from './auth';
 import { cn } from './lib/utils';
 
 const LOGIN_ERRORS: Record<LoginError, string> = {
@@ -30,6 +30,7 @@ export default function AuthGate() {
   const [checking, setChecking] = useState(() => !!loadStoredSession());
   const [notice, setNotice] = useState<string | null>(null);
   const [screen, setScreen] = useState<'login' | 'admin'>('login');
+  const [showAdmin, setShowAdmin] = useState(false);
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -51,8 +52,10 @@ export default function AuthGate() {
       if (!s) return;
       const result = await checkSession(s);
       if (cancelled || sessionRef.current?.token !== s.token) return;
-      if (result === 'invalid') {
+      if (result.status === 'invalid') {
         endSession(new Date(s.expiresAt).getTime() <= Date.now() ? EXPIRED_MESSAGE : KICKED_MESSAGE);
+      } else if (result.status === 'valid' && result.isAdmin !== !!s.isAdmin) {
+        setSession({ ...s, isAdmin: result.isAdmin });
       }
       setChecking(false);
     };
@@ -87,16 +90,27 @@ export default function AuthGate() {
 
   if (session) {
     return (
-      <App
-        sessionName={session.name}
-        sessionExpiresAt={session.expiresAt}
-        onLogout={async () => {
-          await logout(session);
-          setSession(null);
-          setNotice(null);
-          applyStoredTheme();
-        }}
-      />
+      <>
+        <App
+          sessionName={session.name}
+          sessionExpiresAt={session.expiresAt}
+          onOpenAdmin={session.isAdmin ? () => setShowAdmin(true) : undefined}
+          onLogout={async () => {
+            setShowAdmin(false);
+            await logout(session);
+            setSession(null);
+            setNotice(null);
+            applyStoredTheme();
+          }}
+        />
+        {showAdmin && session.isAdmin && (
+          <div className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+            <div className="w-full max-w-md my-8">
+              <AdminCard initialCode={sessionAdminCode(session)} onBack={() => setShowAdmin(false)} />
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -212,14 +226,16 @@ function LoginCard({
 const ADMIN_ERRORS: Record<string, string> = {
   bad_code: 'Рамзи идоракунӣ нодуруст аст.',
   bad_name: 'Ном бояд ҳадди ақал 2 ҳарф бошад.',
+  is_admin: 'Идоракунандаро аз рӯйхат хориҷ кардан мумкин нест.',
   network: 'Пайваст бо сервер нест.',
   not_setup: 'Системаи вуруд ҳанӯз дар база танзим нашудааст (login_setup.sql).',
 };
 
-function AdminCard({ onBack }: { onBack: () => void }) {
-  // Рамз танҳо дар хотираи ҳамин саҳифа нигоҳ дошта мешавад.
-  const [code, setCode] = useState('');
-  const [unlocked, setUnlocked] = useState(false);
+function AdminCard({ onBack, initialCode }: { onBack: () => void; initialCode?: string }) {
+  // Рамз танҳо дар хотираи ҳамин саҳифа нигоҳ дошта мешавад. Барои ALONE
+  // (initialCode) вуруди ҷорӣ ба ҷои рамз кор мекунад — рамз пурсида намешавад.
+  const [code, setCode] = useState(initialCode ?? '');
+  const [unlocked, setUnlocked] = useState(!!initialCode);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -235,6 +251,10 @@ function AdminCard({ onBack }: { onBack: () => void }) {
     setError(null);
     return true;
   };
+
+  useEffect(() => {
+    if (initialCode) void refresh(initialCode);
+  }, [initialCode]);
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string }>) => {
     setBusy(true);
@@ -327,7 +347,12 @@ function AdminCard({ onBack }: { onBack: () => void }) {
             <div key={u.name} className="flex items-center gap-3 px-2 py-2.5">
               <span className={cn('w-2 h-2 rounded-full shrink-0', online ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600')} />
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{u.name}</div>
+                <div className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                  {u.name}
+                  {u.is_admin && (
+                    <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-green">идоракунанда</span>
+                  )}
+                </div>
                 <div className="text-[11px] text-ink-muted">
                   {online
                     ? `Ворид шуд ${format(new Date(u.session_started!), 'HH:mm')} · то ${format(new Date(u.session_expires!), 'HH:mm')}`
@@ -346,6 +371,7 @@ function AdminCard({ onBack }: { onBack: () => void }) {
                   <Power className="w-4 h-4" />
                 </button>
               )}
+              {!u.is_admin && (
               <button
                 type="button"
                 disabled={busy}
@@ -357,6 +383,7 @@ function AdminCard({ onBack }: { onBack: () => void }) {
               >
                 <Trash2 className="w-4 h-4" />
               </button>
+              )}
             </div>
           );
         })}

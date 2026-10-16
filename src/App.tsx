@@ -34,6 +34,7 @@ import {
   RotateCcw,
   Users,
   LogOut,
+  ShieldCheck,
   Compass,
   Info,
   TrendingDown,
@@ -2033,10 +2034,13 @@ export default function App({
   sessionName,
   sessionExpiresAt,
   onLogout,
+  onOpenAdmin,
 }: {
   sessionName: string;
   sessionExpiresAt: string;
   onLogout: () => void;
+  // Танҳо барои корбари идоракунанда (ALONE) дода мешавад.
+  onOpenAdmin?: () => void;
 }) {
   // Gates the disciplined page-entry stagger below (header -> command
   // center -> controls row) — App() only renders once per page load, so
@@ -3399,6 +3403,18 @@ const updateTransferConfirmation = async (
             sessionExpiresAt={sessionExpiresAt}
             onLogout={onLogout}
           />
+
+          {onOpenAdmin && (
+            <button
+              type="button"
+              onClick={onOpenAdmin}
+              title="Идоракунии номҳо ва вурудҳо"
+              className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hover:border-brand-green/50 transition-colors shrink-0"
+            >
+              <ShieldCheck className="w-5 h-5 text-brand-green-dark dark:text-emerald-400" />
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 hidden lg:inline">Идоракунӣ</span>
+            </button>
+          )}
 
           <button
             ref={assistantLauncherRef}
